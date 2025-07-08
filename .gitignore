@@ -65,3 +65,10 @@ inst/code/sanity-check.R
 .cache-graph/
 .cache-admg/
 .wrong-output/
+.cache-chain/
+.cache-dmg/
+.cache-admg/
+.cache-dag/
+.cache-dcon/
+
+.Rbuildignore
