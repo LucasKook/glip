@@ -1,0 +1,20 @@
+Package: glip
+Title: Graph Learning Via Integer Programming
+Version: 0.0-1
+Authors@R:
+    c(
+    person("Lucas", "Kook", , "lucasheinrich.kook@gmail.com", role = c("aut", "cre"),
+           comment = c(ORCID = "0000-0002-7546-7356")),
+    person("Soeren Wengel", "Mogensen", , role = c("aut"))
+    )
+Description: Global optimization for causal discovery in different classes of graphs
+    including DAGs, DGs, ADMGs, DMGs, and chain graphs.
+License: GPL-3
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.1
+Depends: R (>= 4.2.0), comets
+Imports: Formula, stats, expm, future, future.apply, parallel, 
+    stringr, dplyr, MatrixExtra, mvtnorm, Matrix
+Suggests: testthat (>= 3.0.0), gurobi
+Config/testthat/edition: 3
