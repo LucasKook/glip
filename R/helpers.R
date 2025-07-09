@@ -44,11 +44,23 @@
   mode <- match.arg(mode)
   switch(mode,
     "dag" = .check_dsep(A, B, C, G),
-    "dg" = .check_dsep(A, B, C, G), # TODO: Update
+    "dg" = .check_dsep(A, B, C, G),
     "admg" = .check_dsep_dmg(A, B, C, G),
-    "dmg" = .check_dsep_dmg(A, B, C, G), # TODO: Update
+    "dmg" = .check_dsep_dmg(A, B, C, G),
     "chain" = .check_csep(A, B, C, G),
     "dagdcon" = .check_dsep(A, B, C, G)
+  )
+}
+
+.check_equivalence <- function(G1, G2, max_size, mode = "dag") {
+  V <- .get_node_set(G1)
+  V2 <- .get_node_set(G2)
+  stopifnot(isTRUE(all.equal(V, V2)))
+  T1 <- .compute_oracle_tests(G1, max_size, mode)
+  T2 <- .compute_oracle_tests(G2, max_size, mode)
+  identical(
+    which(T1$p.value == 1),
+    which(T2$p.value == 1)
   )
 }
 
@@ -59,11 +71,13 @@
 .check_dsep_dmg <- function(A, B, C, G) {
   D <- createD0(G)
   gD <- suppressWarnings(as(D$M1, "graphNEL"))
+  # TODO: Replace dsep with own implementation
   1 * pcalg::dsep(A, B, C, g = gD)
 }
 
 .check_dsep <- function(A, B, C, G) {
   GG <- suppressWarnings(as(G, "graphNEL"))
+  # TODO: Replace dsep with own implementation
   1 * pcalg::dsep(A, B, C, g = GG)
 }
 
@@ -71,12 +85,12 @@
     d = 3, V = letters[1:d], mode = c("dag", "dg", "admg", "dmg", "chain", "dagdcon"), ...) {
   mode <- match.arg(mode)
   switch(mode,
-    "dag" = .random_dag(d, V, ...),
-    "dg" = .random_dag(d, V, ...), # TODO: Update
+    "dag" = .random_dmg(d, V, acyclic = TRUE, ...)$M1,
+    "dg" = .random_dmg(d, V, acyclic = FALSE, ...)$M1,
     "admg" = .random_dmg(d, V, acyclic = TRUE, ...),
     "dmg" = .random_dmg(d, V, acyclic = FALSE, ...),
     "chain" = .random_cg(d, V, ...),
-    "dagdcon" = .random_dag(d, V, ...)
+    "dagdcon" = .random_dmg(d, V, acyclic = TRUE, ...)$M1
   )
 }
 
@@ -92,25 +106,28 @@
   G
 }
 
-.random_dag <- function(d, V = letters[1:d], ...) {
-  G <- 1 * (as(pcalg::randomDAG(d, ...), "matrix") != 0)
-  dimnames(G) <- list(V, V)
-  G
-}
-
-.compute_graphical_representation <- function(G, mode = c("dag", "dg", "admg", "dmg", "chain", "dagdcon")) {
+.compute_graphical_representation <- function(G, max_size, mode = c("dag", "dg", "admg", "dmg", "chain", "dagdcon")) {
   mode <- match.arg(mode)
+  d <- .get_size(G)
+  if (max_size < d - 2) {
+    return(NULL)
+  }
   switch(mode,
     "dag" = .dag2ess(G),
-    "dg" = .dag2ess(G), # TODO: Update
+    "dg" = NULL,
     "admg" = .admg2pag(G),
-    "dmg" = .admg2pag(G), # TODO: Update
-    "chain" = compute_largest_cg(G),
+    "dmg" = NULL,
+    "chain" = .cg2lcg(G),
     "dagdcon" = .dag2ess(G)
   )
 }
 
+.cg2lcg <- function(G) {
+  compute_largest_cg(G)
+}
+
 .dag2ess <- function(G) {
+  # TODO: Replace dag2ess
   ret <- 1 * pcalg::dag2essgraph(G)
   class(ret) <- c("ess", class(ret))
   ret

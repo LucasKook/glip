@@ -3,6 +3,11 @@ learn_graph <- function(
     parallel = FALSE, ncores = NULL, trafo = \(x) as.numeric(x <= 0.05),
     gurobi_args = list(), test_args = NULL, return_tests_only = FALSE,
     verbose = FALSE, cache = TRUE, ...) {
+  if (mode %in% c("dmg", "dg")) {
+    warning("Using `mode = 'dmg'` or `mode = 'dg'` relies on d-separation
+      and thus implicitly assumes a linear Gaussian SCM.")
+  }
+
   ### Pre-process
   vars <- colnames(data)
   max_size <- min(max(1, length(vars) - 2), max_size)
@@ -50,7 +55,7 @@ learn_graph <- function(
     verbose = verbose, cache = cache, mode = mode
   )
 
-  out <- .compute_graphical_representation(graph$graph, mode)
+  out <- .compute_graphical_representation(graph$graph, max_size, mode)
 
   structure(list(tests = res, graph = graph, computed = out),
     class = "learned_graph", vars = vars, max_size = max_size, test = test
