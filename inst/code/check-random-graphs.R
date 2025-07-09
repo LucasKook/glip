@@ -15,7 +15,7 @@ pp <- 0.5
 mode <- "dag"
 seeds <- 1:100
 cache <- TRUE
-ncores <- max(6, parallel::detectCores(logical = TRUE) - 2)
+ncores <- max(7, parallel::detectCores(logical = TRUE) - 2)
 
 ### Write
 out <- ".wrong-output"
@@ -48,14 +48,11 @@ tmp <- sapply(seeds, \(idx) {
 
   capt <- capture.output(
     lG <- .get_opt(mode)(tests,
-      d = d,
-      max_size = max_size,
-      V = V,
-      cache = cache,
+      d = d, max_size = max_size,
+      V = V, cache = cache,
       gurobi_args = list(
         Threads = ncores
-      ),
-      mode = mode
+      ), mode = mode
     )
   )
 
