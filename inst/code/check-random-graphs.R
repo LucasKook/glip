@@ -37,16 +37,7 @@ tmp <- sapply(seeds, \(idx) {
   }
   glog <<- c(glog, list(G))
 
-  sets <- .list_tests_graph(V, max_size = max_size)$sets
-  tests <- lapply(sets, \(x) {
-    data.frame(
-      X = x$X,
-      Y = x$Y,
-      Z = paste0(x$Z, collapse = ","),
-      p.value = .check_separation(x$X, x$Y, x$Z, G, mode)
-    )
-  }) |> do.call("rbind", args = _)
-
+  tests <- .compute_oracle_tests(G, max_size, mode)
   capt <- capture.output(
     lG <- .get_opt(mode)(tests,
       d = d, max_size = max_size,

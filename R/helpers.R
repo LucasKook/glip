@@ -1,3 +1,33 @@
+.compute_oracle_tests <- function(G, max_size = NULL, mode = "dag") {
+  V <- .get_node_set(G)
+  if (is.null(max_size)) {
+    max_size <- length(V) - 2
+  }
+  sets <- .list_tests_graph(V, max_size = max_size)$sets
+  tests <- lapply(sets, \(x) {
+    data.frame(
+      X = x$X,
+      Y = x$Y,
+      Z = paste0(x$Z, collapse = ","),
+      p.value = .check_separation(x$X, x$Y, x$Z, G, mode)
+    )
+  }) |> do.call("rbind", args = _)
+}
+
+.get_node_set <- function(G) {
+  if (is.list(G)) {
+    return(rownames(G$M1))
+  }
+  rownames(G)
+}
+
+.get_size <- function(G) {
+  if (is.list(G)) {
+    return(nrow(G$M1))
+  }
+  nrow(G)
+}
+
 .get_opt <- function(mode = c("dag", "dg", "admg", "dmg", "chain", "dagdcon")) {
   mode <- match.arg(mode)
   switch(mode,

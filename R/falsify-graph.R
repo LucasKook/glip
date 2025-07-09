@@ -1,22 +1,19 @@
-list_d_separations <- function(G, max_size = NULL, ...) {
-  V <- colnames(G)
+list_separations <- function(G, max_size = NULL, mode, ...) {
+  V <- .get_node_set(G)
   max_size <- min(max(1, length(V) - 2), max_size)
-
   tsts <- .list_tests_graph(V, max_size = max_size, ...)
-  idx <- lapply(tsts$sets, \(x) {
-    pcalg::dsep(x$X, x$Y, x$Z, as(G, "graphNEL"))
-  }) |> unlist()
+  idx <- which(.compute_oracle_tests(G, max_size, mode)$p.value == 1)
   list(sets = tsts$sets[idx], formulas = tsts$formulas[idx])
 }
 
 falsify_graph <- function(
-    G, data, max_size = NULL, test = "gcm", test_args = NULL,
+    G, data, max_size = NULL, mode = "dag", test = "gcm", test_args = NULL,
     parallel = FALSE, ncores = NULL, ...) {
   V <- colnames(G)
   max_size <- min(max(1, length(V) - 2), max_size)
 
   ### List all d separations with tests
-  to_test <- list_d_separations(G, max_size = max_size)
+  to_test <- list_separations(G, max_size = max_size, mode)
 
   if (length(to_test$sets) == 0) {
     message("No testable d-separations at the provided max_size.")
