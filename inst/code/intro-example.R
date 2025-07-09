@@ -21,28 +21,21 @@ cors <- c(0, 0.9, 0.9999)
 
 tmp <- lapply(cors, \(tcor) {
   d <- dgp(1e4, cor = tcor)
-  # plot(d)
 
-  # tmp <- capture.output(lE <- learn_graph(d, test_args = list(
-  #   reg_YonZ = "lrm",
-  #   reg_XonZ = "lrm"
-  # ), mode = "dag"))
-  # lE$ess
-
-  tmp <- capture.output(lP <- learn_graph(d, test_args = list(
-    reg_YonZ = "lrm",
-    reg_XonZ = "lrm"
-  ), mode = "admg"))
+  tmp <- capture.output(
+    lP <- learn_graph(d, test_args = list(
+      reg_YonZ = "lrm",
+      reg_XonZ = "lrm"
+    ), mode = "admg")
+  )
 
   cat("\ncor =", tcor)
   cat("\nOptim:\n")
-  print(lP$pag)
-  plot(as(lP$pag, "graphNEL"))
+  print(lP$computed)
 
   cat("\nFCI:\n")
   out <- fci(list(C = cor(d), n = NROW(d)), gaussCItest, 0.05, colnames(d),
     selectionBias = FALSE
   )
   print(out@amat)
-  plot(as(out@amat, "graphNEL"))
 })
