@@ -140,23 +140,24 @@ chain_optim <- function(
     rep(0, n_ul), # undirected z variables
     rep(0, n_ul), # undirected l variables
     rep(0, nW1 <- n_ul + n_ul * (d - 2)), # aux W1
-    rep(0, nZ1 <- d * (d - 1) * (d - 2)), # aux Z1
+    rep(0, nZ1 <- n_d + d * (d - 1) * (d - 2)), # aux Z1
     rep(0, d * n_C), # diC
+    0, # aux const for min Z1
     0, # aux const for min R1
     0 # aux const for min W1
   )
   model$modelsense <- "min"
   model$vtype <- rep(
     c("C", "B", "I", "B", "I", "B", "I", "B", "I"),
-    c(n_z, n_z + n_d, n_z + n_d + sum(nN1), n_d, sum(nlc), n_d + n_ul, n_ul + nW1 + nZ1, d * n_C, 2)
+    c(n_z, n_z + n_d, n_z + n_d + sum(nN1), n_d, sum(nlc), n_d + n_ul, n_ul + nW1 + nZ1, d * n_C, 3)
   )
   model$lb <- rep(
-    c(0, 1, 0, 1, 0, 1, -1, 0, 1, d),
-    c(2 * n_z + n_d, n_z + n_d + sum(nN1), n_d, sum(nlc), n_d + n_ul, n_ul + nW1, nZ1, d * n_C, 1, 1)
+    c(0, 1, 0, 1, 0, 1, -2, 0, 0, 1, d),
+    c(2 * n_z + n_d, n_z + n_d + sum(nN1), n_d, sum(nlc), n_d + n_ul, n_ul + nW1, nZ1, d * n_C, 1, 1, 1)
   )
   model$ub <- rep(
-    c(Inf, 1, Inf, d, 2 * d, 1, 5 * d - 8, 1, d, 3 * d - 1, 1, 1, 1, d),
-    c(n_z, n_z + n_d, n_z, n_d, sum(nN1), n_d, sum(nlc), n_d + n_ul, n_ul, nW1, nZ1, d * n_C, 1, 1)
+    c(Inf, 1, Inf, d, 2 * d, 1, 5 * d - 8, 1, d, 3 * d - 1, 1, 1, 0, 1, d),
+    c(n_z, n_z + n_d, n_z, n_d, sum(nN1), n_d, sum(nlc), n_d + n_ul, n_ul, nW1, nZ1, d * n_C, 1, 1, 1)
   )
   model$rhs <- c(
     "labs" = -p, # linearize objective
@@ -205,8 +206,8 @@ chain_optim <- function(
     )
 
     colnames(A) <- make.unique(rep(
-      c("tijC", "zijC", "dxij", "lijc", "leij", "nijk", "deij", "uijklm", "sxij", "zuij", "luij", "wijk", "zijk", "diC", "const1", "constd"),
-      c(n_z, n_z, n_d, n_z, n_d, sum(nN1), n_d, sum(nlc), n_d, n_ul, n_ul, nW1, nZ1, d * n_C, 1, 1)
+      c("tijC", "zijC", "dxij", "lijc", "leij", "nijk", "deij", "uijklm", "sxij", "zuij", "luij", "wijk", "zijk", "diC", "const0", "const1", "constd"),
+      c(n_z, n_z, n_d, n_z, n_d, sum(nN1), n_d, sum(nlc), n_d, n_ul, n_ul, nW1, nZ1, d * n_C, 1, 1, 1)
     ))
     rownames(A) <- make.unique(c(
       rep("labs", 2 * n_z),
@@ -240,9 +241,9 @@ chain_optim <- function(
     }
     A[grep("r1b", rownames(A)), grep("diC", colnames(A))] <- tmp
 
-    ### Auxiliary Y2 for Z1
+    ### Auxiliary Y1 and Y2 for Z1
     if (verbose) {
-      cat("\nWorking on constraint Y2")
+      cat("\nWorking on constraint Y1-2")
     }
 
     tmp <- A[grep("z1max", rownames(A)), .multigrep(c("dxij", "zuij", "zijk"), colnames(A))]
@@ -252,11 +253,23 @@ chain_optim <- function(
     z1l <- data.frame()
     for (i in seq_len(d)) {
       for (j in setdiff(seq_len(d), i)) {
+        ### Y1
+        ij <- xij$idx[xij$i == i & xij$j == j]
+        ji <- xij$idx[xij$i == j & xij$j == i]
+        tmp[cntr, skip + cntr] <- 1 + .fill(tmp[cntr, skip + cntr])
+        tmp[cntr, ij] <- -1 + .fill(tmp[cntr, ij])
+        tmp[cntr, ji] <- 1 + .fill(tmp[cntr, ji])
+        rz1[cntr] <- 0
+        z1l <- rbind(z1l, data.frame(i = i, j = j, k = NA, idx = cntr, which = "Y1"))
+        cntr <- cntr + 1
         for (k in setdiff(seq_len(d), c(i, j))) {
+          ### Y2
           ik <- xij$idx[xij$i == i & xij$j == k]
+          ki <- xij$idx[xij$i == k & xij$j == i]
           kj <- n_d + luij$idx[luij$i == k & luij$j == j]
           tmp[cntr, skip + cntr] <- 1 + .fill(tmp[cntr, skip + cntr])
           tmp[cntr, ik] <- -1 + .fill(tmp[cntr, ik])
+          tmp[cntr, ki] <- 1 + .fill(tmp[cntr, ki])
           tmp[cntr, kj] <- -1 + .fill(tmp[cntr, kj])
           rz1[cntr] <- -1
           z1l <- rbind(z1l, data.frame(i = i, j = j, k = k, idx = cntr, which = "Y2"))
@@ -266,6 +279,7 @@ chain_optim <- function(
     }
     model$rhs[grep("z1max", names(model$rhs))] <- rz1
     A[grep("z1max", rownames(A)), .multigrep(c("dxij", "zuij", "zijk"), colnames(A))] <- tmp
+    nz1 <- cntr - 1
 
     ### Auxiliary U1 U2 for W1
     if (verbose) {
@@ -535,7 +549,7 @@ chain_optim <- function(
             resvar = 3 * n_z + 3 * n_d + sum(nN1) + sum(nlc) + ij,
             vars = sort(c(
               3 * n_z + 4 * n_d + sum(nN1) + sum(nlc) + 2 * n_ul + nW1 + keep,
-              2 * n_z + ij
+              length(model$obj) - 2
             ))
           ))
         )
@@ -675,6 +689,8 @@ chain_optim <- function(
     ul <- x[3 * n_z + 4 * n_d + sum(nN1) + sum(nlc) + n_ul + 1:n_ul]
     diC <- x[3 * n_z + 4 * n_d + sum(nN1) + sum(nlc) + 
       nW1 + nZ1 + 2 * n_ul + 1:ndic]
+    # z1l$learned <- x[3 * n_z + 4 * n_d + sum(nN1) + sum(nlc) + nW1 + 2 * n_ul + 1:nz1]
+    # print(z1l)
     dag <- matrix(0, nrow = d, ncol = d)
     dimnames(dag) <- list(V, V)
     for (i in seq_len(d)) {

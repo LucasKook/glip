@@ -50,7 +50,7 @@ learn_graph <- function(
     verbose = verbose, cache = cache, mode = mode
   )
 
-  out <- .convert_to_output(graph$graph, mode)
+  out <- .compute_graphical_representation(graph$graph, mode)
 
   structure(list(tests = res, graph = graph, computed = out),
     class = "learned_graph", vars = vars, max_size = max_size, test = test

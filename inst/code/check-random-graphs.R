@@ -2,18 +2,19 @@
 ### LK 2025
 
 set.seed(1)
+args <- commandArgs(trailingOnly = TRUE)
 
 ### Dependencies
 devtools::load_all()
 library("pcalg")
 
 ### Params
-d <- 5
-max_size <- 3
+d <- darg(args[1], 3)
+max_size <- darg(args[2], d - 2)
+pp <- darg(args[3], 0.5)
+mode <- c("dag", "chain", "admg", "dagdcon")[darg(args[4], 1)]
+seeds <- eval(parse(text = darg(args[5], "1:100")))
 V <- letters[1:d]
-pp <- 0.5
-mode <- "dag"
-seeds <- 1:100
 cache <- TRUE
 ncores <- max(7, parallel::detectCores(logical = TRUE) - 2)
 
@@ -56,13 +57,15 @@ tmp <- sapply(seeds, \(idx) {
     )
   )
 
-  learned <- .convert_to_output(lG$graph, mode)
-  ground_truth <- .convert_to_output(G, mode)
+  learned <- .compute_graphical_representation(lG$graph, mode)
+  ground_truth <- .compute_graphical_representation(G, mode)
 
   ### Compute output graph
   if (!isTRUE(all.equal(learned, ground_truth))) {
     message("\nWrong graph found, writing...")
     tmp <- capture.output({
+      print(capt)
+      print(lG$tests)
       cat("\nTrue graph:\n")
       print(G)
       cat("\nLearned graph:\n")

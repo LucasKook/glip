@@ -17,9 +17,13 @@
     "dg" = .check_dsep(A, B, C, G), # TODO: Update
     "admg" = .check_dsep_dmg(A, B, C, G),
     "dmg" = .check_dsep_dmg(A, B, C, G), # TODO: Update
-    "chain" = .check_dsep(A, B, C, G), # TODO: Update
+    "chain" = .check_csep(A, B, C, G),
     "dagdcon" = .check_dsep(A, B, C, G)
   )
+}
+
+.check_csep <- function(A, B, C, G) {
+  1 * csep(G, A, B, C)
 }
 
 .check_dsep_dmg <- function(A, B, C, G) {
@@ -41,9 +45,13 @@
     "dg" = .random_dag(d, V, ...), # TODO: Update
     "admg" = .random_dmg(d, V, acyclic = TRUE, ...),
     "dmg" = .random_dmg(d, V, acyclic = FALSE, ...),
-    "chain" = .random_dag(d, V, ...), # TODO: Update
+    "chain" = .random_cg(d, V, ...),
     "dagdcon" = .random_dag(d, V, ...)
   )
+}
+
+.random_cg <- function(d, V = letters[1:d], ...) {
+  create_cg(d, V, ...)
 }
 
 .random_dmg <- function(d, V = letters[1:d], acyclic = FALSE, ...) {
@@ -60,14 +68,14 @@
   G
 }
 
-.convert_to_output <- function(G, mode = c("dag", "dg", "admg", "dmg", "chain", "dagdcon")) {
+.compute_graphical_representation <- function(G, mode = c("dag", "dg", "admg", "dmg", "chain", "dagdcon")) {
   mode <- match.arg(mode)
   switch(mode,
     "dag" = .dag2ess(G),
     "dg" = .dag2ess(G), # TODO: Update
     "admg" = .admg2pag(G),
     "dmg" = .admg2pag(G), # TODO: Update
-    "chain" = .dag2ess(G), # TODO: Update
+    "chain" = compute_largest_cg(G),
     "dagdcon" = .dag2ess(G)
   )
 }
