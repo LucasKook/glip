@@ -9,11 +9,11 @@ devtools::load_all()
 library("pcalg")
 
 ### Params
-d <- darg(args[1], 3)
-max_size <- darg(args[2], d - 2)
-pp <- darg(args[3], 0.5)
-mode <- c("dag", "chain", "admg", "dagdcon")[darg(args[4], 1)]
-seeds <- 1:1000
+d <- as.numeric(darg(args[1], 3))
+max_size <- as.numeric(darg(args[2], d - 2))
+pp <- as.numeric(darg(args[3], 0.5))
+mode <- c("dag", "chain", "admg", "dagdcon")[as.numeric(darg(args[4], 1))]
+seeds <- eval(parse(text = darg(args[5], "1:100")))
 V <- letters[1:d]
 cache <- TRUE
 ncores <- max(7, parallel::detectCores(logical = TRUE) - 2)
