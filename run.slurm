@@ -40,7 +40,7 @@ for d in 3 4 5; do
   for ((m = 1; m < d - 1; m++)); do
     for mode in 1 2 3 4; do
       echo "Running with d=$d, m=$m, mode=$mode, prob=0.5, seeds=1:1000"
-      Rscript --vanilla ./inst/code/check-random-graphs.R --d=$d --m=$m --prob=0.5 --mode=$mode
+      Rscript --vanilla ./inst/code/check-random-graphs.R $d $m 0.5 $mode
     done
   done
 done
