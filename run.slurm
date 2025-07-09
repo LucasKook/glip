@@ -37,10 +37,8 @@ export PATH=$PATH:/home/lkook/gurobi1202/linux64/bin
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/home/lkook/gurobi1202/linux64/lib
 
 for d in 3 4 5; do
-  for ((m = 1; m < d - 1; m++)); do
-    for mode in 1 2 3 4; do
-      echo "Running with d=$d, m=$m, mode=$mode, prob=0.5, seeds=1:1000"
-      Rscript --vanilla ./inst/code/check-random-graphs.R $d $m 0.5 $mode
-    done
+  for mode in 1 2 3 4; do
+    echo "Running with d=$d, m=$m, mode=$mode, prob=0.5, seeds=1:1000"
+    Rscript --vanilla ./inst/code/check-random-graphs.R $d 0.5 $mode "1:1000"
   done
 done
