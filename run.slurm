@@ -9,7 +9,6 @@
 #SBATCH --cpus-per-task=16
 #SBATCH --mem-per-cpu=8G
 #SBATCH --partition=highmem
-#SBATCH --array=1-3
 
 echo "Running job $SLURM_JOB_NAME with ID $SLURM_JOB_ID"
 echo "Allocated hosts: $SLURM_JOB_NODELIST"
@@ -33,3 +32,8 @@ module load gdal-3.5.3-gcc-12.2.0-fduwdss
 module load cuda-11.8.0-gcc-12.2.0-w5yxkzl
 
 export R_LIBS=/home/lkook/R_LIBS
+export GUROBI_HOME=/home/lkook/gurobi1202/
+export PATH=$PATH:/home/lkook/gurobi1202/linux64/bin
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/home/lkook/gurobi1202/linux64/lib
+
+Rscript --vanilla ./inst/code/check-random-graphs.R
