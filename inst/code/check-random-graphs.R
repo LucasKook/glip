@@ -8,18 +8,20 @@ devtools::load_all()
 library("pcalg")
 
 ### Params
-d <- 3
-max_size <- 1
+d <- 5
+max_size <- 3
 V <- letters[1:d]
 pp <- 0.5
-mode <- "dagdcon"
+mode <- "dag"
+seeds <- 1:100
+cache <- TRUE
+ncores <- max(6, parallel::detectCores(logical = TRUE) - 2)
+
+### Write
 out <- ".wrong-output"
 if (!dir.exists(out)) {
   dir.create(out)
 }
-
-### Check seeds
-seeds <- 1:100
 
 ### Run
 glog <- list()
@@ -49,10 +51,9 @@ tmp <- sapply(seeds, \(idx) {
       d = d,
       max_size = max_size,
       V = V,
-      verbose = TRUE,
-      cache = TRUE,
+      cache = cache,
       gurobi_args = list(
-        Threads = 8
+        Threads = ncores
       ),
       mode = mode
     )
@@ -61,7 +62,7 @@ tmp <- sapply(seeds, \(idx) {
   learned <- .convert_to_output(lG$graph, mode)
   ground_truth <- .convert_to_output(G, mode)
 
-  ### Compute essential graph
+  ### Compute output graph
   if (!isTRUE(all.equal(learned, ground_truth))) {
     message("\nWrong graph found, writing...")
     tmp <- capture.output({
