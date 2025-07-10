@@ -4,8 +4,8 @@ test_that("Check equivalence function works", {
   G2$M1["c", "b"] <- G2$M1["b", "a"] <- 1
   G3$M1["c", "b"] <- G3$M1["a", "b"] <- 1
   sapply(seq_len(2), \(m) {
-    sapply(c("dag", "chain", "admg", "dagdcon"), \(mode) {
-      if (mode != "admg") {
+    sapply(c("dag", "chain", "admg", "dagdcon", "dg", "dmg"), \(mode) {
+      if (!mode %in% c("admg", "dmg")) {
         G1 <- G1$M1
         G2 <- G2$M1
         G3 <- G3$M1
@@ -35,7 +35,7 @@ test_that("Falsifying graph works", {
 test_that("Empty graph is feasible", {
   sapply(3:5, \(d) {
     V <- letters[1:d]
-    sapply(c("dag", "chain", "admg", "dagdcon"), \(mode) {
+    sapply(c("dag", "chain", "admg", "dagdcon", "dg", "dmg"), \(mode) {
       G <- .generate_random_graph(d, V = V, mode = mode, prob = 0)
       if (is.list(G)) {
         G$M1[] <- 0
@@ -46,8 +46,37 @@ test_that("Empty graph is feasible", {
       tests <- .compute_oracle_tests(G, mode = mode)
       tmp <- capture.output(opt <- .get_opt(mode)(tests, d = d, max_size = d - 2, V = V,
         cache = TRUE, gurobi_args = list(Threads = 7), mode = mode))
-      lgr <- .compute_graphical_representation(opt$graph, d - 2, mode)
-      expect_equal(sum(lgr), 0)
+      lgr <- opt$graph
+      out <- if (is.list(lgr)) {
+        sum(lgr$M1, lgr$M2)
+      } else {
+        sum(lgr)
+      }
+      expect_equal(out, 0)
     })
   })
 })
+
+# test_that("msep agrees across implementations", {
+#   library("ggm")
+#   set.seed(12)
+#   nsim <- 100
+#   sapply(1:nsim, \(iter) {
+#     sapply(5:10, \(d) {
+#       V <- 1:d
+#       sapply(c("dag", "admg", "dagdcon"), \(mode) {
+#         print(d)
+#         print(mode)
+#         G <- .generate_random_graph(d, V = V, mode = mode, prob = 0.5)
+#         print(G)
+#         amat <- if (is.list(G)) {
+#           1 * G$M1 + 100 * G$M2
+#         } else {
+#           G
+#         }
+#         C <- sample(setdiff(V, c(1, 2)), sample.int(d - 4, 1))
+#         expect_equal(.check_msep(1, 2, 3, G), msep(amat, 1, 2, 3))
+#       })
+#     })
+#   })
+# })

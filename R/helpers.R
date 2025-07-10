@@ -28,8 +28,7 @@
   nrow(G)
 }
 
-.get_opt <- function(mode = c("dag", "dg", "admg", "dmg", "chain", "dagdcon")) {
-  mode <- match.arg(mode)
+.get_opt <- function(mode) {
   switch(mode,
     "dag" = dag_optim,
     "dg" = dag_optim,
@@ -40,15 +39,14 @@
   )
 }
 
-.check_separation <- function(A, B, C, G, mode = c("dag", "dg", "admg", "dmg", "chain", "dagdcon")) {
-  mode <- match.arg(mode)
+.check_separation <- function(A, B, C, G, mode) {
   switch(mode,
-    "dag" = .check_dsep(A, B, C, G),
-    "dg" = .check_dsep(A, B, C, G),
-    "admg" = .check_dsep_dmg(A, B, C, G),
-    "dmg" = .check_dsep_dmg(A, B, C, G),
+    "dag" = .check_msep(A, B, C, G),
+    "dg" = .check_msep(A, B, C, G),
+    "admg" = .check_msep(A, B, C, G),
+    "dmg" = .check_msep(A, B, C, G),
     "chain" = .check_csep(A, B, C, G),
-    "dagdcon" = .check_dsep(A, B, C, G)
+    "dagdcon" = .check_msep(A, B, C, G)
   )
 }
 
@@ -68,22 +66,17 @@
   1 * csep(G, A, B, C)
 }
 
-.check_dsep_dmg <- function(A, B, C, G) {
-  D <- createD0(G)
-  gD <- suppressWarnings(as(D$M1, "graphNEL"))
-  # TODO: Replace dsep with own implementation
-  1 * pcalg::dsep(A, B, C, g = gD)
-}
-
-.check_dsep <- function(A, B, C, G) {
-  GG <- suppressWarnings(as(G, "graphNEL"))
-  # TODO: Replace dsep with own implementation
-  1 * pcalg::dsep(A, B, C, g = GG)
+.check_msep <- function(A, B, C, G) {
+  if (!is.list(G)) {
+    tmp <- G
+    tmp[] <- 0
+    G <- list(M1 = G, M2 = tmp)
+  }
+  1 * is_m_separated(G, A, B, C)
 }
 
 .generate_random_graph <- function(
-    d = 3, V = letters[1:d], mode = c("dag", "dg", "admg", "dmg", "chain", "dagdcon"), ...) {
-  mode <- match.arg(mode)
+    d = 3, V = letters[1:d], mode, ...) {
   switch(mode,
     "dag" = .random_dmg(d, V, acyclic = TRUE, ...)$M1,
     "dg" = .random_dmg(d, V, acyclic = FALSE, ...)$M1,
@@ -106,8 +99,7 @@
   G
 }
 
-.compute_graphical_representation <- function(G, max_size, mode = c("dag", "dg", "admg", "dmg", "chain", "dagdcon")) {
-  mode <- match.arg(mode)
+.compute_graphical_representation <- function(G, max_size, mode) {
   d <- .get_size(G)
   if (max_size < d - 2) {
     return(NULL)
@@ -127,7 +119,7 @@
 }
 
 .dag2ess <- function(G) {
-  # TODO: Replace dag2ess
+  # TODO: If possible, replace dag2ess
   ret <- 1 * pcalg::dag2essgraph(G)
   class(ret) <- c("ess", class(ret))
   ret

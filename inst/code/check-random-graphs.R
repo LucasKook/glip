@@ -48,8 +48,8 @@ tmp <- sapply(seeds, \(idx) {
     )
   )
 
-  learned <- .compute_graphical_representation(lG$graph, mode)
-  ground_truth <- .compute_graphical_representation(G, mode)
+  learned <- .compute_graphical_representation(lG$graph, max_size, mode)
+  ground_truth <- .compute_graphical_representation(G, max_size, mode)
 
   ### Compute output graph
   if (!isTRUE(all.equal(learned, ground_truth))) {
