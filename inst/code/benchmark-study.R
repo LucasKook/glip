@@ -11,10 +11,10 @@ devtools::load_all()
 # Parameters for generating random graph
 d <- 5
 pr <- 0.5
-mode <- "dag"
+mode <- "admg"
 
 # Parameters for simulating data from random graph
-n <- 1e2
+n <- 1e4
 
 # Parameters for running the optimization
 ms <- d - 2
@@ -73,3 +73,8 @@ tstop <- Sys.time()
 runtime_FCI <- tstop - tstart
 fciout <- as(fcires@amat, "matrix")
 FCI <- fciout
+
+ORACLE
+GLIP
+PC
+FCI
