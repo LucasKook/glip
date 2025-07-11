@@ -18,3 +18,19 @@ rgraph <- function(graphs, n, ...) {
   dat <- pcalg::rmvDAG(n = n, dag = graphs$graph, ...)
   dat[, graphs$O]
 }
+
+lookup_ci <- function(x, y, S, suffstat) {
+  V <- suffstat$V
+  if (identical(S, integer(0))) {
+    pv <- suffstat$tests |>
+      dplyr::filter((X == V[x] & Y == V[y]) | (X == V[y] & Y == V[x]), Z == "") |>
+      dplyr::pull(p.value)
+    return(pv)
+  }
+  pv <- suffstat$tests |>
+    dplyr::filter((X == V[x] & Y == V[y]) | (X == V[y] & Y == V[x]), Z == paste0(V[sort(S)], collapse = ",")) |>
+    dplyr::pull(p.value)
+  pv
+}
+
+### TODO: Evaluation metrics
