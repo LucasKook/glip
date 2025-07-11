@@ -68,7 +68,7 @@ invert_latent_projection <- function(G) {
   if (nb == 0) {
     return(G)
   }
-  VU <- c(V, letters[d + seq_len(nb)])
+  VU <- c(V, paste0("n", letters[seq_len(nb)]))
 
   D0 <- create_dmg(length(VU),
     prob = 0, M2prob = 0,
@@ -213,4 +213,40 @@ is_m_separated <- function(G, A, B, C) {
   # find the augmented graph
   g <- augment(list(M1 = M1An, M2 = M2An))
   is_undirected_separated(g, A, B, C)
+}
+
+marginalize_dag_to_admg <- function(G, O) {
+  n <- nrow(G)
+  V <- rownames(G)
+  H <- setdiff(V, O)
+  tmp <- G
+  tmp[] <- 0
+  admg <- list(M1 = tmp, M2 = tmp)
+  admg$M1 <- G
+
+  for (z in H) {
+    children <- which(G[z, ] == 1)
+    # Add bidirected edges between children of the marginalized node
+    if (length(children) > 1) {
+      for (i in 1:(length(children) - 1)) {
+        for (j in (i + 1):length(children)) {
+          u <- children[i]
+          v <- children[j]
+          # Avoid adding if there is a directed path already
+          if (admg$M1[u, v] == 0 && admg$M1[v, u] == 0) {
+            admg$M2[u, v] <- 1
+            admg$M2[v, u] <- 1
+          }
+        }
+      }
+    }
+    # Remove node z from graph
+    admg$M1[z, ] <- 0
+    admg$M1[, z] <- 0
+  }
+
+  # Restrict to remaining nodes
+  admg$M1 <- admg$M1[O, O]
+  admg$M2 <- admg$M2[O, O]
+  admg
 }
