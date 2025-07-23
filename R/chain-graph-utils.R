@@ -1,19 +1,18 @@
-### check if two CG are LWF-Markov equivalent (does not check that amat1 and
-### amat2 do in fact correspond to chain graphs)
-is_markov_equivalent_cg <- function(amat1, amat2){
+### check if two CG are LWF-Markov equivalent (does not check that G1 and
+### G2 do in fact correspond to chain graphs)
+is_markov_equivalent_cg <- function(G1, G2) {
+  d <- nrow(G1)
+  nn <- colnames(G1)
 
-  d <- nrow(amat1)
-  nn <- colnames(amat1)
-
-  if (!isTRUE(all.equal(colnames(amat1), colnames(amat2)))){
+  if (!isTRUE(all.equal(colnames(G1), colnames(G2)))) {
     stop("Column names do not match.")
   }
 
-  for (i in nn){
-    for (j in setdiff(nn, i)){
-      for (k in seq(0, d-2)){
-        for (C in combn(setdiff(nn, c(i,j)),k,simplify=FALSE)){
-          if (csep(amat1,i,j,C) != csep(amat2,i,j,C)){
+  for (i in nn) {
+    for (j in setdiff(nn, i)) {
+      for (k in seq(0, d - 2)) {
+        for (C in combn(setdiff(nn, c(i, j)), k, simplify = FALSE)) {
+          if (csep(G1, i, j, C) != csep(G2, i, j, C)) {
             return(FALSE)
           }
         }
@@ -25,94 +24,91 @@ is_markov_equivalent_cg <- function(amat1, amat2){
 }
 
 ### generate random chain graph (Ma et al 2008 provides a different algorithm)
-create_cg <- function(d, V = letters[1:d], prob = 0.5){
-
-  ss <- sample(c(0,1), d^2, prob = c(1-prob, prob), replace = TRUE)
-  amat <- matrix(ss, nrow = d, ncol = d)
-  symamat <- 1*(amat + t(amat) > 1)
+create_cg <- function(d, V = letters[1:d], prob = 0.5) {
+  ss <- sample(c(0, 1), d^2, prob = c(1 - prob, prob), replace = TRUE)
+  G <- matrix(ss, nrow = d, ncol = d)
+  symG <- 1 * (G + t(G) > 1)
   com <- igraph::components(
-    igraph::graph_from_adjacency_matrix(symamat)
+    igraph::graph_from_adjacency_matrix(symG)
   )$membership
 
-  diag(amat) <- 0
+  diag(G) <- 0
 
-  for (i in seq_len(d)){
-    for (j in setdiff(seq_len(d), i)){
-      if (com[i] > com[j]){
-        amat[i,j] <- 0
+  for (i in seq_len(d)) {
+    for (j in setdiff(seq_len(d), i)) {
+      if (com[i] > com[j]) {
+        G[i, j] <- 0
       }
-      if (com[i] == com[j]){
-        if (sum(amat[i,j] + amat[j,i]) == 1){
-          amat[i,j] <- amat[j,i] <- sample(c(0,1), 1)
+      if (com[i] == com[j]) {
+        if (sum(G[i, j] + G[j, i]) == 1) {
+          G[i, j] <- G[j, i] <- sample(c(0, 1), 1)
         }
       }
     }
   }
 
   oo <- sample(seq_len(d))
-  amat <- amat[,oo][oo,]
-  rownames(amat) <- colnames(amat) <- V
-  amat
+  G <- G[, oo][oo, ]
+  rownames(G) <- colnames(G) <- V
+  G
 }
 
 ### compute largest LWF-Markov equivalent chain graph in the Markov equivalence
-### class of amat
-compute_largest_cg <- function(amat){ 
-
-  G <- amat
-  V <- colnames(amat)
-  amat <- matrix(nrow = nrow(amat), ncol = ncol(amat))
-  dimnames(amat) <- list(V, V)
-  amat[] <- G
-  class(amat) <- c("lcg", class(amat))
+### class of G
+compute_largest_cg <- function(G) {
+  G <- G
+  V <- colnames(G)
+  G <- matrix(nrow = nrow(G), ncol = ncol(G))
+  dimnames(G) <- list(V, V)
+  G[] <- G
+  class(G) <- c("lcg", class(G))
 
 
   notLarge <- TRUE
-  while(notLarge){
+  while (notLarge) {
+    gm <- compute_insub_metaarrow(G)
 
-    gm <- compute_insub_metaarrow(amat)
-
-    if (gm$large){
-      return(amat)
+    if (gm$large) {
+      return(G)
       notLarge <- FALSE
     } else {
       A <- gm$A
       B <- gm$B
-      amat[A,B][t(amat[B,A]) == 1] <- 1
-      amat[B,A][t(amat[A,B]) == 1] <- 1
+      G[A, B][t(G[B, A]) == 1] <- 1
+      G[B, A][t(G[A, B]) == 1] <- 1
     }
   }
-  
-  amat
+
+  G
 }
 
 ### auxiliary function to find non-empty meta-arrow (A \Rightarrow B) which is
 ### insubstantial, if it exists
-compute_insub_metaarrow <- function(amat){ 
-  symamat <- 1*(amat + t(amat) > 1)
+compute_insub_metaarrow <- function(G) {
+  symG <- 1 * (G + t(G) > 1)
   mem <- igraph::components(
-    igraph::graph_from_adjacency_matrix(symamat)
+    igraph::graph_from_adjacency_matrix(symG)
   )$membership
   com <- unique(mem)
 
-  for (i in com){
+  for (i in com) {
     A <- which(mem == i)
-    for (j in setdiff(com, i)){
+    for (j in setdiff(com, i)) {
       B <- which(mem == j)
-      if (max(amat[A,B]) > 0){ # nonempty meta-arrow A -> B
-        aa <- which(seq_len(d) %in% A & rowSums(amat[,B,drop=FALSE])>0) # pa(B) \cap A
-        mm <- amat[aa,aa,drop=FALSE]
-        mm <- 1*(mm + t(mm) > 0)
+      if (max(G[A, B]) > 0) { # nonempty meta-arrow A -> B
+        aa <- which(seq_len(d) %in% A & rowSums(G[, B, drop = FALSE]) > 0) # pa(B) \cap A
+        mm <- G[aa, aa, drop = FALSE]
+        mm <- 1 * (mm + t(mm) > 0)
         diag(mm) <- 1
 
         r1 <- sum(mm) == nrow(mm)^2
 
-        paB <- setdiff(which(rowSums(amat[,B,drop=FALSE]) > 0), B)
-        for (a in aa){
-          paAlpha <- setdiff(which(rowSums(amat[,a,drop=FALSE]) > 0), a)
+        paB <- setdiff(which(rowSums(G[, B, drop = FALSE]) > 0), B)
+        for (a in aa) {
+          paAlpha <- setdiff(which(rowSums(G[, a, drop = FALSE]) > 0), a)
           r1 <- c(r1, length(setdiff(setdiff(paB, A), paAlpha)) == 0)
         }
-        if (all(r1)){
+        if (all(r1)) {
           return(list(large = FALSE, A = A, B = B))
         }
       }
@@ -122,20 +118,20 @@ compute_insub_metaarrow <- function(amat){
 }
 
 ### decide separation in LWF-CG
-csep <- function(amat,i,j,C = c()){ 
-  an <- ancestor_matrix(amat)
-  anijC <- which(rowSums(an[,c(i,j,C)]) > 0)
-  amat <- amat[anijC,anijC]
-  d1 <- nrow(amat)
-  mor <- moralize_cg(amat)
-  if (length(C) > 0){
-    mor[,C] <- 0
-    mor[C,] <- 0
+csep <- function(G, i, j, C = c()) {
+  an <- ancestor_matrix(G)
+  anijC <- which(rowSums(an[, c(i, j, C)]) > 0)
+  G <- G[anijC, anijC]
+  d1 <- nrow(G)
+  mor <- moralize_cg(G)
+  if (length(C) > 0) {
+    mor[, C] <- 0
+    mor[C, ] <- 0
   }
   com <- igraph::components(
     igraph::graph_from_adjacency_matrix(mor)
   )$membership
-  if (com[i] == com[j]){
+  if (com[i] == com[j]) {
     FALSE
   } else {
     TRUE
@@ -143,21 +139,21 @@ csep <- function(amat,i,j,C = c()){
 }
 
 ### compute moral graph
-moralize_cg <- function(amat){ 
-  symamat <- 1*(amat + t(amat) > 1)
+moralize_cg <- function(G) {
+  symG <- 1 * (G + t(G) > 1)
   com <- igraph::components(
-    igraph::graph_from_adjacency_matrix(symamat)
+    igraph::graph_from_adjacency_matrix(symG)
   )$membership
 
-  newamat <- amat
-  for (i in unique(com)){
-    rs <- rowSums(amat[,com == i,drop = FALSE])
+  newG <- G
+  for (i in unique(com)) {
+    rs <- rowSums(G[, com == i, drop = FALSE])
     pa <- setdiff(which(rs > 0), which(com == i))
-    if (length(pa) > 1){
+    if (length(pa) > 1) {
       tmp <- matrix(1, nrow = length(pa), ncol = length(pa))
       diag(tmp) <- 0
-      newamat[pa, pa] <- tmp
+      newG[pa, pa] <- tmp
     }
   }
-  1*(newamat + t(newamat) > 0)
+  1 * (newG + t(newG) > 0)
 }
