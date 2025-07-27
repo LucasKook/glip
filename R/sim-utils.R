@@ -1,17 +1,49 @@
 ### Generate random graph
 random_graph <- function(
-    d = 3, prob = 0.5, lb = -1, ub = 1, admg_add = 2,
-    mode = c("dag", "admg"), V = letters[1:d], V2 = letters[(d + 1):(d + admg_add)]) {
+    d = 3, prob = 0.5, lb = 0, ub = 1, admg_add = 2, degree = 2, method = "er",
+    par1 = NULL, par2 = NULL, mode = c("dag", "admg"), V = letters[1:d],
+    V2 = letters[(d + 1):(d + admg_add)], dag_gen = c("randDAG", "randomDAG")) {
   mode <- match.arg(mode)
+  dag_gen <- match.arg(dag_gen)
   O <- V
+  ### For marginalization of DAG to ADMG
   if (mode == "admg") {
-    V <- c(V, V2)
-    O <- V[sort(sample.int(d + admg_add, d, FALSE))]
-    d <- d + admg_add
+    V <- c(V, V2) # expand node set
+    O <- V[sort(sample.int(d + admg_add, d, FALSE))] # randomly choose unobservables
+    d <- d + admg_add # Expand dimension
   }
-  fg <- pcalg::randomDAG(n = d, prob = prob, lB = lb, uB = ub, V = V)
+  if (dag_gen == "randomDAG") {
+    ### Already topologically sorted
+    fg <- pcalg::randomDAG(n = d, prob = prob, lB = lb, uB = ub, V = V)
+  } else {
+    fg <- pcalg::randDAG(
+      n = d, d = degree, method = method, par1 = par1, par2 = par2,
+      weighted = TRUE, wFUN = list(runif, min = lb, max = ub)
+    )
+    ### Needs to be topologically sorted
+    sorted <- igraph::topo_sort(
+      igraph::graph_from_graphnel(fg),
+      mode = "out"
+    )
+    wadj <- as(fg, "matrix")[sorted, ][, sorted]
+    dimnames(wadj) <- list(V, V)
+    ### Create new graphNEL and add edges manually with prev. simulated weight
+    fg <- new("graphNEL", nodes = V, edgemode = "directed")
+    for (i in seq_along(V)) {
+      for (j in seq_along(V)) {
+        w <- wadj[i, j]
+        if (w != 0) {
+          from <- V[i]
+          to <- V[j]
+          fg <- graph::addEdge(from, to, fg, w)
+        }
+      }
+    }
+  }
+  ### Adjacency matrix and marginalization
   G <- suppressWarnings(1 * (as(fg, "matrix") != 0))
   mg <- marginalize_dag_to_admg(G, O)
+  ### Return
   list(graph = fg, DAG = G, ADMG = mg, O = O)
 }
 

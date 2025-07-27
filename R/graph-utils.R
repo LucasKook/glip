@@ -248,5 +248,11 @@ marginalize_dag_to_admg <- function(G, O) {
   # Restrict to remaining nodes
   admg$M1 <- admg$M1[O, O]
   admg$M2 <- admg$M2[O, O]
+
+  ### Ancestors in DAG need to be present in ADMG
+  idx <- which(ancestor_matrix(G)[O, O] != ancestor_matrix(admg$M1), arr.ind = TRUE)
+  admg$M1[idx] <- 1
+
+  ### Return
   admg
 }

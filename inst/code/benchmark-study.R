@@ -9,9 +9,9 @@ devtools::load_all()
 ### PARs
 
 # Parameters for generating random graph
-d <- 5
-pr <- 0.5
-mode <- "admg"
+d <- 4
+pr <- 0.3
+mode <- "dag"
 
 # Parameters for simulating data from random graph
 n <- 1e4
@@ -20,7 +20,7 @@ n <- 1e4
 ms <- d - 2
 ncores <- max(7, parallel::detectCores(logical = TRUE) - 2)
 cache <- TRUE
-alpha <- 0.05
+alpha <- 0.01
 
 # Parameters for running the tests
 targs <- list(reg_YonZ = "lrm", reg_XonZ = "lrm")
@@ -30,18 +30,19 @@ graph <- random_graph(d = d, prob = pr, mode = mode)
 data <- data.frame(rgraph(graph, n = n))
 V <- colnames(data)
 
-### Run CITs
-tests <- learn_graph(
-  data = data, max_size = ms, mode = mode, test_args = targs,
-  return_tests_only = TRUE
-)
-
 ### ORACLE
 gt <- switch(mode,
   "dag" = graph$DAG,
   "admg" = graph$ADMG
 )
 ORACLE <- .compute_graphical_representation(gt, ms, mode)
+
+### Run CITs
+tests <- learn_graph(
+  data = data, max_size = ms, mode = mode, test_args = targs,
+  return_tests_only = TRUE
+)
+# tests <- .compute_oracle_tests(gt, ms, mode)
 
 ### GLIP
 capt <- capture.output(lG <- .get_opt(mode)(tests,
@@ -76,5 +77,5 @@ FCI <- fciout
 
 ORACLE
 GLIP
-PC
+PC ### TODO: Sometimes output is directed? Or always PAG?
 FCI

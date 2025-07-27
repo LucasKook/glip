@@ -4,7 +4,7 @@
     max_size <- length(V) - 2
   }
   sets <- .list_tests_graph(V, max_size = max_size)$sets
-  tests <- lapply(sets, \(x) {
+  lapply(sets, \(x) {
     data.frame(
       X = x$X,
       Y = x$Y,
