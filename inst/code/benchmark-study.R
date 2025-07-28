@@ -7,6 +7,7 @@ library("pcalg")
 library("reticulate")
 use_condaenv("glip", required = TRUE)
 utils <- import("dagma.utils", convert = TRUE)
+np <- import("numpy", convert = TRUE)
 dagma <- import("dagma.linear", convert = TRUE)
 cd <- import("CausalDisco.baselines", convert = TRUE)
 
@@ -46,8 +47,8 @@ if (!dir.exists(outdir)) {
 ### Generate random graph and data
 set.seed(seed)
 graph <- random_graph(d = d, prob = pr, mode = mode)
-data <- data.frame(rgraph(graph, n = n))
-py_data <- r_to_py(data)$copy()$to_numpy()
+data <- data.frame(py_data <- rgraph(graph, n = n))
+py_data <- r_to_py(py_data)$copy()
 V <- colnames(data)
 
 ### ORACLE
