@@ -21,7 +21,7 @@ timings <- res |>
 ggplot(timings, aes(x = ordered(d), y = q50, color = method, ymin = q25, ymax = q75)) +
   geom_point(position = position_dodge(0.3)) +
   geom_linerange(position = position_dodge(0.3)) +
-  facet_grid(~mode) +
+  facet_grid(~mode, labeller = as_labeller(c("dag" = "DAG", "admg" = "ADMG"))) +
   theme_bw() +
   labs(y = "median runtime in seconds", x = "number of nodes") +
   scale_y_log10()
@@ -35,7 +35,8 @@ pdat <- res |>
   )
 
 lbs <- c(
-  "dag" = "DAG", "shd" = "SHD", "sep" = "SEP",
+  "dag" = "DAG", "admg" = "ADMG",
+  "shd" = "SHD", "sep" = "SEP",
   "tail_prec" = "1 - Precision (tail)",
   "tail_rec" = "1 - Recall (tail)",
   "tail_f1" = "1 - F1 (tail)",
@@ -50,5 +51,4 @@ ggplot(
   stat_summary(position = position_dodge(0.8), fun.data = "mean_se") +
   facet_grid(mode ~ metric, labeller = as_labeller(lbs)) +
   theme_bw() +
-  labs(y = "score", x = "number of nodes") +
-  scale_y_log10()
+  labs(y = "score", x = "number of nodes")

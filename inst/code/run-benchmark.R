@@ -47,7 +47,7 @@ if (!dir.exists(outdir)) {
 ### Generate random graph and data
 set.seed(tseed <- 1e4 + 3e4 * (mode == "dag") + n + seed)
 graph <- random_graph(d = d, prob = pr, mode = mode)
-data <- data.frame(py_data <- rgraph(graph, n = n))
+data <- data.frame(py_data <- scale(rgraph(graph, n = n)))
 py_data <- r_to_py(py_data)$copy()
 V <- colnames(data)
 
