@@ -1,24 +1,29 @@
 ### Benchmark glip against existing algorithms
 ### LK 2025
 
-set.seed(1)
-
 ### DEPs
 devtools::load_all()
+library("pcalg")
+library("reticulate")
+use_condaenv("glip", required = TRUE)
+utils <- import("dagma.utils", convert = TRUE)
+dagma <- import("dagma.linear", convert = TRUE)
+cd <- import("CausalDisco.baselines", convert = TRUE)
 
 ### PARs
 
-# Parameters for generating random graph
-d <- 4
-pr <- 0.3 # only for randomDAG
-degree <- 2 # only for randDAG
-mode <- "admg" # DAG or ADMG
-
-# Parameters for simulating data from random graph
-n <- 1e3
+# Parse command line arguments
+args <- commandArgs(trailingOnly = TRUE)
+mode <- c("dag", "admg")[as.numeric(darg(args[1], 1))]
+d <- as.numeric(darg(args[2], 3))
+ms <- as.numeric(darg(args[3], d - 2))
+degree <- as.numeric(darg(args[4], 2))
+n <- as.numeric(darg(args[5], 1e3))
+seed <- as.numeric(darg(args[6], 12))
+use_oracle_tests <- FALSE
+save <- TRUE
 
 # Parameters for running the optimization
-ms <- d - 2
 ncores <- max(7, parallel::detectCores(logical = TRUE) - 2)
 cache <- TRUE
 alpha <- 0.01
@@ -26,9 +31,23 @@ alpha <- 0.01
 # Parameters for running the tests
 targs <- list(reg_YonZ = "lrm", reg_XonZ = "lrm")
 
+# Output file
+outdir <- file.path(
+  "inst", "results", "benchmark", Sys.Date()
+)
+fout <- paste0(
+  "res-mode_", mode, "-d_", d, "-ms_", ms, "-degree_",
+  degree, "-n_", n, "-seed_", seed, ".rds"
+)
+if (!dir.exists(outdir)) {
+  dir.create(outdir)
+}
+
 ### Generate random graph and data
+set.seed(seed)
 graph <- random_graph(d = d, prob = pr, mode = mode)
-data <- data.frame(rgraph(graph, n = n))
+data <- data.frame(py_data <- rgraph(graph, n = n))
+py_data <- r_to_py(py_data)$copy()
 V <- colnames(data)
 
 ### ORACLE
@@ -39,11 +58,14 @@ gt <- switch(mode,
 ORACLE <- .compute_graphical_representation(gt, ms, mode)
 
 ### Run CITs
-tests <- learn_graph(
-  data = data, max_size = ms, mode = mode, test_args = targs,
-  return_tests_only = TRUE
-)
-# tests <- .compute_oracle_tests(gt, ms, mode)
+if (use_oracle_tests) {
+  tests <- .compute_oracle_tests(gt, ms, mode)
+} else {
+  tests <- learn_graph(
+    data = data, max_size = ms, mode = mode, test_args = targs,
+    return_tests_only = TRUE
+  )
+}
 
 ### GLIP
 capt <- capture.output(lG <- .get_opt(mode)(tests,
@@ -56,7 +78,7 @@ capt <- capture.output(lG <- .get_opt(mode)(tests,
 ))
 
 GLIP <- .compute_graphical_representation(lG$graph, ms, mode)
-runtime_GLIP <- lG$optim$runtime
+runtime_GLIP <- as.difftime(lG$optim$runtime, units = "secs")
 
 ### PC ALG (only under causal sufficiency/DAG case)
 tstart <- Sys.time()
@@ -76,7 +98,63 @@ runtime_FCI <- tstop - tstart
 fciout <- as(fcires@amat, "matrix")
 FCI <- fciout
 
-ORACLE
-GLIP
-PC
-FCI
+### NOTEARS
+model <- dagma$DagmaLinear(loss_type = "l2")
+tstart <- Sys.time()
+nto <- 1 * (model$fit(py_data, lambda1 = 0.02) != 0)
+tstop <- Sys.time()
+runtime_NOTEARS <- tstop - tstart
+dimnames(nto) <- list(V, V)
+NOTEARS <- .compute_graphical_representation(nto, ms, mode)
+
+### R2sortability
+tstart <- Sys.time()
+r2s <- 1 * (cd$r2_sort_regress(py_data) != 0)
+tstop <- Sys.time()
+runtime_R2SORT <- tstop - tstart
+dimnames(r2s) <- list(V, V)
+R2SORT <- .compute_graphical_representation(r2s, ms, mode)
+
+### Evaluate and summarize results
+outputs <- list(
+  GLIP = GLIP,
+  PC = PC,
+  FCI = FCI,
+  NOTEARS = NOTEARS,
+  R2SORT = R2SORT
+)
+timings <- list(
+  GLIP = runtime_GLIP,
+  PC = runtime_PC,
+  FCI = runtime_FCI,
+  NOTEARS = runtime_NOTEARS,
+  R2SORT = runtime_R2SORT
+)
+
+if (mode == "admg") { # remove PC in case of ADMGs
+  outputs <- outputs[-grep("PC", names(outputs))]
+  timings <- timings[-grep("PC", names(timings))]
+}
+
+res <- lapply(seq_along(outputs), \(idx) {
+  learned <- outputs[[idx]]
+  SHD <- shd(learned, ORACLE)
+  SEP <- sep(learned, ORACLE, ifelse(mode == "dag", "pdag", "mag"), ms)
+  CM <- prf1(learned, ORACLE)
+  data.frame(
+    method = names(outputs)[[idx]],
+    shd = SHD,
+    sep = SEP,
+    tail_prec = CM$precision[CM$which == "tail"],
+    tail_rec = CM$recall[CM$which == "tail"],
+    tail_f1 = CM$f1[CM$which == "tail"],
+    head_prec = CM$precision[CM$which == "head"],
+    head_rec = CM$recall[CM$which == "head"],
+    head_f1 = CM$f1[CM$which == "head"],
+    time = as.difftime(timings[[idx]], units = "secs")
+  )
+}) |> do.call("rbind", args = _)
+
+if (save) {
+  saveRDS(res, file.path(outdir, fout))
+}

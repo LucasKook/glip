@@ -46,7 +46,9 @@
     "admg" = .check_msep(A, B, C, G),
     "dmg" = .check_msep(A, B, C, G),
     "chain" = .check_csep(A, B, C, G),
-    "dagdcon" = .check_msep(A, B, C, G)
+    "dagdcon" = .check_msep(A, B, C, G),
+    "mag" = .check_dsepmag(A, B, C, G),
+    "pdag" = .check_dseppdag(A, B, C, G)
   )
 }
 
@@ -73,6 +75,21 @@
     G <- list(M1 = G, M2 = tmp)
   }
   1 * is_m_separated(G, A, B, C)
+}
+
+.check_dsepmag <- function(A, B, C, G) {
+  class(G) <- c("matrix", "array")
+  V <- .get_node_set(G)
+  MAG <- pcalg::pag2magAM(G, x = 1, max.chordal = nrow(G) + 1)
+  1 * pcalg::dsepAM(match(A, V), match(B, V), match(C, V), MAG)
+}
+
+.check_dseppdag <- function(A, B, C, G) {
+  class(G) <- c("matrix", "array")
+  V <- .get_node_set(G)
+  DAG <- pcalg::pdag2dag(as(G, "graphNEL"))$graph
+  tmp <- as(DAG, "matrix")
+  .check_msep(A, B, C, tmp)
 }
 
 .generate_random_graph <- function(
@@ -119,13 +136,15 @@
 }
 
 .dag2ess <- function(G) {
-  # TODO: If possible, replace dag2ess
   ret <- 1 * pcalg::dag2essgraph(G)
   class(ret) <- c("ess", class(ret))
   ret
 }
 
 .admg2pag <- function(G) {
+  if (!is.list(G)) {
+    G <- .to_admg(G)
+  }
   ret <- compute_pag(G)
   class(ret) <- c("pag", class(ret))
   ret

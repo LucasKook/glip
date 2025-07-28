@@ -72,17 +72,15 @@ lookup_ci <- function(x, y, S, suffstat) {
 shd <- function(G1, G2, ...) {
   .check_graphs(G1, G2)
   ### Hamming distance
-  SID::hammingDist(G1, G2, ...)
+  mean(1 * (G1 != G2))
 }
 
-sid <- function(G1, G2, ...) {
-  .check_graphs(G1, G2)
-  ### Structural intervention distance
-  sid <- SID::structIntervDist(G1, G2, ...)
-  structure(sid$sid, full_output = sid)
+prf1 <- function(G1, G2, ...) {
+  UseMethod("prf1")
 }
 
-prf1 <- function(G1, G2) {
+#' @exportS3Method prf1 default
+prf1.default <- function(G1, G2) {
   .check_graphs(G1, G2)
   d <- nrow(G1)
   res <- lapply(seq_len(d), \(k) {
@@ -99,10 +97,27 @@ prf1 <- function(G1, G2) {
       )
     )
   }) |> do.call("rbind", args = _)
-  res
   res |>
     dplyr::group_by(which) |>
     dplyr::summarize_at(c("precision", "recall", "f1"), mean, na.rm = TRUE)
+}
+
+#' @exportS3Method prf1 pag
+prf1.pag <- function(G1, G2) {
+  .check_graphs(G1, G2)
+  lapply(1:3, \(mark) {
+    ret <- prf1.default(1 * (G1 == mark), 1 * (G2 == mark))
+    ret$mark <- mark
+    ret
+  }) |> do.call("rbind", args = _)
+}
+
+### Separation agreement
+sep <- function(G1, G2, mode, max_size = NULL, ...) {
+  .check_graphs(G1, G2)
+  t1 <- .compute_oracle_tests(G1, max_size = max_size, mode = mode)
+  t2 <- .compute_oracle_tests(G2, max_size = max_size, mode = mode)
+  mean(t1$p.value != t2$p.value)
 }
 
 ### Helpers

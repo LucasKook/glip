@@ -72,3 +72,5 @@ inst/code/sanity-check.R
 .cache-dcon/
 
 .Rbuildignore
+
+results/

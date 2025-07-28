@@ -1,12 +1,23 @@
-test_that("evaluation metrics", {
+test_that("evaluation metrics work", {
+  devtools::load_all()
   set.seed(12)
-  G1 <- G2 <- random_graph(d = 10)$DAG
-  expect_equal(shd(G1, G2), 0)
-  sid <- sid(G1, G2)
-  attr(sid, "full_output") <- NULL
-  expect_equal(sid, 0)
+  G <- random_graph(d = 10)$DAG
+
+  ### Essential graph output
+  G1 <- G2 <- .dag2ess(G)
   cm <- prf1(G1, G2)
   expect_equal(cm$precision, c(1, 1))
   expect_equal(cm$recall, c(1, 1))
   expect_equal(cm$f1, c(1, 1))
+  expect_equal(shd(G1, G2), 0)
+  expect_equal(sep(G1[1:5, 1:5], G2[1:5, 1:5], "pdag", 1), 0)
+
+  ### PAG output
+  G3 <- G4 <- .admg2pag(.to_admg(G))
+  cm2 <- prf1(G3, G4)
+  expect_equal(shd(G3, G4), 0)
+  expect_true(all(cm2$precision == 1))
+  expect_true(all(cm2$recall == 1))
+  expect_true(all(cm2$f1 == 1))
+  expect_equal(sep(G3[1:5, 1:5], G4[1:5, 1:5], "mag", 1), 0)
 })
