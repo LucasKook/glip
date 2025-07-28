@@ -14,7 +14,7 @@ cd <- import("CausalDisco.baselines", convert = TRUE)
 
 # Parse command line arguments
 args <- commandArgs(trailingOnly = TRUE)
-mode <- c("dag", "admg")[as.numeric(darg(args[1], 1))]
+mode <- darg(args[1], "dag")
 d <- as.numeric(darg(args[2], 3))
 ms <- as.numeric(darg(args[3], d - 2))
 degree <- as.numeric(darg(args[4], 2))
@@ -40,7 +40,7 @@ fout <- paste0(
   degree, "-n_", n, "-seed_", seed, ".rds"
 )
 if (!dir.exists(outdir)) {
-  dir.create(outdir)
+  dir.create(outdir, recursive = TRUE)
 }
 
 ### Generate random graph and data
