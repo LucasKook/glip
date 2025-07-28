@@ -215,122 +215,42 @@ is_m_separated <- function(G, A, B, C) {
   is_undirected_separated(g, A, B, C)
 }
 
+# G: DMG over V, O: observed subset of V
 marginalize_dag_to_admg <- function(G, O) {
-  n <- nrow(G)
-  V <- rownames(G)
-  H <- setdiff(V, O)
-  tmp <- G
-  tmp[] <- 0
-  admg <- list(M1 = tmp, M2 = tmp)
-  admg$M1 <- G
+  if (!is.list(G)) {
+    G <- .to_admg(G)
+  }
+  V <- rownames(G$M1)
+  M <- setdiff(V, O)
 
-  for (z in H) {
-    children <- which(G[z, ] == 1)
-    # Add bidirected edges between children of the marginalized node
-    if (length(children) > 1) {
-      for (i in 1:(length(children) - 1)) {
-        for (j in (i + 1):length(children)) {
-          u <- children[i]
-          v <- children[j]
-          # Avoid adding if there is a directed path already
-          if (admg$M1[u, v] == 0 && admg$M1[v, u] == 0) {
-            admg$M2[u, v] <- 1
-            admg$M2[v, u] <- 1
+  Gold <- G
+  Gold$M1[] <- Gold$M2[] <- 0
+
+  while (!isTRUE(all.equal(G, Gold))) {
+    Gold <- G
+
+    for (m in M) {
+      for (alpha in setdiff(V, m)) {
+        for (beta in setdiff(V, m)) {
+          if (G$M1[alpha, m] == 1 && G$M1[m, beta] == 1) {
+            G$M1[alpha, beta] <- 1
+          }
+          if (G$M2[alpha, m] == 1 && G$M1[m, beta] == 1) {
+            G$M2[alpha, beta] <- G$M2[beta, alpha] <- 1
+          }
+          if (G$M1[m, alpha] == 1 && G$M1[m, beta] == 1) {
+            G$M2[alpha, beta] <- G$M2[beta, alpha] <- 1
           }
         }
       }
     }
-    # Remove node z from graph
-    admg$M1[z, ] <- 0
-    admg$M1[, z] <- 0
   }
 
-  # Restrict to remaining nodes
-  admg$M1 <- admg$M1[O, O]
-  admg$M2 <- admg$M2[O, O]
+  diag(G$M1) <- 0
+  diag(G$M2) <- 0
 
-  ### Return
-  admg
+  list(
+    M1 = (G$M1)[O, O, drop = FALSE],
+    M2 = (G$M2)[O, O, drop = FALSE]
+  )
 }
-
-# marginalize_dag_to_admg <- function(G, O) {
-#   V <- rownames(G)
-#   H <- setdiff(V, O)
-#   tmp <- G
-#   tmp[] <- 0
-#   admg <- list(M1 = tmp, M2 = tmp)
-#
-#   # Helper: find all ancestors of a node (in the original DAG)
-#   get_ancestors <- function(G, node) {
-#     visited <- rep(FALSE, nrow(G))
-#     names(visited) <- rownames(G)
-#     stack <- node
-#     while (length(stack) > 0) {
-#       current <- stack[1]
-#       stack <- stack[-1]
-#       preds <- names(which(G[, current] == 1))
-#       for (p in preds) {
-#         if (!visited[p]) {
-#           visited[p] <- TRUE
-#           stack <- c(stack, p)
-#         }
-#       }
-#     }
-#     names(visited[visited])
-#   }
-#
-#   ### Add composed directed edges to preserve ancestral relationships
-#   for (i in O) {
-#     for (j in O) {
-#       if (i != j) {
-#         # Check if i is an ancestor of j
-#         ancestors <- get_ancestors(G, j)
-#         if (i %in% ancestors) {
-#           # Check that all nodes on any path from i to j are hidden except i and j
-#           # Approximate by testing reachability from i to j using only hidden nodes
-#           visited <- rep(FALSE, nrow(G))
-#           names(visited) <- rownames(G)
-#           queue <- i
-#           while (length(queue) > 0) {
-#             current <- queue[1]
-#             queue <- queue[-1]
-#             children <- names(which(G[current, ] == 1))
-#             for (c in children) {
-#               if (c == j) {
-#                 admg$M1[i, j] <- 1
-#                 queue <- character(0)
-#                 break
-#               } else if (c %in% H && !visited[c]) {
-#                 visited[c] <- TRUE
-#                 queue <- c(queue, c)
-#               }
-#             }
-#           }
-#         }
-#       }
-#     }
-#   }
-#
-#   ### Add bidirected edges between children of hidden nodes
-#   for (z in H) {
-#     children <- names(which(G[z, ] == 1))
-#     if (length(children) > 1) {
-#       for (i in 1:(length(children) - 1)) {
-#         for (j in (i + 1):length(children)) {
-#           u <- children[i]
-#           v <- children[j]
-#           # Only if both are observed and no directed edge
-#           if (u %in% O && v %in% O && admg$M1[u, v] == 0 && admg$M1[v, u] == 0) {
-#             admg$M2[u, v] <- 1
-#             admg$M2[v, u] <- 1
-#           }
-#         }
-#       }
-#     }
-#   }
-#
-#   # Restrict to observed nodes
-#   admg$M1 <- admg$M1[O, O]
-#   admg$M2 <- admg$M2[O, O]
-#   admg
-# }

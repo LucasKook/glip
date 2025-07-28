@@ -155,7 +155,7 @@ darg <- function(x, d) {
   }))
 }
 
-.to_pag <- function(G) {
+.to_admg <- function(G) {
   tmp <- G
   tmp[] <- 0
   list(M1 = G, M2 = tmp)

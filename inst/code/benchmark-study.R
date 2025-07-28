@@ -10,11 +10,12 @@ devtools::load_all()
 
 # Parameters for generating random graph
 d <- 4
-pr <- 0.3
-mode <- "admg"
+pr <- 0.3 # only for randomDAG
+degree <- 2 # only for randDAG
+mode <- "admg" # DAG or ADMG
 
 # Parameters for simulating data from random graph
-n <- 1e4
+n <- 1e3
 
 # Parameters for running the optimization
 ms <- d - 2
@@ -57,7 +58,7 @@ capt <- capture.output(lG <- .get_opt(mode)(tests,
 GLIP <- .compute_graphical_representation(lG$graph, ms, mode)
 runtime_GLIP <- lG$optim$runtime
 
-### PC ALG
+### PC ALG (only under causal sufficiency/DAG case)
 tstart <- Sys.time()
 pcres <- pcalg::pc(list(tests = tests, V = V), lookup_ci, labels = V, alpha = alpha)
 tstop <- Sys.time()
@@ -77,5 +78,5 @@ FCI <- fciout
 
 ORACLE
 GLIP
-PC ### TODO: Sometimes output is directed? Or always PAG?
+PC
 FCI

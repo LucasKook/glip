@@ -23,7 +23,7 @@ data <- r_to_py(rd <- scale(iris[, 1:4])) # Normalize data
 data <- data$copy()
 model <- dagma$DagmaLinear(loss_type = "l2")
 output <- model$fit(data, lambda1 = 0.02)
-1 * (output != 0)
+1 * (output != 0) # TODO: This is a DAG, make essential graph?
 
 ### Example usage of NOTEARS (nonlinear)
 # eqm <- dnl$DagmaMLP(dims = list(4L, 10L, 1L), bias = TRUE)
@@ -32,7 +32,7 @@ output <- model$fit(data, lambda1 = 0.02)
 # 1 * (output != 0)
 
 cd <- import("CausalDisco.baselines", convert = TRUE)
-1 * (cd$r2_sort_regress(data) != 0)
+1 * (cd$r2_sort_regress(data) != 0) # TODO: Causal order only? essgraph?
 1 * (cd$var_sort_regress(data) != 0)
 1 * (cd$random_sort_regress(data) != 0)
 
