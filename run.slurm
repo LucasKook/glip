@@ -8,7 +8,7 @@
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=8
 #SBATCH --mem-per-cpu=8G
-#SBATCH --partition=highmem
+#SBATCH --partition=gpu
 #SBATCH --array=1-10
 
 echo "Running job $SLURM_JOB_NAME with ID $SLURM_JOB_ID"
