@@ -7,7 +7,6 @@ library("pcalg")
 library("reticulate")
 use_condaenv("glip", required = TRUE)
 utils <- import("dagma.utils", convert = TRUE)
-np <- import("numpy", convert = TRUE)
 dagma <- import("dagma.linear", convert = TRUE)
 cd <- import("CausalDisco.baselines", convert = TRUE)
 
@@ -18,6 +17,7 @@ args <- commandArgs(trailingOnly = TRUE)
 mode <- darg(args[1], "dag")
 d <- as.numeric(darg(args[2], 3))
 ms <- as.numeric(darg(args[3], d - 2))
+ms <- ifelse(ms == -1, d - 2, ms)
 degree <- as.numeric(darg(args[4], 2))
 n <- as.numeric(darg(args[5], 1e3))
 seed <- as.numeric(darg(args[6], 12))
@@ -45,7 +45,7 @@ if (!dir.exists(outdir)) {
 }
 
 ### Generate random graph and data
-set.seed(seed)
+set.seed(tseed <- 1e4 + 3e4 * (mode == "dag") + n + seed)
 graph <- random_graph(d = d, prob = pr, mode = mode)
 data <- data.frame(py_data <- rgraph(graph, n = n))
 py_data <- r_to_py(py_data)$copy()
@@ -152,7 +152,9 @@ res <- lapply(seq_along(outputs), \(idx) {
     head_prec = CM$precision[CM$which == "head"],
     head_rec = CM$recall[CM$which == "head"],
     head_f1 = CM$f1[CM$which == "head"],
-    time = as.difftime(timings[[idx]], units = "secs")
+    time = as.difftime(timings[[idx]], units = "secs"),
+    d = d, ms = ms, n = n, degree = degree, mode = mode,
+    use_oracle_tests = use_oracle_tests
   )
 }) |> do.call("rbind", args = _)
 

@@ -8,7 +8,8 @@
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=16
 #SBATCH --mem-per-cpu=8G
-#SBATCH --partition=gpu
+#SBATCH --partition=highmem
+#SBATCH --array=1-100
 
 echo "Running job $SLURM_JOB_NAME with ID $SLURM_JOB_ID"
 echo "Allocated hosts: $SLURM_JOB_NODELIST"
@@ -36,5 +37,9 @@ export GUROBI_HOME=/home/lkook/gurobi1202/
 export PATH=$PATH:/home/lkook/gurobi1202/linux64/bin
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/home/lkook/gurobi1202/linux64/lib
 
-# Args are: mode, d, ms, deg, n, seed
-Rscript --vanilla ./inst/code/benchmark-study.R dag 3 1 2 100 1
+for d in 3 4 5 6 7; do
+  for mode in dag admg; do
+    echo "Running with d=$d, mode=$mode"
+    Rscript --vanilla ./inst/code/benchmark-study.R dag $d -1 2 300 $SLURM_ARRAY_TASK_ID
+  done
+done
