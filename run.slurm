@@ -36,9 +36,5 @@ export GUROBI_HOME=/home/lkook/gurobi1202/
 export PATH=$PATH:/home/lkook/gurobi1202/linux64/bin
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/home/lkook/gurobi1202/linux64/lib
 
-for d in 3 4 5; do
-  for mode in 1 2 3 4; do
-    echo "Running with d=$d, mode=$mode, prob=0.5, seeds=1:1000"
-    Rscript --vanilla ./inst/code/check-random-graphs.R $d 0.5 $mode "1:1000"
-  done
-done
+# Args are: mode, d, ms, deg, n, seed
+Rscript --vanilla ./inst/code/benchmark-study.R dag 3 1 2 100 1
