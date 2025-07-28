@@ -11,7 +11,7 @@ devtools::load_all()
 # Parameters for generating random graph
 d <- 4
 pr <- 0.3
-mode <- "dag"
+mode <- "admg"
 
 # Parameters for simulating data from random graph
 n <- 1e4

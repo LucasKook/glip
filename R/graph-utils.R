@@ -249,10 +249,88 @@ marginalize_dag_to_admg <- function(G, O) {
   admg$M1 <- admg$M1[O, O]
   admg$M2 <- admg$M2[O, O]
 
-  ### Ancestors in DAG need to be present in ADMG
-  idx <- which(ancestor_matrix(G)[O, O] != ancestor_matrix(admg$M1), arr.ind = TRUE)
-  admg$M1[idx] <- 1
-
   ### Return
   admg
 }
+
+# marginalize_dag_to_admg <- function(G, O) {
+#   V <- rownames(G)
+#   H <- setdiff(V, O)
+#   tmp <- G
+#   tmp[] <- 0
+#   admg <- list(M1 = tmp, M2 = tmp)
+#
+#   # Helper: find all ancestors of a node (in the original DAG)
+#   get_ancestors <- function(G, node) {
+#     visited <- rep(FALSE, nrow(G))
+#     names(visited) <- rownames(G)
+#     stack <- node
+#     while (length(stack) > 0) {
+#       current <- stack[1]
+#       stack <- stack[-1]
+#       preds <- names(which(G[, current] == 1))
+#       for (p in preds) {
+#         if (!visited[p]) {
+#           visited[p] <- TRUE
+#           stack <- c(stack, p)
+#         }
+#       }
+#     }
+#     names(visited[visited])
+#   }
+#
+#   ### Add composed directed edges to preserve ancestral relationships
+#   for (i in O) {
+#     for (j in O) {
+#       if (i != j) {
+#         # Check if i is an ancestor of j
+#         ancestors <- get_ancestors(G, j)
+#         if (i %in% ancestors) {
+#           # Check that all nodes on any path from i to j are hidden except i and j
+#           # Approximate by testing reachability from i to j using only hidden nodes
+#           visited <- rep(FALSE, nrow(G))
+#           names(visited) <- rownames(G)
+#           queue <- i
+#           while (length(queue) > 0) {
+#             current <- queue[1]
+#             queue <- queue[-1]
+#             children <- names(which(G[current, ] == 1))
+#             for (c in children) {
+#               if (c == j) {
+#                 admg$M1[i, j] <- 1
+#                 queue <- character(0)
+#                 break
+#               } else if (c %in% H && !visited[c]) {
+#                 visited[c] <- TRUE
+#                 queue <- c(queue, c)
+#               }
+#             }
+#           }
+#         }
+#       }
+#     }
+#   }
+#
+#   ### Add bidirected edges between children of hidden nodes
+#   for (z in H) {
+#     children <- names(which(G[z, ] == 1))
+#     if (length(children) > 1) {
+#       for (i in 1:(length(children) - 1)) {
+#         for (j in (i + 1):length(children)) {
+#           u <- children[i]
+#           v <- children[j]
+#           # Only if both are observed and no directed edge
+#           if (u %in% O && v %in% O && admg$M1[u, v] == 0 && admg$M1[v, u] == 0) {
+#             admg$M2[u, v] <- 1
+#             admg$M2[v, u] <- 1
+#           }
+#         }
+#       }
+#     }
+#   }
+#
+#   # Restrict to observed nodes
+#   admg$M1 <- admg$M1[O, O]
+#   admg$M2 <- admg$M2[O, O]
+#   admg
+# }
