@@ -47,7 +47,7 @@ if (!dir.exists(outdir)) {
 set.seed(seed)
 graph <- random_graph(d = d, prob = pr, mode = mode)
 data <- data.frame(py_data <- rgraph(graph, n = n))
-py_data <- r_to_py(py_data)$copy()
+py_data <- np_array(py_data)
 V <- colnames(data)
 
 ### ORACLE
