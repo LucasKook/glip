@@ -3,7 +3,7 @@ admg_optim <- function(
     trafo = \(x) as.numeric(x <= 0.05),
     gurobi_args = list(),
     verbose = FALSE, 
-    cache = FALSE,
+    cache = TRUE,
     cache_dir = "./.cache-admg",
     mode = c("admg", "dmg"),
     ...) {

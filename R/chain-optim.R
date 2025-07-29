@@ -4,7 +4,7 @@ chain_optim <- function(
     weight_type = c("const", "inv", "log"),
     gurobi_args = list(),
     verbose = FALSE, 
-    cache = FALSE,
+    cache = TRUE,
     cache_dir = "./.cache-chain",
     ...) {
 
