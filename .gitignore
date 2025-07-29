@@ -74,3 +74,5 @@ inst/code/sanity-check.R
 .Rbuildignore
 
 results/
+
+inst/asp/
