@@ -14,8 +14,8 @@ save <- TRUE
 ncores <- max(7, parallel::detectCores(logical = TRUE) - 2)
 
 test <- "oracle" # oracle or classic
-nsim <- 2
-ds <- 3:4
+nsim <- 50
+ds <- 3:8
 N <- 1e3
 n <- 0
 
