@@ -61,14 +61,14 @@ gt <- switch(mode,
 ORACLE <- .compute_graphical_representation(gt, ms, mode)
 
 ### Run CITs
-if (use_oracle_tests) {
-  tests <- .compute_oracle_tests(gt, ms, mode)
-} else {
+tests <- otests <- .compute_oracle_tests(gt, ms, mode)
+if (!use_oracle_tests) {
   tests <- learn_graph(
     data = data, max_size = ms, mode = mode, test_args = targs,
     return_tests_only = TRUE
   )
 }
+input_sep <- mean(otests$p.value != 1 * (tests$p.value > alpha))
 
 ### GLIP
 capt <- capture.output(lG <- .get_opt(mode)(tests,
@@ -148,6 +148,7 @@ res <- lapply(seq_along(outputs), \(idx) {
     method = names(outputs)[[idx]],
     shd = SHD,
     sep = SEP,
+    input_sep = input_sep,
     tail_prec = 1 - mean(CM$precision[CM$which == "tail"], na.rm = TRUE),
     tail_rec = 1 - mean(CM$recall[CM$which == "tail"], na.rm = TRUE),
     tail_f1 = 1 - mean(CM$f1[CM$which == "tail"], na.rm = TRUE),
