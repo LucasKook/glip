@@ -8,8 +8,7 @@
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=16
 #SBATCH --mem-per-cpu=4G
-#SBATCH --partition=gpu
-#SBATCH --array=1-50
+#SBATCH --partition=highmem
 
 echo "Running job $SLURM_JOB_NAME with ID $SLURM_JOB_ID"
 echo "Allocated hosts: $SLURM_JOB_NODELIST"
@@ -39,7 +38,9 @@ export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/home/lkook/gurobi1202/linux64/lib
 
 for d in 3 4 5; do
   for mode in dag admg; do
-    echo "Running with d=$d, mode=$mode"
-    Rscript --vanilla ./inst/code/run-benchmark.R $mode $d -1 2 3000 $SLURM_ARRAY_TASK_ID 0.01 1 oracle
+    for seed in {1..50}; do
+      echo "Running with d=$d, mode=$mode"
+      Rscript --vanilla ./inst/code/run-benchmark.R $mode $d -1 2 3000 $seed 0.01 1 oracle
+    done
   done
 done
