@@ -39,7 +39,7 @@ export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/home/lkook/gurobi1202/linux64/lib
 for d in 3 4 5; do
   for mode in dag admg; do
     for seed in {1..50}; do
-      echo "Running with d=$d, mode=$mode"
+      echo "Running with d=$d, mode=$mode, seed=$seed"
       Rscript --vanilla ./inst/code/run-benchmark.R $mode $d -1 2 3000 $seed 0.01 1 oracle
     done
   done
