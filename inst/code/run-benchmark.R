@@ -39,7 +39,8 @@ outdir <- file.path(
 )
 fout <- paste0(
   "res-mode_", mode, "-d_", d, "-ms_", ms, "-degree_",
-  degree, "-n_", n, "-seed_", seed, ".rds"
+  degree, "-n_", n, "-seed_", seed, "-alpha_", alpha,
+  "-oracle_", use_oracle_tests, ".rds"
 )
 if (!dir.exists(outdir)) {
   dir.create(outdir, recursive = TRUE)
