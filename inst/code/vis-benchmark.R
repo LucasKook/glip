@@ -5,7 +5,7 @@ library("tidyverse")
 save <- TRUE
 
 ### List files
-fin <- "./inst/results/benchmark/2025-07-29/oracle"
+fin <- "./inst/results/benchmark/2025-07-29/medium-n"
 fout <- str_replace(fin, "results", "figures")
 if (!dir.exists(fout)) {
   dir.create(fout, recursive = TRUE)
