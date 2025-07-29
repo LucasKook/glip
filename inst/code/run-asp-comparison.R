@@ -4,7 +4,7 @@
 set.seed(1)
 
 devtools::load_all()
-odir <- "../../../../fugres"
+odir <- "../../../../figures"
 setwd("./inst/asp/hyttinen2014uai_ver6/pkg/R")
 source("./load.R")
 loud()
