@@ -4,13 +4,14 @@
 set.seed(1)
 
 devtools::load_all()
+odir <- "../../../../fugres"
 setwd("./inst/asp/hyttinen2014uai_ver6/pkg/R")
 source("./load.R")
 loud()
 library("tidyverse")
+save <- TRUE
 
 ncores <- max(7, parallel::detectCores(logical = TRUE) - 2)
-cache <- TRUE
 
 test <- "oracle" # oracle or classic
 nsim <- 2
@@ -44,4 +45,9 @@ out |>
   theme(text = element_text(size = 13.5), legend.position = "top") +
   scale_color_brewer(palette = "Dark2", labels = c("glip" = "GLIP", "asp" = "ASP"))
 
-ggsave("../../../../figures/timing-comparison-asp.pdf", height = 3.5, width = 4)
+if (!dir.exists(odir)) {
+  dir.create(odir, recursive = TRUE)
+}
+if (save) {
+  ggsave(file.path(odir, "timing-comparison-asp.pdf"), height = 3.5, width = 4)
+}
