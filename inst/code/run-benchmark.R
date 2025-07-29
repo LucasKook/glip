@@ -21,20 +21,21 @@ ms <- ifelse(ms == -1, d - 2, ms)
 degree <- as.numeric(darg(args[4], 2))
 n <- as.numeric(darg(args[5], 1e3))
 seed <- as.numeric(darg(args[6], 12))
-use_oracle_tests <- FALSE
+alpha <- as.numeric(darg(args[7], 0.01))
+use_oracle_tests <- as.numeric(darg(args[8], 0))
+sim_name <- darg(args[9], "test-run")
 save <- TRUE
 
 # Parameters for running the optimization
 ncores <- max(7, parallel::detectCores(logical = TRUE) - 2)
 cache <- TRUE
-alpha <- 0.01
 
 # Parameters for running the tests
 targs <- list(reg_YonZ = "lrm", reg_XonZ = "lrm")
 
 # Output file
 outdir <- file.path(
-  "inst", "results", "benchmark", Sys.Date()
+  "inst", "results", "benchmark", Sys.Date(), sim_name
 )
 fout <- paste0(
   "res-mode_", mode, "-d_", d, "-ms_", ms, "-degree_",
