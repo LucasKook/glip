@@ -2,7 +2,9 @@
 ### LK 2025
 
 library("tidyverse")
+library("scales")
 save <- TRUE
+max_time <- 100
 
 ### List files
 fin <- "./inst/results/benchmark/2025-07-29/medium-n"
@@ -20,16 +22,17 @@ res <- tibble(file = files) |>
 ### Timings
 timings <- res |>
   group_by(method, n, d, ms, mode) |>
-  mutate(time = as.numeric(time)) |>
-  summarize(q50 = median(time), q25 = quantile(time, 0.25), q75 = quantile(time, 0.75))
+  mutate(time = as.numeric(time))
 
-p1 <- ggplot(timings, aes(x = ordered(d), y = q50, color = method, ymin = q25, ymax = q75)) +
-  geom_pointrange(position = position_dodge(0.8)) +
-  facet_grid(~mode, labeller = as_labeller(c("dag" = "DAG", "admg" = "ADMG"))) +
+p1 <- ggplot(timings, aes(x = time, color = method)) +
+  stat_ecdf() +
   theme_bw() +
-  labs(y = "median runtime in seconds", x = "number of nodes") +
-  scale_y_log10() +
-  theme(text = element_text(size = 13.5), legend.position = "top")
+  facet_wrap(~d, labeller = label_both) +
+  labs(x = "runtime in seconds", y = "relative rank") +
+  scale_x_continuous(trans = "log10", labels = trans_format("log10", math_format(10^.x))) +
+  theme(text = element_text(size = 13.5), legend.position = "top") +
+  scale_color_brewer(palette = "Dark2", labels = c("asp" = "ASP", "glip" = "GLIP")) +
+  coord_flip(xlim = c(min(timings$time) * 0.99, max_time))
 
 if (is.null(res$input_sep)) {
   res$input_sep <- NA

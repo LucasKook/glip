@@ -1,7 +1,7 @@
 ### Timing comparison with Hyttinen et al 2014 ASP
 ### LK 2025
 
-set.seed(1)
+# set.seed(1)
 
 devtools::load_all()
 odir <- "../../../../figures"
@@ -21,11 +21,17 @@ if (!dir.exists(wdir)) {
 
 ncores <- max(7, parallel::detectCores(logical = TRUE) - 2)
 
-test <- "oracle" # oracle or classic
+mode <- c("dag", "admg")[1]
+test <- c("oracle", "classic")[1]
 nsim <- 50
 ds <- 3:8
 N <- 1e3
 n <- 0
+
+restrict <- "acyclic"
+if (mode == "dag") {
+  restrict <- c(restrict, "sufficient")
+}
 
 out <- lapply(ds, \(d) {
   cat("\nRunning d =", d, "\n")
@@ -35,7 +41,8 @@ out <- lapply(ds, \(d) {
     n <<- d
     res <- pipeline(
       n = d, N = N, test = test, verbose = 0,
-      clingoconf = "--configuration=crafty --time-limit=500 --quiet=1,0"
+      clingoconf = "--configuration=crafty --time-limit=500 --quiet=1,0",
+      restrict = restrict
     )
     res <- data.frame(d = d, n = N, iter = iter, res, row.names = NULL)
     if (save) {
@@ -44,22 +51,4 @@ out <- lapply(ds, \(d) {
     res
   }) |> do.call("rbind", args = _)
 }) |> do.call("rbind", args = _)
-
-mqr <- function(x, ...) {
-  data.frame(y = median(x), ymin = quantile(x, 0.25), ymax = quantile(x, 0.75))
-}
-
-out |>
-  pivot_longer(c("glip", "asp"), names_to = "method", values_to = "time") |>
-  mutate(time = as.numeric(time)) |>
-  ggplot(aes(x = ordered(d), y = time, color = method)) +
-  geom_boxplot(width = 0.3) +
-  theme_bw() +
-  labs(x = "number of nodes", y = "runtime time in seconds") +
-  scale_y_log10() +
-  theme(text = element_text(size = 13.5), legend.position = "top") +
-  scale_color_brewer(palette = "Dark2", labels = c("glip" = "GLIP", "asp" = "ASP"))
-
-if (save) {
-  ggsave(file.path(odir, "timing-comparison-asp.pdf"), height = 3.5, width = 4)
-}
+out
