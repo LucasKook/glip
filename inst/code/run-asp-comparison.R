@@ -25,7 +25,10 @@ out <- lapply(ds, \(d) {
   lapply(1:nsim, \(iter) {
     setTxtProgressBar(pb, iter)
     n <<- d
-    res <- pipeline(n = d, N = N, test = test, verbose = 0)
+    res <- pipeline(
+      n = d, N = N, test = test, verbose = 0,
+      clingoconf = "--configuration=crafty --time-limit=500 --quiet=1,0"
+    )
     data.frame(d = d, n = N, iter = iter, res, row.names = NULL)
   }) |> do.call("rbind", args = _)
 }) |> do.call("rbind", args = _)
