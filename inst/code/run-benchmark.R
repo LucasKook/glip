@@ -148,12 +148,17 @@ if (mode == "admg") { # remove PC in case of ADMGs
 
 cat("\nEvaluating and summarizing results\n")
 res <- lapply(seq_along(outputs), \(idx) {
+  method <- names(outputs)[[idx]]
   learned <- outputs[[idx]]
   SHD <- shd(learned, ORACLE)
-  SEP <- sep(learned, ORACLE, ifelse(mode == "dag", "pdag", "mag"), ms, oracle = otests)
+  if (method != "GLIP") {
+    SEP <- sep(learned, ORACLE, ifelse(mode == "dag", "pdag", "mag"), ms, oracle = otests)
+  } else {
+    SEP <- mean(lG$tests$dcon != 1 * (otests$p.value < alpha))
+  }
   CM <- prf1(learned, ORACLE)
   data.frame(
-    method = names(outputs)[[idx]],
+    method = method,
     shd = SHD,
     sep = SEP,
     input_sep = input_sep,

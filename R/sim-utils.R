@@ -115,6 +115,9 @@ prf1.pag <- function(G1, G2) {
 ### Separation agreement
 sep <- function(G1, G2, mode, max_size = NULL, oracle = NULL, ...) {
   .check_graphs(G1, G2)
+  if (isTRUE(all.equal(unclass(G1), unclass(G2)))) {
+    return(0)
+  }
   t1 <- .compute_oracle_tests(G1, max_size = max_size, mode = mode)
   if (!is.null(oracle)) {
     t2 <- oracle
