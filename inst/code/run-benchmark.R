@@ -47,7 +47,7 @@ if (!dir.exists(outdir)) {
 }
 
 ### Generate random graph and data
-cat("\nGenerate random graph and data")
+cat("\nGenerating random graph and data\n")
 set.seed(tseed <- 1e4 + 3e4 * (mode == "dag") + n + seed)
 graph <- random_graph(d = d, prob = pr, mode = mode)
 data <- data.frame(py_data <- scale(rgraph(graph, n = n)))
@@ -62,7 +62,7 @@ gt <- switch(mode,
 ORACLE <- .compute_graphical_representation(gt, ms, mode)
 
 ### Run CITs
-cat("\nRun conditional independence tests")
+cat("\nRunning conditional independence tests\n")
 tests <- otests <- .compute_oracle_tests(gt, ms, mode)
 if (!use_oracle_tests) {
   tests <- learn_graph(
@@ -73,21 +73,21 @@ if (!use_oracle_tests) {
 input_sep <- mean(otests$p.value != 1 * (tests$p.value > alpha))
 
 ### GLIP
-cat("\nRun GLIP")
-capt <- capture.output(lG <- .get_opt(mode)(tests,
+cat("\nRunning GLIP\n")
+lG <- .get_opt(mode)(tests,
   d = d, max_size = ms,
   V = V, cache = cache,
   trafo = \(x) as.numeric(x <= alpha),
   gurobi_args = list(
     Threads = ncores
   ), mode = mode
-))
+)
 
 GLIP <- .compute_graphical_representation(lG$graph, ms, mode)
 runtime_GLIP <- as.difftime(lG$optim$runtime, units = "secs")
 
 ### PC ALG (only under causal sufficiency/DAG case)
-cat("\nRun PC")
+cat("\nRunning PC\n")
 tstart <- Sys.time()
 pcres <- pcalg::pc(list(tests = tests, V = V), lookup_ci, labels = V, alpha = alpha)
 tstop <- Sys.time()
@@ -96,7 +96,7 @@ pcout <- as(pcres@graph, "matrix")
 PC <- pcout
 
 ### FCI ALG
-cat("\nRun FCI")
+cat("\nRunning FCI\n")
 tstart <- Sys.time()
 fcires <- pcalg::fciPlus(list(tests = tests, V = V), lookup_ci,
   labels = V, alpha = alpha, selectionBias = FALSE, verbose = FALSE
@@ -107,7 +107,7 @@ fciout <- as(fcires@amat, "matrix")
 FCI <- fciout
 
 ### NOTEARS
-cat("\nRun NOTEARS")
+cat("\nRunning NOTEARS\n")
 model <- dagma$DagmaLinear(loss_type = "l2")
 tstart <- Sys.time()
 nto <- 1 * (model$fit(py_data, lambda1 = 0.02) != 0)
@@ -117,7 +117,7 @@ dimnames(nto) <- list(V, V)
 NOTEARS <- .compute_graphical_representation(nto, ms, mode)
 
 ### R2sortability
-cat("\nRun R2SORT")
+cat("\nRunning R2SORT\n")
 tstart <- Sys.time()
 r2s <- 1 * (cd$r2_sort_regress(py_data) != 0)
 tstop <- Sys.time()
@@ -146,11 +146,11 @@ if (mode == "admg") { # remove PC in case of ADMGs
   timings <- timings[-grep("PC", names(timings))]
 }
 
-cat("\nEvaluate and summarize results")
+cat("\nEvaluating and summarizing results\n")
 res <- lapply(seq_along(outputs), \(idx) {
   learned <- outputs[[idx]]
   SHD <- shd(learned, ORACLE)
-  SEP <- sep(learned, ORACLE, ifelse(mode == "dag", "pdag", "mag"), ms)
+  SEP <- sep(learned, ORACLE, ifelse(mode == "dag", "pdag", "mag"), ms, oracle = otests)
   CM <- prf1(learned, ORACLE)
   data.frame(
     method = names(outputs)[[idx]],
@@ -168,8 +168,9 @@ res <- lapply(seq_along(outputs), \(idx) {
     use_oracle_tests = use_oracle_tests
   )
 }) |> do.call("rbind", args = _)
+res
 
 if (save) {
-  cat("\nSave results")
+  cat("\nSaving results\n")
   saveRDS(res, file.path(outdir, fout))
 }

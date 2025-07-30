@@ -113,10 +113,14 @@ prf1.pag <- function(G1, G2) {
 }
 
 ### Separation agreement
-sep <- function(G1, G2, mode, max_size = NULL, ...) {
+sep <- function(G1, G2, mode, max_size = NULL, oracle = NULL, ...) {
   .check_graphs(G1, G2)
   t1 <- .compute_oracle_tests(G1, max_size = max_size, mode = mode)
-  t2 <- .compute_oracle_tests(G2, max_size = max_size, mode = mode)
+  if (!is.null(oracle)) {
+    t2 <- oracle
+  } else {
+    t2 <- .compute_oracle_tests(G2, max_size = max_size, mode = mode)
+  }
   mean(t1$p.value != t2$p.value)
 }
 
