@@ -8,7 +8,7 @@
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=16
 #SBATCH --mem-per-cpu=4G
-#SBATCH --partition=highmem
+#SBATCH --partition=gpu
 
 echo "Running job $SLURM_JOB_NAME with ID $SLURM_JOB_ID"
 echo "Allocated hosts: $SLURM_JOB_NODELIST"
@@ -36,4 +36,10 @@ export GUROBI_HOME=/home/lkook/gurobi1202/
 export PATH=$PATH:/home/lkook/gurobi1202/linux64/bin
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/home/lkook/gurobi1202/linux64/lib
 
-Rscript --vanilla ./inst/code/run-asp-comparison.R
+nsim=100
+for d in {3..8}; do
+  for mode in dag admg; do
+    echo "Running with d=$d, mode=$mode, nsim=$nsim"
+    Rscript --vanilla ./inst/code/run-asp-comparison.R $mode $d -1 1000 $nsim 1 full
+  done
+done

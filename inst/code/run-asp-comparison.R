@@ -1,54 +1,55 @@
 ### Timing comparison with Hyttinen et al 2014 ASP
 ### LK 2025
 
-# set.seed(1)
+set.seed(12)
 
+### Dependencies
 devtools::load_all()
-odir <- "../../../../figures"
-wdir <- "../../../../results/asp-comparison"
 setwd("./inst/asp/hyttinen2014uai_ver6/pkg/R")
 source("./load.R")
 loud()
 library("tidyverse")
+
+### Parse command line arguments
+args <- commandArgs(trailingOnly = TRUE)
+mode <- darg(args[1], "dag")
+d <- as.numeric(darg(args[2], 3))
+ms <- as.numeric(darg(args[3], d - 2))
+ms <- ifelse(ms == -1, d - 2, ms)
+N <- as.numeric(darg(args[4], 1e3))
+nsim <- as.numeric(darg(args[5], 1))
+use_oracle_tests <- as.numeric(darg(args[6], 1))
+sim_name <- darg(args[7], "test-run")
+ncores <- max(7, parallel::detectCores(logical = TRUE) - 2)
 save <- TRUE
 
-if (!dir.exists(odir)) {
-  dir.create(odir, recursive = TRUE)
-}
+### Output directory
+wdir <- file.path("../../../../results/asp-comparison", Sys.Date(), sim_name)
 if (!dir.exists(wdir)) {
   dir.create(wdir, recursive = TRUE)
 }
 
-ncores <- max(7, parallel::detectCores(logical = TRUE) - 2)
-
-mode <- c("dag", "admg")[1]
-test <- c("oracle", "classic")[1]
-nsim <- 50
-ds <- 3:8
-N <- 1e3
-n <- 0
-
+### Prepare arguments
+test <- c("oracle", "classic")[2 - use_oracle_tests]
+n <- d
 restrict <- "acyclic"
 if (mode == "dag") {
   restrict <- c(restrict, "sufficient")
 }
 
-out <- lapply(ds, \(d) {
-  cat("\nRunning d =", d, "\n")
-  pb <- txtProgressBar(0, nsim, style = 3, width = 60)
-  lapply(1:nsim, \(iter) {
-    setTxtProgressBar(pb, iter)
-    n <<- d
-    res <- pipeline(
-      n = d, N = N, test = test, verbose = 0,
-      clingoconf = "--configuration=crafty --time-limit=500 --quiet=1,0",
-      restrict = restrict
-    )
-    res <- data.frame(mode = mode, d = d, n = N, iter = iter, res, row.names = NULL)
-    if (save) {
-      saveRDS(res, file.path(wdir, paste0(mode, "-iter_", iter, "-d_", d, "-", test, ".rds")))
-    }
-    res
-  }) |> do.call("rbind", args = _)
+### Run
+pb <- txtProgressBar(0, nsim, style = 3, width = 60)
+out <- lapply(1:nsim, \(iter) {
+  setTxtProgressBar(pb, iter)
+  res <- pipeline(
+    n = d, N = N, test = test, verbose = 0,
+    clingoconf = "--configuration=crafty --time-limit=500 --quiet=1,0",
+    restrict = restrict
+  )
+  res <- data.frame(mode = mode, d = d, n = N, iter = iter, res, row.names = NULL)
+  if (save) {
+    saveRDS(res, file.path(wdir, paste0(mode, "-iter_", iter, "-d_", d, "-", test, ".rds")))
+  }
+  res
 }) |> do.call("rbind", args = _)
 out
