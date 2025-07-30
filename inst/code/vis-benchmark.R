@@ -25,7 +25,7 @@ timings <- res |>
   mutate(time = as.numeric(time))
 
 p1 <- ggplot(timings, aes(x = time, color = method)) +
-  stat_ecdf() +
+  stat_ecdf(pad = FALSE) +
   theme_bw() +
   facet_wrap(mode ~ d, labeller = label_both) +
   labs(x = "runtime in seconds", y = "relative rank") +
