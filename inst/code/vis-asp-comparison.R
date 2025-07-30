@@ -38,5 +38,5 @@ p1 <- ggplot(timings, aes(x = time, color = method)) +
 p1
 
 if (save) {
-  ggsave(file.path(fout, "timings.pdf"), p1, height = 6, width = 8)
+  ggsave(file.path(fout, "timings.pdf"), p1, height = 6.5, width = 9.5)
 }
