@@ -44,7 +44,7 @@ out <- lapply(ds, \(d) {
       clingoconf = "--configuration=crafty --time-limit=500 --quiet=1,0",
       restrict = restrict
     )
-    res <- data.frame(d = d, n = N, iter = iter, res, row.names = NULL)
+    res <- data.frame(mode = mode, d = d, n = N, iter = iter, res, row.names = NULL)
     if (save) {
       saveRDS(res, file.path(wdir, paste0(mode, "-iter_", iter, "-d_", d, "-", test, ".rds")))
     }
