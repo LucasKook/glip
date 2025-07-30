@@ -5,11 +5,19 @@ set.seed(1)
 
 devtools::load_all()
 odir <- "../../../../figures"
+wdir <- "../../../../results/asp-comparison"
 setwd("./inst/asp/hyttinen2014uai_ver6/pkg/R")
 source("./load.R")
 loud()
 library("tidyverse")
 save <- TRUE
+
+if (!dir.exists(odir)) {
+  dir.create(odir, recursive = TRUE)
+}
+if (!dir.exists(wdir)) {
+  dir.create(wdir, recursive = TRUE)
+}
 
 ncores <- max(7, parallel::detectCores(logical = TRUE) - 2)
 
@@ -29,7 +37,11 @@ out <- lapply(ds, \(d) {
       n = d, N = N, test = test, verbose = 0,
       clingoconf = "--configuration=crafty --time-limit=500 --quiet=1,0"
     )
-    data.frame(d = d, n = N, iter = iter, res, row.names = NULL)
+    res <- data.frame(d = d, n = N, iter = iter, res, row.names = NULL)
+    if (save) {
+      saveRDS(res, file.path(wdir, paste0("iter_", iter, "-d_", d, "-", test, ".rds")))
+    }
+    res
   }) |> do.call("rbind", args = _)
 }) |> do.call("rbind", args = _)
 
@@ -48,9 +60,6 @@ out |>
   theme(text = element_text(size = 13.5), legend.position = "top") +
   scale_color_brewer(palette = "Dark2", labels = c("glip" = "GLIP", "asp" = "ASP"))
 
-if (!dir.exists(odir)) {
-  dir.create(odir, recursive = TRUE)
-}
 if (save) {
   ggsave(file.path(odir, "timing-comparison-asp.pdf"), height = 3.5, width = 4)
 }
