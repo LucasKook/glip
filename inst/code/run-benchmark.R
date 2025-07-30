@@ -15,14 +15,14 @@ cd <- import("CausalDisco.baselines", convert = TRUE)
 # Parse command line arguments
 args <- commandArgs(trailingOnly = TRUE)
 mode <- darg(args[1], "dag")
-d <- as.numeric(darg(args[2], 8))
+d <- as.numeric(darg(args[2], 3))
 ms <- as.numeric(darg(args[3], d - 2))
 ms <- ifelse(ms == -1, d - 2, ms)
 degree <- as.numeric(darg(args[4], 2))
 n <- as.numeric(darg(args[5], 1e3))
 seed <- as.numeric(darg(args[6], 12))
 alpha <- as.numeric(darg(args[7], 0.01))
-use_oracle_tests <- as.numeric(darg(args[8], 1))
+use_oracle_tests <- as.numeric(darg(args[8], 0))
 sim_name <- darg(args[9], "test-run")
 save <- TRUE
 
