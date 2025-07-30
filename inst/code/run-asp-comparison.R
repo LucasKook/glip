@@ -46,7 +46,7 @@ out <- lapply(ds, \(d) {
     )
     res <- data.frame(d = d, n = N, iter = iter, res, row.names = NULL)
     if (save) {
-      saveRDS(res, file.path(wdir, paste0("iter_", iter, "-d_", d, "-", test, ".rds")))
+      saveRDS(res, file.path(wdir, paste0(mode, "-iter_", iter, "-d_", d, "-", test, ".rds")))
     }
     res
   }) |> do.call("rbind", args = _)
