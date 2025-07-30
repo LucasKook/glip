@@ -4,6 +4,7 @@
 library("tidyverse")
 library("scales")
 save <- TRUE
+max_time <- 300
 
 ### List files
 fin <- "./inst/results/asp-comparison"
@@ -16,7 +17,8 @@ files <- list.files(fin, pattern = "*.rds", full.names = TRUE)
 ### Read files
 res <- tibble(file = files) |>
   mutate(data = map(file, ~ readRDS(.x))) |>
-  unnest(data)
+  unnest(data) |>
+  mutate(mode = "dag")
 
 ### Timings
 timings <- res |>
@@ -26,12 +28,12 @@ timings <- res |>
 p1 <- ggplot(timings, aes(x = time, color = method)) +
   stat_ecdf() +
   theme_bw() +
-  facet_wrap(~d, labeller = label_both) +
+  facet_wrap(mode ~ d, labeller = label_both) +
   labs(x = "runtime in seconds", y = "relative rank") +
   scale_x_continuous(trans = "log10", labels = trans_format("log10", math_format(10^.x))) +
   theme(text = element_text(size = 13.5), legend.position = "top") +
   scale_color_brewer(palette = "Dark2", labels = c("asp" = "ASP", "glip" = "GLIP")) +
-  coord_flip()
+  coord_flip(xlim = c(min(timings$time) * 0.99, max_time))
 p1
 
 if (save) {

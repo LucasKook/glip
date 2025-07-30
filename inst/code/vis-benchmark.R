@@ -27,7 +27,7 @@ timings <- res |>
 p1 <- ggplot(timings, aes(x = time, color = method)) +
   stat_ecdf() +
   theme_bw() +
-  facet_wrap(~d, labeller = label_both) +
+  facet_wrap(mode ~ d, labeller = label_both) +
   labs(x = "runtime in seconds", y = "relative rank") +
   scale_x_continuous(trans = "log10", labels = trans_format("log10", math_format(10^.x))) +
   theme(text = element_text(size = 13.5), legend.position = "top") +
@@ -81,11 +81,8 @@ p3 <- ggplot(res |> mutate(mode = toupper(mode)), aes(x = sep, y = input_sep, co
   labs(x = "SEP (learned versus oracle)", y = "SEP (input versus oracle)") +
   theme(text = element_text(size = 13.5), legend.position = "top")
 
-print(p1)
-print(p2)
-
 if (save) {
-  ggsave(file.path(fout, "timings.pdf"), p1, height = 4, width = 6)
+  ggsave(file.path(fout, "timings.pdf"), p1, height = 6.5, width = 8)
   ggsave(file.path(fout, "performance.pdf"), p2, height = 6, width = 18)
   ggsave(file.path(fout, "separation.pdf"), p3, height = 5.5, width = 8)
 }
