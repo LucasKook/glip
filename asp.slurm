@@ -41,7 +41,7 @@ for d in {3..4}; do
   for n in 400; do
     for mode in dag admg; do
       echo "Running with d=$d, mode=$mode, nsim=$nsim, n=$n"
-      Rscript --vanilla ./inst/code/run-asp-comparison.R $mode $d -1 $n $nsim 0 presolve2size
+      Rscript --vanilla ./inst/code/run-asp-comparison.R $mode $d -1 $n $nsim 0 presolve2sizedcon
     done
   done
 done

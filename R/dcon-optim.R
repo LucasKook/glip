@@ -1,7 +1,7 @@
 dcon_optim <- function(
     tests, d = 3, max_size = d - 2, V = letters[1:d],
     trafo = \(x) as.numeric(x <= 0.05),
-    weight_type = c("const", "inv", "log"),
+    weight_type = c("const", "inv", "log", "size"),
     gurobi_args = list(),
     verbose = FALSE, 
     cache = TRUE,
@@ -96,18 +96,23 @@ dcon_optim <- function(
   # i -> j | C s.t. i in C ignored => Set w to zero for those
   # i -> i | C ignored => Set w to zero for those
   w <- rep(0, n_z)
+  s <- rep(0, n_z)
   p <- rep(0, n_z)
   merged <- dplyr::left_join(tests, lookup, by = c("X", "Y", "Z"))
   p[merged$idx] <- merged$p.value
   w[merged$idx] <- 1
-  merged$weight <- w[merged$idx]
-  p <- trafo(p)
+  s[merged$idx] <- merged$size
 
+  ### Weights
   w[w == 1] <- switch(weight_type,
     "const" = 1,
-    "inv" = 1 / pmax(p[w == 1], 0.0001),
-    "log" = -log2(pmax(p[w == 1], 2 * .Machine$double.eps))
+    "inv" = 1 / pmax(p[w == 1], 0.001),
+    "log" = -log2(pmax(p[w == 1], 2 * .Machine$double.eps)),
+    "size" = 1 / (1 + s[w == 1])
   )
+
+  merged$weight <- w[merged$idx]
+  p <- trafo(p)
 
   # Linearize absolute value:
   # min w |z - b|
