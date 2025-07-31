@@ -10,10 +10,12 @@ library("pcalg")
 
 ### Params
 d <- as.numeric(darg(args[1], 3))
-max_size <- d - 2
 pp <- as.numeric(darg(args[2], 0.5))
-mode <- c("dag", "chain", "admg", "dagdcon")[as.numeric(darg(args[3], 1))]
+mode <- c("dag", "admg", "chain", "dagdcon")[as.numeric(darg(args[3], 1))]
 seeds <- eval(parse(text = darg(args[4], "1:100")))
+max_size <- as.numeric(darg(args[5], d - 2))
+max_size <- ifelse(max_size == -1, d - 2, max_size)
+walltime <- as.numeric(darg(args[6], Inf))
 V <- letters[1:d]
 cache <- TRUE
 ncores <- max(7, parallel::detectCores(logical = TRUE) - 2)
@@ -43,7 +45,8 @@ tmp <- sapply(seeds, \(idx) {
       d = d, max_size = max_size,
       V = V, cache = cache,
       gurobi_args = list(
-        Threads = ncores
+        Threads = ncores,
+        TimeLimit = walltime
       ), mode = mode
     )
   )
