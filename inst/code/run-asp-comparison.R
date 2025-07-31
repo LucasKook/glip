@@ -23,7 +23,7 @@ sim_name <- darg(args[7], "test-run")
 ncores <- max(7, parallel::detectCores(logical = TRUE) - 2)
 walltime <- 500
 GARGS <- list(Threads = ncores, TimeLimit = walltime, Presolve = 2)
-WTYPE <- "const"
+WTYPE <- "size"
 clstr <- paste0("--configuration=crafty --time-limit=", walltime, " --quiet=1,0")
 save <- TRUE
 

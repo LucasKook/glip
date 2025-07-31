@@ -8,7 +8,7 @@ max_time <- 500
 walltime <- 500
 
 ### List files
-fin <- "./inst/results/asp-comparison/2025-07-31/full"
+fin <- "./inst/results/asp-comparison/2025-07-31/presolve2"
 fout <- str_replace(fin, "results", "figures")
 if (!dir.exists(fout)) {
   dir.create(fout, recursive = TRUE)
