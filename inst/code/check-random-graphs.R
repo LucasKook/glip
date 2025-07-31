@@ -11,7 +11,7 @@ library("pcalg")
 ### Params
 d <- as.numeric(darg(args[1], 3))
 pp <- as.numeric(darg(args[2], 0.5))
-mode <- c("dag", "admg", "chain", "dagdcon")[as.numeric(darg(args[3], 1))]
+mode <- darg(args[3], "dag")
 seeds <- eval(parse(text = darg(args[4], "1:100")))
 max_size <- as.numeric(darg(args[5], d - 2))
 max_size <- ifelse(max_size == -1, d - 2, max_size)
