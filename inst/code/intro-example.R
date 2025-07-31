@@ -5,6 +5,7 @@
 set.seed(42)
 
 devtools::load_all()
+library("tidyverse")
 library("comets")
 library("pcalg")
 
@@ -18,24 +19,36 @@ dgp <- function(n, cor = 0.9) {
 }
 
 cors <- c(0, 0.9, 0.9999)
+nsim <- 50
+n <- 3e2
 
-tmp <- lapply(cors, \(tcor) {
-  d <- dgp(1e4, cor = tcor)
+out <- lapply(cors, \(tcor) {
+  cat("\nRunning cor =", tcor, "\n")
+  pb <- txtProgressBar(0, nsim, style = 3, width = 60)
+  lapply(1:nsim, \(iter) {
+    setTxtProgressBar(pb, iter)
+    ### Generate data
+    d <- dgp(n, cor = tcor)
+    ### Run GLIP
+    tmp <- capture.output(
+      lP <- learn_graph(d, test_args = list(
+        reg_YonZ = "lrm",
+        reg_XonZ = "lrm"
+      ), mode = "admg")
+    )
+    ### Run FCI
+    out <- fci(list(C = cor(d), n = NROW(d)), gaussCItest, 0.05, colnames(d),
+      selectionBias = FALSE
+    )
+    ### Return
+    tibble(cor = tcor, GLIP = list(lP$computed), FCI = list(out@amat), iter = iter)
+  }) |> bind_rows()
+}) |> bind_rows()
 
-  tmp <- capture.output(
-    lP <- learn_graph(d, test_args = list(
-      reg_YonZ = "lrm",
-      reg_XonZ = "lrm"
-    ), mode = "admg")
-  )
+res <- out |>
+  pivot_longer(c("GLIP", "FCI"), names_to = "method", values_to = "output") |>
+  group_by(cor, method) |>
+  count(output) |>
+  filter(n == max(n))
 
-  cat("\ncor =", tcor)
-  cat("\nOptim:\n")
-  print(lP$computed)
-
-  cat("\nFCI:\n")
-  out <- fci(list(C = cor(d), n = NROW(d)), gaussCItest, 0.05, colnames(d),
-    selectionBias = FALSE
-  )
-  print(out@amat)
-})
+res$output
