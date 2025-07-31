@@ -21,8 +21,10 @@ nsim <- as.numeric(darg(args[5], 1))
 use_oracle_tests <- as.numeric(darg(args[6], 1))
 sim_name <- darg(args[7], "test-run")
 ncores <- max(7, parallel::detectCores(logical = TRUE) - 2)
-GARGS <- list(Threads = ncores, TimeLimit = 500)
+walltime <- 500
+GARGS <- list(Threads = ncores, TimeLimit = walltime, Presolve = 2)
 WTYPE <- "const"
+clstr <- paste0("--configuration=crafty --time-limit=", walltime, " --quiet=1,0")
 save <- TRUE
 
 ### Output directory
@@ -45,8 +47,7 @@ out <- lapply(1:nsim, \(iter) {
   setTxtProgressBar(pb, iter)
   res <- pipeline(
     n = d, N = N, test = test, verbose = 0,
-    clingoconf = "--configuration=crafty --time-limit=500 --quiet=1,0",
-    restrict = restrict
+    clingoconf = clstr, restrict = restrict
   )
   res <- data.frame(
     mode = mode, d = d, n = N, ms = ms, nsim = nsim,
