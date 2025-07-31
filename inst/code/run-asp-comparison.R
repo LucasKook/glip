@@ -55,8 +55,8 @@ out <- lapply(1:nsim, \(iter) {
   )
   if (save) {
     saveRDS(res, file.path(wdir, paste0(
-      mode, "-iter_", iter, "-d_", d, "-ms_", ms, "-nsim_", nsim, "-uot_",
-      use_oracle_tests, "-", test, ".rds"
+      mode, "-iter_", iter, "-d_", d, "-ms_", ms, "-nsim_", nsim,
+      "-n_", N, "-uot_", use_oracle_tests, "-", test, ".rds"
     )))
   }
   res
