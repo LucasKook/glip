@@ -40,7 +40,7 @@ for d in {3..16}; do
   for ((ms = 1; ms <= d - 2; ms++)); do
     for mode in dag admg; do
       echo "Running with d=$d, ms=$ms, mode=$mode"
-      Rscript --vanilla ./inst/code/check-random-graphs.R $d 0.5 $mode 1 -1 1
+      Rscript --vanilla ./inst/code/check-random-graphs.R $d 0.5 $mode 1 $ms 1
     done
   done
 done
