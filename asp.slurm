@@ -37,7 +37,7 @@ export PATH=$PATH:/home/lkook/gurobi1202/linux64/bin
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/home/lkook/gurobi1202/linux64/lib
 
 nsim=25
-for d in {8}; do
+for d in 8; do
   for n in 400; do
     for mode in dag admg; do
       echo "Running with d=$d, mode=$mode, nsim=$nsim, n=$n"
