@@ -40,16 +40,16 @@ tmp <- sapply(seeds, \(idx) {
   glog <<- c(glog, list(G))
 
   tests <- .compute_oracle_tests(G, max_size, mode)
-  capt <- capture.output(
-    lG <- .get_opt(mode)(tests,
-      d = d, max_size = max_size,
-      V = V, cache = cache,
-      gurobi_args = list(
-        Threads = ncores,
-        TimeLimit = walltime
-      ), mode = mode
-    )
+  # capt <- capture.output(
+  lG <- .get_opt(mode)(tests,
+    d = d, max_size = max_size,
+    V = V, cache = cache,
+    gurobi_args = list(
+      Threads = ncores,
+      TimeLimit = walltime
+    ), mode = mode, verbose = TRUE
   )
+  # )
 
   learned <- .compute_graphical_representation(lG$graph, max_size, mode)
   ground_truth <- .compute_graphical_representation(G, max_size, mode)
