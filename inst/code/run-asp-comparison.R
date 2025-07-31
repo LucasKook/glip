@@ -46,9 +46,15 @@ out <- lapply(1:nsim, \(iter) {
     clingoconf = "--configuration=crafty --time-limit=500 --quiet=1,0",
     restrict = restrict
   )
-  res <- data.frame(mode = mode, d = d, n = N, iter = iter, res, row.names = NULL)
+  res <- data.frame(
+    mode = mode, d = d, n = N, ms = ms, nsim = nsim,
+    use_oracle_tests = use_oracle_tests, iter = iter, res, row.names = NULL
+  )
   if (save) {
-    saveRDS(res, file.path(wdir, paste0(mode, "-iter_", iter, "-d_", d, "-", test, ".rds")))
+    saveRDS(res, file.path(wdir, paste0(
+      mode, "-iter_", iter, "-d_", d, "-ms_", ms, "-nsim_", nsim, "-uot_",
+      use_oracle_tests, "-", test, ".rds"
+    )))
   }
   res
 }) |> do.call("rbind", args = _)
