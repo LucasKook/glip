@@ -38,8 +38,8 @@ export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/home/lkook/gurobi1202/linux64/lib
 
 for d in {3..8}; do
   for mode in dag admg; do
-    for seed in {1..50}; do
-      for n in 100 200 400 800 1600 3200; do
+    for n in 100 200 400 800 1600 3200; do
+      for seed in {1..50}; do
         echo "Running with d=$d, mode=$mode, seed=$seed"
         Rscript --vanilla ./inst/code/run-benchmark.R $mode $d -1 2 $n $seed 0.01 0 full
       done

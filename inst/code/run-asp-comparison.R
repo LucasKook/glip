@@ -21,6 +21,8 @@ nsim <- as.numeric(darg(args[5], 1))
 use_oracle_tests <- as.numeric(darg(args[6], 1))
 sim_name <- darg(args[7], "test-run")
 ncores <- max(7, parallel::detectCores(logical = TRUE) - 2)
+GARGS <- list(Threads = ncores, TimeLimit = 500)
+WTYPE <- "const"
 save <- TRUE
 
 ### Output directory

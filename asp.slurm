@@ -40,10 +40,8 @@ nsim=50
 for d in {3..8}; do
   for n in 100 200 400 800 1600; do
     for mode in dag admg; do
-      for uot in 0 1; do
-        echo "Running with d=$d, mode=$mode, nsim=$nsim, n=$n"
-        Rscript --vanilla ./inst/code/run-asp-comparison.R $mode $d -1 $n $nsim $uot full
-      done
+      echo "Running with d=$d, mode=$mode, nsim=$nsim, n=$n"
+      Rscript --vanilla ./inst/code/run-asp-comparison.R $mode $d -1 $n $nsim 0 full
     done
   done
 done
