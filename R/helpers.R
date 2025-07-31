@@ -9,6 +9,7 @@
       X = x$X,
       Y = x$Y,
       Z = paste0(x$Z, collapse = ","),
+      size = length(x$Z),
       p.value = .check_separation(x$X, x$Y, x$Z, G, mode)
     )
   }) |> do.call("rbind", args = _)

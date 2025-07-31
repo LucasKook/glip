@@ -35,6 +35,7 @@ learn_graph <- function(
       X = sets[[iter]][["X"]],
       Y = sets[[iter]][["Y"]],
       Z = paste0(sets[[iter]][["Z"]], collapse = ","),
+      size = length(sets[[iter]][["Z"]]),
       formula = paste0(deparse(fml[[iter]]), collapse = ""),
       p.value = res$p.value, weight = 1
     )

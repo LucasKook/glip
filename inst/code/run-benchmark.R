@@ -78,6 +78,7 @@ lG <- .get_opt(mode)(tests,
   d = d, max_size = ms,
   V = V, cache = cache,
   trafo = \(x) as.numeric(x <= alpha),
+  weight_type = "const",
   gurobi_args = list(
     Threads = ncores
   ), mode = mode

@@ -7,7 +7,7 @@ save <- TRUE
 max_time <- 100
 
 ### List files
-fin <- "./inst/results/benchmark/2025-07-29/medium-n"
+fin <- "./inst/results/benchmark/2025-07-31/full"
 fout <- str_replace(fin, "results", "figures")
 if (!dir.exists(fout)) {
   dir.create(fout, recursive = TRUE)
