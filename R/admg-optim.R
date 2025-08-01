@@ -116,22 +116,22 @@ admg_optim <- function(
   # i -> i | C ignored => Set w to zero for those
   w <- rep(0, n_z)
   s <- rep(0, n_z)
-  p <- rep(0, n_z)
+  praw <- rep(0, n_z)
   merged <- dplyr::left_join(tests, lookup, by = c("X", "Y", "Z"))
-  p[merged$idx] <- merged$p.value
+  praw[merged$idx] <- merged$p.value
   w[merged$idx] <- 1
   s[merged$idx] <- merged$size
 
   ### Weights
   w[w == 1] <- switch(weight_type,
     "const" = 1,
-    "inv" = 1 / pmax(p[w == 1], 0.001),
-    "log" = -log2(pmax(p[w == 1], 2 * .Machine$double.eps)),
+    "inv" = 1 / pmax(praw[w == 1], 0.001),
+    "log" = -log2(pmax(praw[w == 1], 2 * .Machine$double.eps)) + 0.1,
     "size" = 1 / (1 + s[w == 1])
   )
   merged$weight <- w[merged$idx]
 
-  p <- trafo(p)
+  p <- trafo(praw)
 
   # Linearize absolute value:
   # min w |z - b|
@@ -143,20 +143,48 @@ admg_optim <- function(
   model <- list()
   model$obj <- c(
     w, # corresponds to t_{ij}^C
-    rep(0, n_z), # corresponds to z_{ij}^C
-    rep(0, n_d), # corresponds to x^{->}_{ij}
+    "zijc" = rep(0, n_z), # corresponds to z_{ij}^C
+    "xij" = rep(0, n_d), # corresponds to x^{->}_{ij}
     rep(0, n_z), # corresponds to l_{ij}^C
     rep(0, n_d), # corresponds to l_{ij}^{->}
     rep(0, sum(nN1 <- c(n_d, (d - 2) * n_d))), # For min-constraint N1
     rep(0, n_d), # corresponds to d_ij^->
     rep(0, sum(nkc)), # aux P1
-    rep(0, n_b), # bidirected edges
-    rep(0, n_d), # *directed edges
+    "bxij" = rep(0, n_b), # bidirected edges
+    "sxij" = rep(0, n_d), # *directed edges
     rep(0, n_lb), # corresponds to l_{ij}^{<->,C}
     rep(0, n_lb), # corresponds to z_{ij}^{<->,C}
     rep(0, n_lb + n_lb * (d - 2)), # corresponds to rhs of F1 and F2
     0
   )
+  model$branchpriority <- rep(0, length(model$obj))
+  model$branchpriority[.multigrep(c("xij", "bxij", "sxij"), names(model$obj))] <- 1
+  model$start <- rep(NA, length(model$obj))
+  model$start[.multigrep(c("xij", "bxij", "sxij"), names(model$obj))] <- 0
+  guess <- numeric(n_d)
+  bguess <- numeric(n_b)
+  sguess <- numeric(n_d)
+  for (i in seq_len(d)) {
+    for (j in setdiff(seq_len(d), i)) {
+      bidx <- bxij$idx[bxij$i == i & bxij$j == j]
+      xidx <- xij$idx[xij$i == i & xij$j == j]
+      zidx <- c(zijc$idx[zijc$i == i & zijc$j == j], zijc$idx[zijc$i == j & zijc$j == i])
+      guess[xidx] <- as.integer(max(p[zidx]))
+      bguess[bidx] <- as.integer(max(p[zidx]))
+      sguess[xidx] <- as.integer(max(p[zidx]))
+    }
+  }
+  model$varhintval <- rep(NA, length(model$obj))
+  model$varhintval[grep("zijc", names(model$obj))] <- p
+  model$varhintval[grep("xij", names(model$obj))] <- guess
+  model$varhintval[grep("bxij", names(model$obj))] <- bguess
+  model$varhintval[grep("sxij", names(model$obj))] <- sguess
+  model$varhintpri <- rep(0, length(model$obj))
+  model$varhintpri[grep("zijc", names(model$obj))] <- 2
+  model$varhintpri[grep("xij", names(model$obj))] <- 2 - guess
+  model$varhintpri[grep("bxij", names(model$obj))] <- 2 - bguess
+  model$varhintpri[grep("sxij", names(model$obj))] <- 2 - sguess
+  model$varhintpri <- as.integer(model$varhintpri)
   model$modelsense <- "min"
   model$vtype <- rep(c("C", "B", "I", "B", "I", "B", "I", "B", "I", "I"), 
     c(n_z, n_z + n_d, n_z + n_d + sum(nN1), n_d, sum(nkc), n_b + n_d, 

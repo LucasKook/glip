@@ -97,22 +97,22 @@ dcon_optim <- function(
   # i -> i | C ignored => Set w to zero for those
   w <- rep(0, n_z)
   s <- rep(0, n_z)
-  p <- rep(0, n_z)
+  praw <- rep(0, n_z)
   merged <- dplyr::left_join(tests, lookup, by = c("X", "Y", "Z"))
-  p[merged$idx] <- merged$p.value
+  praw[merged$idx] <- merged$p.value
   w[merged$idx] <- 1
   s[merged$idx] <- merged$size
 
   ### Weights
   w[w == 1] <- switch(weight_type,
     "const" = 1,
-    "inv" = 1 / pmax(p[w == 1], 0.001),
-    "log" = -log2(pmax(p[w == 1], 2 * .Machine$double.eps)),
+    "inv" = 1 / pmax(praw[w == 1], 0.001),
+    "log" = -log2(pmax(praw[w == 1], 2 * .Machine$double.eps)) + 0.1,
     "size" = 1 / (1 + s[w == 1])
   )
 
   merged$weight <- w[merged$idx]
-  p <- trafo(p)
+  p <- trafo(praw)
 
   # Linearize absolute value:
   # min w |z - b|
