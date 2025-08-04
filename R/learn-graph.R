@@ -1,8 +1,9 @@
 learn_graph <- function(
     data, max_size = NULL, mode = "dag", test = "gcm", naive = FALSE,
     parallel = FALSE, ncores = NULL, trafo = \(x) as.numeric(x <= 0.05),
-    weight_type = "const", gurobi_args = list(), test_args = NULL,
-    return_tests_only = FALSE, verbose = FALSE, cache = TRUE, ...) {
+    weight_type = "const", warmstart = NULL, edgehints = NULL,
+    gurobi_args = list(), test_args = NULL, return_tests_only = FALSE,
+    verbose = FALSE, cache = TRUE, ...) {
   if (mode %in% c("dmg", "dg")) {
     warning("Using `mode = 'dmg'` or `mode = 'dg'` relies on d-separation
       and thus implicitly assumes a linear Gaussian SCM.")
@@ -53,6 +54,7 @@ learn_graph <- function(
   graph <- opt(res,
     d = length(vars), max_size = max_size,
     V = vars, trafo = trafo, weight_type = weight_type,
+    warmstart = warmstart, edgehints = edgehints,
     gurobi_args = gurobi_args, verbose = verbose,
     cache = cache, mode = mode, ...
   )
