@@ -2,8 +2,10 @@ admg_optim <- function(
     tests, d = 3, max_size = d - 2, V = letters[1:d],
     trafo = \(x) as.numeric(x <= 0.05),
     weight_type = c("const", "inv", "log", "size"),
+    warmstart = NULL,
+    edgehints = NULL,
     gurobi_args = list(),
-    verbose = FALSE, 
+    verbose = FALSE,
     cache = TRUE,
     cache_dir = "./.cache-admg",
     mode = c("admg", "dmg"),
@@ -25,8 +27,8 @@ admg_optim <- function(
   ### COMPUTE DIMENSIONS
 
   # List of all conditioning sets of size at most max_size
-  CC <- unlist(sapply(0:max_size, \(x) 
-    utils::combn(d, x, simplify = FALSE)), 
+  CC <- unlist(sapply(0:max_size, \(x)
+    utils::combn(d, x, simplify = FALSE)),
     recursive = FALSE
   )
   n_C <- length(CC)
@@ -58,7 +60,7 @@ admg_optim <- function(
       for (C in seq_along(CC)) {
         if (all(!(c(i, j) %in% CC[[C]]))) {
           zijc <- rbind(
-            zijc, 
+            zijc,
             data.frame(i = i, j = j, C = C, idx = counter)
           )
           counter <- counter + 1
@@ -73,7 +75,7 @@ admg_optim <- function(
     for (j in seq_len(i - 1)) {
       for (C in seq_along(CC)) {
         lbijc <- rbind(
-          lbijc, 
+          lbijc,
           data.frame(i = i, j = j, C = C, idx = counter)
         )
         counter <- counter + 1
@@ -144,7 +146,7 @@ admg_optim <- function(
   model$obj <- c(
     w, # corresponds to t_{ij}^C
     "zijc" = rep(0, n_z), # corresponds to z_{ij}^C
-    "xij" = rep(0, n_d), # corresponds to x^{->}_{ij}
+    "dxij" = rep(0, n_d), # corresponds to x^{->}_{ij}
     rep(0, n_z), # corresponds to l_{ij}^C
     rep(0, n_d), # corresponds to l_{ij}^{->}
     rep(0, sum(nN1 <- c(n_d, (d - 2) * n_d))), # For min-constraint N1
@@ -159,8 +161,7 @@ admg_optim <- function(
   )
   model$branchpriority <- rep(0, length(model$obj))
   model$branchpriority[.multigrep(c("xij", "bxij", "sxij"), names(model$obj))] <- 1
-  model$start <- rep(NA, length(model$obj))
-  model$start[.multigrep(c("xij", "bxij", "sxij"), names(model$obj))] <- 0
+  ### Warm start and edge hints
   guess <- numeric(n_d)
   bguess <- numeric(n_b)
   sguess <- numeric(n_d)
@@ -169,32 +170,40 @@ admg_optim <- function(
       bidx <- bxij$idx[bxij$i == i & bxij$j == j]
       xidx <- xij$idx[xij$i == i & xij$j == j]
       zidx <- c(zijc$idx[zijc$i == i & zijc$j == j], zijc$idx[zijc$i == j & zijc$j == i])
-      guess[xidx] <- as.integer(max(p[zidx]))
-      bguess[bidx] <- as.integer(max(p[zidx]))
-      sguess[xidx] <- as.integer(max(p[zidx]))
+      if (is.null(edgehints)) {
+        guess[xidx] <- as.integer(max(p[zidx]))
+        bguess[bidx] <- as.integer(max(p[zidx]))
+        sguess[xidx] <- as.integer(max(p[zidx]))
+      } else {
+        guess[xidx] <- edgehints[i, j]
+        sguess[xidx] <- edgehints[i, j]
+        bguess[bidx] <- 1 * (edgehints[i, j] | edgehints[j, i])
+      }
     }
   }
   model$varhintval <- rep(NA, length(model$obj))
   model$varhintval[grep("zijc", names(model$obj))] <- p
-  model$varhintval[grep("xij", names(model$obj))] <- guess
+  model$varhintval[grep("dxij", names(model$obj))] <- guess
   model$varhintval[grep("bxij", names(model$obj))] <- bguess
   model$varhintval[grep("sxij", names(model$obj))] <- sguess
   model$varhintpri <- rep(0, length(model$obj))
   model$varhintpri[grep("zijc", names(model$obj))] <- 2
-  model$varhintpri[grep("xij", names(model$obj))] <- 2 - guess
+  model$varhintpri[grep("dxij", names(model$obj))] <- 2 - guess
   model$varhintpri[grep("bxij", names(model$obj))] <- 2 - bguess
   model$varhintpri[grep("sxij", names(model$obj))] <- 2 - sguess
   model$varhintpri <- as.integer(model$varhintpri)
+  model$start <- rep(NA, length(model$obj))
+  model$start[.multigrep(c("dxij", "bxij", "sxij"), names(model$obj))] <- 0
   model$modelsense <- "min"
-  model$vtype <- rep(c("C", "B", "I", "B", "I", "B", "I", "B", "I", "I"), 
-    c(n_z, n_z + n_d, n_z + n_d + sum(nN1), n_d, sum(nkc), n_b + n_d, 
+  model$vtype <- rep(c("C", "B", "I", "B", "I", "B", "I", "B", "I", "I"),
+    c(n_z, n_z + n_d, n_z + n_d + sum(nN1), n_d, sum(nkc), n_b + n_d,
       n_lb, n_lb, n_lb + n_lb * (d - 2), 1))
-  model$lb <- rep(c(0, 1, 0, 1, 0, 1, 0, 1, d), 
-    c(2 * n_z + n_d, n_z + n_d + sum(nN1), n_d, sum(nkc), n_b + n_d, 
+  model$lb <- rep(c(0, 1, 0, 1, 0, 1, 0, 1, d),
+    c(2 * n_z + n_d, n_z + n_d + sum(nN1), n_d, sum(nkc), n_b + n_d,
       n_lb, n_lb, n_lb + n_lb * (d - 2), 1))
-  model$ub <- rep(c(Inf, 1, Inf, d, 2 * d, 1, 6 * n_tilde, 1, d, 
-    1, 2 * (d - 1) + 1, d), 
-    c(n_z, n_z + n_d, n_z, n_d, sum(nN1), n_d, sum(nkc), n_b + n_d, 
+  model$ub <- rep(c(Inf, 1, Inf, d, 2 * d, 1, 6 * n_tilde, 1, d,
+    1, 2 * (d - 1) + 1, d),
+    c(n_z, n_z + n_d, n_z, n_d, sum(nN1), n_d, sum(nkc), n_b + n_d,
       n_lb, n_lb, n_lb + n_lb * (d - 2), 1))
   model$rhs <- c(
     "labs" = -p, # linearize objective
@@ -253,7 +262,7 @@ admg_optim <- function(
 
     ### RHS F1 F2
     tmp <- A[
-      grep("f1f2min", rownames(A)), 
+      grep("f1f2min", rownames(A)),
       .multigrep(c("bxij", "lbijc", "fijc"), colnames(A))
     ]
     rf1f2 <- model$rhs[grep("f1f2min", names(model$rhs))]
@@ -289,7 +298,7 @@ admg_optim <- function(
         }
       }
     }
-    A[grep("f1f2min", rownames(A)), 
+    A[grep("f1f2min", rownames(A)),
       .multigrep(c("bxij", "lbijc", "fijc"), colnames(A))
      ] <- tmp
     model$rhs[grep("f1f2min", names(model$rhs))] <- rf1f2
@@ -327,7 +336,7 @@ admg_optim <- function(
     A[grep("C6to9", rownames(A)), .multigrep(c("dxij", "bxij", "sxij"), colnames(A))] <- tmp
 
     ### CONSTRAINTS FOR Z and L consistency (C4) + (C5)
-  
+
     cmat_zl <- rbind(
       cbind(diag(n_z), diag(n_z)), # (C4)
       cbind(-diag(n_z) * n_tilde, -diag(n_z)) # (C5)
@@ -362,7 +371,7 @@ admg_optim <- function(
             tmp[cntr, skip + cntr] <- 1 + .fill(tmp[cntr, skip + cntr])
             tmp[cntr, ij] <- n_tilde + .fill(tmp[cntr, ij])
             rhs_m1[cntr] <- n_tilde + 1
-            m1lup <- rbind(m1lup, data.frame(i = i, j = j, k = NA, 
+            m1lup <- rbind(m1lup, data.frame(i = i, j = j, k = NA,
               l = NA, m = NA, C = C, idx = cntr, which = "K1"))
             cntr <- cntr + 1
           }
@@ -379,7 +388,7 @@ admg_optim <- function(
                 tmp[cntr, kj] <- (n_tilde - 1) + .fill(tmp[cntr, kj])
                 tmp[cntr, n_d + ikC] <- -1 + .fill(tmp[cntr, n_d + ikC])
                 rhs_m1[cntr] <- n_tilde
-                m1lup <- rbind(m1lup, data.frame(i = i, j = j, k = k, 
+                m1lup <- rbind(m1lup, data.frame(i = i, j = j, k = k,
                   l = NA, m = NA, C = C, idx = cntr, which = "K2"))
                 cntr <- cntr + 1
               } else {
@@ -390,7 +399,7 @@ admg_optim <- function(
                 tmp[cntr, ik] <- (n_tilde - 1) + .fill(tmp[cntr, ik])
                 tmp[cntr, jk] <- (n_tilde - 1) + .fill(tmp[cntr, jk])
                 rhs_m1[cntr] <- 2 * n_tilde
-                m1lup <- rbind(m1lup, data.frame(i = i, j = j, k = k, 
+                m1lup <- rbind(m1lup, data.frame(i = i, j = j, k = k,
                   l = NA, m = NA, C = C, idx = cntr, which = "K3a"))
                 cntr <- cntr + 1
                 for (k2 in setdiff(seq_len(d), c(i, j, k))) {
@@ -398,7 +407,7 @@ admg_optim <- function(
                     ### K3b
                     ik <- n_d + n_z + xij$idx[xij$i == i & xij$j == k]
                     jk2 <- n_d + n_z + xij$idx[xij$i == j & xij$j == k2]
-                    kk2c <- n_d + n_z + n_d 
+                    kk2c <- n_d + n_z + n_d
                     kk2c <- kk2c + max(
                       lbijc$idx[lbijc$i == k & lbijc$j == k2 & lbijc$C == C],
                       lbijc$idx[lbijc$i == k2 & lbijc$j == k & lbijc$C == C]
@@ -409,7 +418,7 @@ admg_optim <- function(
                     tmp[cntr, kk2c] <- -1 + .fill(tmp[cntr, kk2c])
                     tmp[cntr, n_lb + kk2c] <- (n_tilde - 2) + .fill(tmp[cntr, n_lb + kk2c])
                     rhs_m1[cntr] <- 3 * n_tilde - 4
-                    m1lup <- rbind(m1lup, data.frame(i = i, j = j, k = k, 
+                    m1lup <- rbind(m1lup, data.frame(i = i, j = j, k = k,
                       l = NA, m = NA, C = C, idx = cntr, which = "K3b"))
                     cntr <- cntr + 1
                   }
@@ -430,13 +439,13 @@ admg_optim <- function(
                 tmp[cntr, ik] <- (n_tilde - 2) + .fill(tmp[cntr, ik])
                 tmp[cntr, lk] <- (n_tilde - 2) + .fill(tmp[cntr, lk])
                 rhs_m1[cntr] <- 2 * (n_tilde - 1)
-                m1lup <- rbind(m1lup, data.frame(i = i, j = j, k = k, 
+                m1lup <- rbind(m1lup, data.frame(i = i, j = j, k = k,
                   l = l, m = NA, C = C, idx = cntr, which = "K4ab"))
                 cntr <- cntr + 1
                 ### K4cd
                 for (k2 in setdiff(seq_len(d), c(i, j, k, l))) {
                   if (k2 %in% CC[[C]]) {
-                    kk2c <- n_d + n_z + n_d 
+                    kk2c <- n_d + n_z + n_d
                     kk2c <- kk2c + max(
                       lbijc$idx[lbijc$i == k & lbijc$j == k2 & lbijc$C == C],
                       lbijc$idx[lbijc$i == k2 & lbijc$j == k & lbijc$C == C]
@@ -450,7 +459,7 @@ admg_optim <- function(
                     tmp[cntr, lk] <- (n_tilde - 3) + .fill(tmp[cntr, lk])
                     tmp[cntr, n_lb + kk2c] <- (n_tilde - 3) + .fill(tmp[cntr, n_lb + kk2c])
                     rhs_m1[cntr] <- 3 * n_tilde - 7
-                    m1lup <- rbind(m1lup, data.frame(i = i, j = j, k = k, 
+                    m1lup <- rbind(m1lup, data.frame(i = i, j = j, k = k,
                       l = l, m = NA, C = C, idx = cntr, which = "K4cd"))
                     cntr <- cntr + 1
                   }
@@ -473,13 +482,13 @@ admg_optim <- function(
                   tmp[cntr, lk] <- (n_tilde - 3) + .fill(tmp[cntr, lk])
                   tmp[cntr, mk] <- (n_tilde - 3) + .fill(tmp[cntr, mk])
                   rhs_m1[cntr] <- 2 * (n_tilde - 2)
-                  m1lup <- rbind(m1lup, data.frame(i = i, j = j, k = k, 
+                  m1lup <- rbind(m1lup, data.frame(i = i, j = j, k = k,
                     l = l, m = m, C = C, idx = cntr, which = "K5a"))
                   cntr <- cntr + 1
                   for (k2 in setdiff(seq_len(d), c(i, j, k, l, m))) {
                     ### K5b
                     if (k2 %in% CC[[C]]) {
-                      kk2c <- n_d + n_z + n_d 
+                      kk2c <- n_d + n_z + n_d
                       kk2c <- kk2c + max(
                         lbijc$idx[lbijc$i == k & lbijc$j == k2 & lbijc$C == C],
                         lbijc$idx[lbijc$i == k2 & lbijc$j == k & lbijc$C == C]
@@ -492,7 +501,7 @@ admg_optim <- function(
                       tmp[cntr, kk2c] <- -1 + .fill(tmp[cntr, kk2c])
                       tmp[cntr, n_lb + kk2c] <- (n_tilde - 4) + .fill(tmp[cntr, n_lb + kk2c])
                       rhs_m1[cntr] <- 3 * n_tilde - 10
-                      m1lup <- rbind(m1lup, data.frame(i = i, j = j, k = k, 
+                      m1lup <- rbind(m1lup, data.frame(i = i, j = j, k = k,
                         l = l, m = m, C = C, idx = cntr, which = "K5b"))
                       cntr <- cntr + 1
                     }
@@ -712,7 +721,7 @@ admg_optim <- function(
     }
     structure(
       list(M1 = M1, M2 = M2), edge = edge, bedge = bedge,
-      dcon = zijC, antlen = leij, minlen = lijC, 
+      dcon = zijC, antlen = leij, minlen = lijC,
       pind = deij, sedge = sedge, bminlen = bminlen,
       bminleni = bminleni
     )

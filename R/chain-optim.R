@@ -2,6 +2,8 @@ chain_optim <- function(
     tests, d = 3, max_size = d - 2, V = letters[1:d],
     trafo = \(x) as.numeric(x <= 0.05),
     weight_type = c("const", "inv", "log", "size"),
+    warmstart = NULL,
+    edgehints = NULL,
     gurobi_args = list(),
     verbose = FALSE, 
     cache = TRUE,

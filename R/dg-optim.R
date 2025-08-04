@@ -2,6 +2,8 @@ dag_optim <- function(
     tests, d = 3, max_size = d - 2, V = letters[1:d],
     trafo = \(x) as.numeric(x <= 0.05),
     weight_type = c("const", "inv", "log", "size"),
+    warmstart = NULL,
+    edgehints = NULL,
     gurobi_args = list(),
     verbose = FALSE, 
     cache = TRUE,
@@ -124,14 +126,22 @@ dag_optim <- function(
   )
   model$branchpriority <- rep(0, length(model$obj))
   model$branchpriority[.multigrep(c("xij"), names(model$obj))] <- 1
-  model$start <- rep(NA, length(model$obj))
-  model$start[grep("xij", names(model$obj))] <- 0
   guess <- rep(0, n_d)
+  ws <- rep(0, n_d)
   for (i in seq_len(d)) {
     for (j in setdiff(seq_len(d), i)) {
       xidx <- xij$idx[xij$i == i & xij$j == j]
       zidx <- c(zijc$idx[zijc$i == i & zijc$j == j], zijc$idx[zijc$i == j & zijc$j == i])
-      guess[xidx] <- max(p[zidx])
+      if (is.null(edgehints)) {
+        guess[xidx] <- max(p[zidx])
+      } else {
+        guess[xidx] <- edgehints[i, j]
+      }
+      if (is.null(warmstart)) {
+        ws[xidx] <- 0
+      } else {
+        ws[xidx] <- warmstart[i, j]
+      }
     }
   }
   model$varhintval <- rep(NA, length(model$obj))
@@ -141,6 +151,8 @@ dag_optim <- function(
   model$varhintpri[grep("zijc", names(model$obj))] <- 2
   model$varhintpri[grep("xij", names(model$obj))] <- 2 - guess
   model$varhintpri <- as.integer(model$varhintpri)
+  model$start <- rep(NA, length(model$obj))
+  model$start[grep("xij", names(model$obj))] <- ws
   model$modelsense <- "min"
   model$vtype <- rep(c("C", "B", "I", "B", "I"), 
     c(n_z, n_z + n_d, n_z + n_d + sum(nN1), n_d, sum(nlc)))

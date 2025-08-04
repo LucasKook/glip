@@ -24,6 +24,8 @@ seed <- as.numeric(darg(args[6], 12))
 alpha <- as.numeric(darg(args[7], 0.01))
 use_oracle_tests <- as.numeric(darg(args[8], 0))
 sim_name <- darg(args[9], "test-run")
+wtype <- darg(args[10], "log")
+walltime <- 60
 save <- TRUE
 
 # Parameters for running the optimization
@@ -72,21 +74,6 @@ if (!use_oracle_tests) {
 }
 input_sep <- mean(otests$p.value != 1 * (tests$p.value > alpha))
 
-### GLIP
-cat("\nRunning GLIP\n")
-lG <- .get_opt(mode)(tests,
-  d = d, max_size = ms,
-  V = V, cache = cache,
-  trafo = \(x) as.numeric(x <= alpha),
-  weight_type = "const",
-  gurobi_args = list(
-    Threads = ncores
-  ), mode = mode
-)
-
-GLIP <- .compute_graphical_representation(lG$graph, ms, mode)
-runtime_GLIP <- as.difftime(lG$optim$runtime, units = "secs")
-
 ### PC ALG (only under causal sufficiency/DAG case)
 cat("\nRunning PC\n")
 tstart <- Sys.time()
@@ -107,6 +94,33 @@ runtime_FCI <- tstop - tstart
 fciout <- as(fcires@amat, "matrix")
 FCI <- fciout
 
+### R2sortability
+cat("\nRunning R2SORT\n")
+tstart <- Sys.time()
+r2s <- 1 * (cd$r2_sort_regress(py_data) != 0)
+tstop <- Sys.time()
+runtime_R2SORT <- tstop - tstart
+dimnames(r2s) <- list(V, V)
+R2SORT <- .compute_graphical_representation(r2s, ms, mode)
+
+### GLIP
+cat("\nRunning GLIP\n")
+lG <- .get_opt(mode)(tests,
+  d = d, max_size = ms,
+  V = V, cache = cache,
+  trafo = \(x) as.numeric(x <= alpha),
+  weight_type = wtype,
+  warmstart = NULL,
+  edgehints = 1 * (R2SORT != 0),
+  gurobi_args = list(
+    Threads = ncores,
+    TimeLimit = walltime
+  ), mode = mode
+)
+
+GLIP <- .compute_graphical_representation(lG$graph, ms, mode)
+runtime_GLIP <- as.difftime(lG$optim$runtime, units = "secs")
+
 ### NOTEARS
 cat("\nRunning NOTEARS\n")
 model <- dagma$DagmaLinear(loss_type = "l2")
@@ -116,15 +130,6 @@ tstop <- Sys.time()
 runtime_NOTEARS <- tstop - tstart
 dimnames(nto) <- list(V, V)
 NOTEARS <- .compute_graphical_representation(nto, ms, mode)
-
-### R2sortability
-cat("\nRunning R2SORT\n")
-tstart <- Sys.time()
-r2s <- 1 * (cd$r2_sort_regress(py_data) != 0)
-tstop <- Sys.time()
-runtime_R2SORT <- tstop - tstart
-dimnames(r2s) <- list(V, V)
-R2SORT <- .compute_graphical_representation(r2s, ms, mode)
 
 ### Evaluate and summarize results
 outputs <- list(
