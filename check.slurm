@@ -36,8 +36,8 @@ export GUROBI_HOME=/home/lkook/gurobi1202/
 export PATH=$PATH:/home/lkook/gurobi1202/linux64/bin
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/home/lkook/gurobi1202/linux64/lib
 
-for d in {3..16}; do
-  for ((ms = 1; ms <= d - 2; ms++)); do
+for d in {9..16}; do
+  for ((ms = 1; ms <= 2; ms++)); do
     for mode in dag admg; do
       echo "Running with d=$d, ms=$ms, mode=$mode"
       Rscript --vanilla ./inst/code/check-random-graphs.R $d 0.5 $mode 1 $ms 1
