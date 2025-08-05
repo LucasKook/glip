@@ -25,7 +25,7 @@ alpha <- as.numeric(darg(args[7], 0.01))
 use_oracle_tests <- as.numeric(darg(args[8], 0))
 sim_name <- darg(args[9], "test-run")
 wtype <- darg(args[10], "log")
-walltime <- 60
+walltime <- 1800
 save <- TRUE
 
 # Parameters for running the optimization
