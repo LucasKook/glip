@@ -44,7 +44,7 @@ simname=full
 wtype=log
 for d in {3..8}; do
   for mode in dag admg; do
-    for n in 100 200 400 800 1600 3200; do
+    for n in 100 400 3200; do
       for seed in {1..50}; do
         echo "Running with d=$d, mode=$mode, seed=$seed"
         Rscript --vanilla ./inst/code/run-benchmark.R $mode $d $ms $deg $n $seed $alpha $uot $simname $wtype
