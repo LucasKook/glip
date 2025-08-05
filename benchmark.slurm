@@ -46,7 +46,7 @@ nsim=50
 for d in {3..8}; do
   for mode in dag admg; do
     for n in 100 400 3200; do
-      echo "Running with d=$d, mode=$mode, seed=$seed"
+      echo "Running with d=$d, mode=$mode, ms=$ms, deg=$deg, alpha=$alpha, wtype=$wtype, n=$n"
       Rscript --vanilla ./inst/code/run-benchmark.R $mode $d $ms $deg $n $nsim $alpha $uot $simname $wtype
     done
   done
