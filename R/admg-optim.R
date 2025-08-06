@@ -597,8 +597,8 @@ admg_optim <- function(
     )
 
     A[
-      which(stringr::str_detect(rownames(A), "labs")),
-      which(stringr::str_detect(colnames(A), "tijC|zijC"))
+      grep("labs", rownames(A)),
+      .multigrep(c("tijC", "zijC"), colnames(A))
     ] <- cmat_t
 
     ### Min constraint N1

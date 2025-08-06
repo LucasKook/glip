@@ -463,7 +463,7 @@ chain_optim <- function(
 
     ### Indicators dij-> (C2) + (C3)
 
-    A[grep("indic", rownames(A)), grep("leij|deij", colnames(A))] <-
+    A[grep("indic", rownames(A)), .multigrep(c("leij", "deij"), colnames(A))] <-
     rbind(
       cbind(diag(n_d), -diag(n_d)), # (C2)
       cbind(-diag(n_d), (d - 1) * diag(n_d)) # (C3)
@@ -474,7 +474,7 @@ chain_optim <- function(
       cat("\nWorking on constraint CH1ab")
     }
 
-    tmp <- A[grep("acyc", rownames(A)), grep("leij|deij", colnames(A))]
+    tmp <- A[grep("acyc", rownames(A)), .multigrep(c("leij", "deij"), colnames(A))]
     cntr <- 1
     for (i in seq_len(d)) {
       for (j in setdiff(seq_len(d), i)) {
@@ -492,7 +492,7 @@ chain_optim <- function(
         cntr <- cntr + 1
       }
     }
-    A[grep("acyc", rownames(A)), grep("leij|deij", colnames(A))] <- tmp
+    A[grep("acyc", rownames(A)), .multigrep(c("leij", "deij"), colnames(A))] <- tmp
 
     ### Auxiliary variables for min constraint N1 (D1), (D2)
 
@@ -500,7 +500,7 @@ chain_optim <- function(
       cat("\nWorking on constraints D1-D2")
     }
 
-    tmp <- A[grep("minN1", rownames(A)), grep("dxij|leij|nijk", colnames(A))]
+    tmp <- A[grep("minN1", rownames(A)), .multigrep(c("dxij", "leij", "nijk"), colnames(A))]
     rN1 <- rep(0, sum(nN1))
     cntr <- 1
     skip <- 2 * n_d
@@ -527,7 +527,7 @@ chain_optim <- function(
     }
 
     model$rhs[grep("d1d2min", names(model$rhs))] <- rN1
-    A[grep("minN1", rownames(A)), grep("dxij|leij|nijk", colnames(A))] <- tmp
+    A[grep("minN1", rownames(A)), .multigrep(c("dxij", "leij", "nijk"), colnames(A))] <- tmp
 
     ### CONSTRAINTS FOR LINEARIZING THE OBJECTIVE
 
@@ -537,8 +537,8 @@ chain_optim <- function(
     )
 
     A[
-      which(stringr::str_detect(rownames(A), "labs")),
-      which(stringr::str_detect(colnames(A), "tijC|zijC"))
+      grep("labs", rownames(A)),
+      .multigrep(c("tijC", "zijC"), colnames(A))
     ] <- cmat_t
 
     ### Max constraint Z1

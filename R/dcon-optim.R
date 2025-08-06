@@ -345,7 +345,7 @@ dcon_optim <- function(
 
     ### Indicators dij-> (C2) + (C3)
 
-    A[grep("indic", rownames(A)), grep("leij|deij", colnames(A))] <-
+    A[grep("indic", rownames(A)), .multigrep(c("leij", "deij"), colnames(A))] <-
     rbind(
       cbind(diag(n_d), -diag(n_d)), # (C2)
       cbind(-diag(n_d), (d - 1) * diag(n_d)) # (C3)
@@ -376,7 +376,7 @@ dcon_optim <- function(
       cat("\nWorking on constraints D1-D2")
     }
 
-    tmp <- A[grep("minN1", rownames(A)), grep("dxij|leij|nijk", colnames(A))]
+    tmp <- A[grep("minN1", rownames(A)), .multigrep(c("dxij", "leij", "nijk"), colnames(A))]
     rN1 <- rep(0, sum(nN1))
     cntr <- 1
     skip <- 2 * n_d
@@ -403,7 +403,7 @@ dcon_optim <- function(
     }
 
     model$rhs[grep("d1d2min", names(model$rhs))] <- rN1
-    A[grep("minN1", rownames(A)), grep("dxij|leij|nijk", colnames(A))] <- tmp
+    A[grep("minN1", rownames(A)), .multigrep(c("dxij", "leij", "nijk"), colnames(A))] <- tmp
 
     ### CONSTRAINTS FOR LINEARIZING THE OBJECTIVE
 
@@ -413,8 +413,8 @@ dcon_optim <- function(
     )
 
     A[
-      which(stringr::str_detect(rownames(A), "labs")),
-      which(stringr::str_detect(colnames(A), "tijC|zijC"))
+      grep("labs", rownames(A)),
+      .multigrep(c("tijC", "zijC"), colnames(A))
     ] <- cmat_t
 
     ### Min constraint R1
