@@ -125,7 +125,7 @@ dag_optim <- function(
     rep(0, sum(nlc)) # aux M1
   )
   model$branchpriority <- rep(0, length(model$obj))
-  model$branchpriority[.multigrep(c("xij"), names(model$obj))] <- 1
+  model$branchpriority[grep("xij", names(model$obj))] <- 1
   guess <- rep(0, n_d)
   ws <- rep(0, n_d)
   for (i in seq_len(d)) {
@@ -214,7 +214,7 @@ dag_optim <- function(
 
     A[
       grep("ZLcons", rownames(A)),
-      grep("zijC|lijc", colnames(A))
+      .multigrep(c("zijC", "lijc"), colnames(A))
     ] <- cmat_zl
 
 
@@ -224,7 +224,7 @@ dag_optim <- function(
       cat("\nWorking on constraint L1-5")
     }
 
-    tmp <- A[grep("m1min", rownames(A)), grep(c("dxij|lijc|uijklm"), colnames(A))]
+    tmp <- A[grep("m1min", rownames(A)), .multigrep(c("dxij", "lijc", "uijklm"), colnames(A))]
     skip <- n_d + n_z
     cntr <- 1
     rhs_m1 <- rep(0, sum(nlc))
@@ -319,13 +319,12 @@ dag_optim <- function(
     }
 
     nM1 <- cntr - 1
-
-    A[grep("m1min", rownames(A)), grep(c("dxij|lijc|uijklm"), colnames(A))] <- tmp
+    A[grep("m1min", rownames(A)), .multigrep(c("dxij", "lijc", "uijklm"), colnames(A))] <- tmp
     model$rhs[grep("m1min", names(model$rhs))] <- rhs_m1
 
     ### Indicators dij-> (C2) + (C3)
 
-    A[grep("indic", rownames(A)), grep("leij|deij", colnames(A))] <-
+    A[grep("indic", rownames(A)), .multigrep(c("leij", "deij"), colnames(A))] <-
     rbind(
       cbind(diag(n_d), -diag(n_d)), # (C2)
       cbind(-diag(n_d), (d - 1) * diag(n_d)) # (C3)
@@ -361,7 +360,7 @@ dag_optim <- function(
       cat("\nWorking on constraints D1-D2")
     }
 
-    tmp <- A[grep("minN1", rownames(A)), grep("dxij|leij|nijk", colnames(A))]
+    tmp <- A[grep("minN1", rownames(A)), .multigrep(c("dxij", "leij", "nijk"), colnames(A))]
     rN1 <- rep(0, sum(nN1))
     cntr <- 1
     skip <- 2 * n_d
@@ -388,7 +387,7 @@ dag_optim <- function(
     }
 
     model$rhs[grep("d1d2min", names(model$rhs))] <- rN1
-    A[grep("minN1", rownames(A)), grep("dxij|leij|nijk", colnames(A))] <- tmp
+    A[grep("minN1", rownames(A)), .multigrep(c("dxij", "leij", "nijk"), colnames(A))] <- tmp
 
     ### CONSTRAINTS FOR LINEARIZING THE OBJECTIVE
 
@@ -398,8 +397,8 @@ dag_optim <- function(
     )
 
     A[
-      which(stringr::str_detect(rownames(A), "labs")),
-      which(stringr::str_detect(colnames(A), "tijC|zijC"))
+      grep("labs", rownames(A)),
+      .multigrep(c("tijC", "zijC"), colnames(A))
     ] <- cmat_t
 
     ### Min constraint N1
