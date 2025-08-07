@@ -80,34 +80,39 @@ prf1 <- function(G1, G2, ...) {
 }
 
 #' @exportS3Method prf1 default
-prf1.default <- function(G1, G2) {
+prf1.default <- function(G1, G2, summarize = TRUE) {
   .check_graphs(G1, G2)
   d <- nrow(G1)
+  V <- .get_node_set(G1)
   res <- lapply(seq_len(d), \(k) {
     rbind(
       data.frame(
-        node = k,
+        node = V[k],
         which = "head",
         .classification_metrics(G1[, k], G2[, k])
       ),
       data.frame(
-        node = k,
+        node = V[k],
         which = "tail",
         .classification_metrics(G1[k, ], G2[k, ])
       )
     )
   }) |> do.call("rbind", args = _)
-  res |>
-    dplyr::group_by(which) |>
-    dplyr::summarize_at(c("precision", "recall", "f1"), mean, na.rm = TRUE)
+  if (summarize) {
+    res |>
+      dplyr::group_by(which) |>
+      dplyr::summarize_if(is.numeric, mean, na.rm = TRUE)
+  } else {
+    res
+  }
 }
 
 #' @exportS3Method prf1 pag
-prf1.pag <- function(G1, G2) {
+prf1.pag <- function(G1, G2, summarize = TRUE) {
   .check_graphs(G1, G2)
   lapply(1:3, \(mark) {
-    ret <- prf1.default(1 * (G1 == mark), 1 * (G2 == mark))
-    ret$mark <- mark
+    ret <- prf1.default(1 * (G1 == mark), 1 * (G2 == mark), summarize)
+    ret$mark <- as.character(mark)
     ret
   }) |> do.call("rbind", args = _)
 }
@@ -136,12 +141,15 @@ sep <- function(G1, G2, mode, max_size = NULL, oracle = NULL, ...) {
 
 .classification_metrics <- function(true_vec, pred_vec) {
   tp <- sum(true_vec == 1 & pred_vec == 1)
-  fn <- sum(true_vec == 1 & pred_vec == 0)
   fp <- sum(true_vec == 0 & pred_vec == 1)
+  tn <- sum(true_vec == 0 & pred_vec == 0)
+  fn <- sum(true_vec == 1 & pred_vec == 0)
 
   precision <- ifelse(tp + fp == 0, NA, tp / (tp + fp))
   recall <- ifelse(tp + fn == 0, NA, tp / (tp + fn))
   f1 <- ifelse(precision + recall == 0, NA, 2 * precision * recall / (precision + recall))
-
-  data.frame(precision = precision, recall = recall, f1 = f1)
+  fdr <- ifelse(tp + fp == 0, NA, fp / (tp + fp))
+  nf <- sqrt((tn + fn) * (fp + tp) * (tn + fp) * (fn + tp))
+  mcc <- ifelse(nf == 0, NA, (tp * tn - fp * fn) / nf)
+  data.frame(precision = precision, recall = recall, f1 = f1, fdr = fdr, mcc = mcc)
 }
