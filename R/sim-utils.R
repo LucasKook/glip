@@ -105,7 +105,7 @@ prf1.default <- function(predicted, groundtruth, summarize = TRUE) {
   }
   res |>
     dplyr::group_by(which) |>
-    dplyr::summarize_at(c("precision", "recall", "f1", "fdr", "mcc", "acc", "tpr"), mean, na.rm = TRUE)
+    dplyr::summarize_at(c("precision", "recall", "f1", "fdr", "mcc", "acc"), mean, na.rm = TRUE)
 }
 
 #' @exportS3Method prf1 pag
@@ -163,6 +163,5 @@ sep <- function(
   nf <- exp(sum(0.5 * log(c(tn + fn, fp + tp, tn + fp, fn + tp))))
   mcc <- ifelse(nf == 0, NA, (tp * tn - fp * fn) / nf)
   acc <- mean(pred_vec == true_vec)
-  tpr <- tp / length(true_vec)
-  data.frame(precision = precision, recall = recall, f1 = f1, fdr = fdr, mcc = mcc, acc = acc, tpr = tpr)
+  data.frame(precision = precision, recall = recall, f1 = f1, fdr = fdr, mcc = mcc, acc = acc)
 }

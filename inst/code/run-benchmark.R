@@ -62,16 +62,20 @@ out <- lapply(seq_len(nsim), \(seed) {
     "dag" = graph$DAG,
     "admg" = graph$ADMG
   )
-  ORACLE <- .compute_graphical_representation(gt, ms, mode)
+  ORACLE <- .compute_graphical_representation(gt, d - 2, mode)
 
   ### Run CITs
   cat("\nRunning conditional independence tests\n")
-  tests <- otests <- .compute_oracle_tests(gt, ms, mode)
+  tests <- otests <- tests_ms <- otests_ms <- .compute_oracle_tests(gt, d - 2, mode)
   if (!use_oracle_tests) {
     tests <- learn_graph(
-      data = data, max_size = ms, mode = mode, test_args = targs,
+      data = data, max_size = d - 2, mode = mode, test_args = targs,
       return_tests_only = TRUE
     )
+  }
+  if (ms < d - 2) {
+    tests_ms <- dplyr::filter(tests_ms, size <= ms)
+    otests_ms <- dplyr::filter(otests_ms, size <= ms)
   }
   input_sep <- mean(otests$p.value != 1 * (tests$p.value > alpha))
 
@@ -102,11 +106,11 @@ out <- lapply(seq_len(nsim), \(seed) {
   tstop <- Sys.time()
   runtime_R2SORT <- tstop - tstart
   dimnames(r2s) <- list(V, V)
-  R2SORT <- .compute_graphical_representation(r2s, ms, mode)
+  R2SORT <- .compute_graphical_representation(r2s, d - 2, mode)
 
   ### GLIP
   cat("\nRunning GLIP\n")
-  lG <- .get_opt(mode)(tests,
+  lG <- .get_opt(mode)(tests_ms,
     d = d, max_size = ms,
     V = V, cache = cache,
     trafo = \(x) as.numeric(x <= alpha),
@@ -119,7 +123,7 @@ out <- lapply(seq_len(nsim), \(seed) {
     ), mode = mode
   )
 
-  GLIP <- .compute_graphical_representation(lG$graph, ms, mode)
+  GLIP <- .compute_graphical_representation(lG$graph, d - 2, mode)
   runtime_GLIP <- as.difftime(lG$optim$runtime, units = "secs")
 
   ### NOTEARS
@@ -130,7 +134,7 @@ out <- lapply(seq_len(nsim), \(seed) {
   tstop <- Sys.time()
   runtime_NOTEARS <- tstop - tstart
   dimnames(nto) <- list(V, V)
-  NOTEARS <- .compute_graphical_representation(nto, ms, mode)
+  NOTEARS <- .compute_graphical_representation(nto, d - 2, mode)
 
   ### Evaluate and summarize results
   outputs <- list(
@@ -152,6 +156,10 @@ out <- lapply(seq_len(nsim), \(seed) {
     outputs <- outputs[-grep("PC", names(outputs))]
     timings <- timings[-grep("PC", names(timings))]
   }
+  if (mode == "dag") { # remove FCI in case of DAGs
+    outputs <- outputs[-grep("FCI", names(outputs))]
+    timings <- timings[-grep("FCI", names(timings))]
+  }
 
   cat("\nEvaluating and summarizing results\n")
   res <- lapply(seq_along(outputs), \(idx) {
@@ -164,7 +172,7 @@ out <- lapply(seq_len(nsim), \(seed) {
     }
     SEP <- sep(learned, ORACLE, ifelse(mode == "dag", "pdag", "mag"), ms,
       precomputed_predicted = precomputed_predicted,
-      precomputed_groundtruth = otests$p.value
+      precomputed_groundtruth = otests_ms$p.value
     )
     CM <- prf1(learned, ORACLE)
     data.frame(

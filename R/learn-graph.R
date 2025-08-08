@@ -3,7 +3,7 @@ learn_graph <- function(
     parallel = FALSE, ncores = NULL, trafo = \(x) as.numeric(x <= 0.05),
     weight_type = "const", warmstart = NULL, edgehints = NULL,
     gurobi_args = list(), test_args = NULL, return_tests_only = FALSE,
-    verbose = FALSE, cache = TRUE, ...) {
+    verbose = FALSE, cache = TRUE, all_discrete = FALSE, ...) {
   if (mode %in% c("dmg", "dg")) {
     warning("Using `mode = 'dmg'` or `mode = 'dg'` relies on d-separation
       and thus implicitly assumes a linear Gaussian SCM.")
@@ -25,13 +25,30 @@ learn_graph <- function(
   all_tests <- .list_tests_graph(vars, max_size, naive = naive)
   sets <- all_tests$sets
   fml <- all_tests$formulas
+  if (all_discrete) {
+    fml <- all_tests$coin_formulas
+  }
 
   pb <- utils::txtProgressBar(min = 0, max = length(fml), style = 3, width = 60)
   res <- my_apply(seq_along(fml), \(iter) {
     utils::setTxtProgressBar(pb, iter)
-    res <- do.call("comets", c(list(
-      formula = fml[[iter]], data = data, test = test
-    ), test_args))
+    if (all_discrete) {
+      res <- tryCatch(
+        {
+          tst <- coin::independence_test(fml[[iter]], data)
+          pv <- as.numeric(coin::pvalue(tst))
+          if (is.nan(pv)) {
+            pv <- .Machine$double.eps
+          }
+          list(p.value = pv)
+        },
+        error = \(e) list(p.value = .Machine$double.eps)
+      )
+    } else {
+      res <- do.call("comets", c(list(
+        formula = fml[[iter]], data = data, test = test
+      ), test_args))
+    }
     data.frame(
       X = sets[[iter]][["X"]],
       Y = sets[[iter]][["Y"]],
@@ -90,7 +107,22 @@ learn_graph <- function(
   fml <- lapply(sets, \(set) {
     .to_formula_graph(set[["Y"]], set[["X"]], set[["Z"]], ...)
   })
-  list(sets = sets, formulas = fml)
+  cfml <- lapply(sets, \(set) {
+    .to_formula_coin(set[["Y"]], set[["X"]], set[["Z"]], ...)
+  })
+  list(sets = sets, formulas = fml, coin_formulas = cfml)
+}
+
+.to_formula_coin <- function(X, Y, Z) {
+  if (identical(Z, character(0))) {
+    return(as.formula(paste0(Y, "~", X)))
+  }
+  as.formula(
+    paste0(
+      Y, "~", paste0(X, collapse = "+"), "| fct_lump_min(interaction(",
+      paste0(Z, collapse = ","), ", drop = TRUE), min = 3)"
+    )
+  )
 }
 
 .to_formula_graph <- function(X, Y, Z) {
