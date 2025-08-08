@@ -40,10 +40,10 @@ ms=-1
 deg=2
 alpha=0.01
 uot=0
-simname=full
+simname=fixed
 wtype=log
-nsim=50
-for d in {3..8}; do
+nsim=20
+for d in {3..6}; do
   for mode in dag admg; do
     for n in 100 400 3200; do
       echo "Running with d=$d, mode=$mode, ms=$ms, deg=$deg, alpha=$alpha, wtype=$wtype, n=$n"
