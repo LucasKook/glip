@@ -98,13 +98,12 @@ prf1.default <- function(G1, G2, summarize = TRUE) {
       )
     )
   }) |> do.call("rbind", args = _)
-  if (summarize) {
-    res |>
-      dplyr::group_by(which) |>
-      dplyr::summarize_if(is.numeric, mean, na.rm = TRUE)
-  } else {
-    res
+  if (!summarize) {
+    return(res)
   }
+  res |>
+    dplyr::group_by(which) |>
+    dplyr::summarize_at(c("precision", "recall", "f1", "fdr", "mcc"), mean, na.rm = TRUE)
 }
 
 #' @exportS3Method prf1 pag
@@ -112,7 +111,7 @@ prf1.pag <- function(G1, G2, summarize = TRUE) {
   .check_graphs(G1, G2)
   lapply(1:3, \(mark) {
     ret <- prf1.default(1 * (G1 == mark), 1 * (G2 == mark), summarize)
-    ret$mark <- as.character(mark)
+    ret$mark <- mark
     ret
   }) |> do.call("rbind", args = _)
 }
