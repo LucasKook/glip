@@ -158,23 +158,35 @@ out <- lapply(seq_len(nsim), \(seed) {
     method <- names(outputs)[[idx]]
     learned <- outputs[[idx]]
     SHD <- shd(learned, ORACLE)
-    if (method != "GLIP") {
-      SEP <- sep(learned, ORACLE, ifelse(mode == "dag", "pdag", "mag"), ms, oracle = otests)
-    } else {
-      SEP <- mean(lG$tests$dcon != 1 * (otests$p.value < alpha))
+    precomputed_predicted <- NULL
+    if (method == "GLIP") {
+      precomputed_predicted <- 1 - lG$tests$dcon
     }
+    SEP <- sep(learned, ORACLE, ifelse(mode == "dag", "pdag", "mag"), ms,
+      precomputed_predicted = precomputed_predicted,
+      precomputed_groundtruth = otests$p.value
+    )
     CM <- prf1(learned, ORACLE)
     data.frame(
       method = method,
       shd = SHD,
-      sep = SEP,
+      sep = 1 - SEP$acc,
+      sep_prec = 1 - SEP$precision,
+      sep_rec = 1 - SEP$recall,
+      sep_f1 = 1 - SEP$f1,
+      sep_mcc = SEP$mcc,
+      sep_fdr = SEP$fdr,
       input_sep = input_sep,
       tail_prec = 1 - mean(CM$precision[CM$which == "tail"], na.rm = TRUE),
       tail_rec = 1 - mean(CM$recall[CM$which == "tail"], na.rm = TRUE),
       tail_f1 = 1 - mean(CM$f1[CM$which == "tail"], na.rm = TRUE),
+      tail_fdr = mean(CM$fdr[CM$which == "tail"], na.rm = TRUE),
+      tail_mcc = mean(CM$mcc[CM$which == "tail"], na.rm = TRUE),
       head_prec = 1 - mean(CM$precision[CM$which == "head"], na.rm = TRUE),
       head_rec = 1 - mean(CM$recall[CM$which == "head"], na.rm = TRUE),
       head_f1 = 1 - mean(CM$f1[CM$which == "head"], na.rm = TRUE),
+      head_fdr = mean(CM$fdr[CM$which == "head"], na.rm = TRUE),
+      head_mcc = mean(CM$mcc[CM$which == "head"], na.rm = TRUE),
       time = as.difftime(timings[[idx]], units = "secs"),
       d = d, ms = ms, n = n, degree = degree, mode = mode, wtype = wtype,
       use_oracle_tests = use_oracle_tests, iter = seed, seed = tseed

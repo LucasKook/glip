@@ -75,12 +75,14 @@ shd <- function(G1, G2, ...) {
   mean(1 * (G1 != G2))
 }
 
-prf1 <- function(G1, G2, ...) {
+prf1 <- function(predicted, groundtruth, ...) {
   UseMethod("prf1")
 }
 
 #' @exportS3Method prf1 default
-prf1.default <- function(G1, G2, summarize = TRUE) {
+prf1.default <- function(predicted, groundtruth, summarize = TRUE) {
+  G1 <- predicted
+  G2 <- groundtruth
   .check_graphs(G1, G2)
   d <- nrow(G1)
   V <- .get_node_set(G1)
@@ -103,11 +105,13 @@ prf1.default <- function(G1, G2, summarize = TRUE) {
   }
   res |>
     dplyr::group_by(which) |>
-    dplyr::summarize_at(c("precision", "recall", "f1", "fdr", "mcc"), mean, na.rm = TRUE)
+    dplyr::summarize_at(c("precision", "recall", "f1", "fdr", "mcc", "acc", "tpr"), mean, na.rm = TRUE)
 }
 
 #' @exportS3Method prf1 pag
-prf1.pag <- function(G1, G2, summarize = TRUE) {
+prf1.pag <- function(predicted, groundtruth, summarize = TRUE) {
+  G1 <- predicted
+  G2 <- groundtruth
   .check_graphs(G1, G2)
   lapply(1:3, \(mark) {
     ret <- prf1.default(1 * (G1 == mark), 1 * (G2 == mark), summarize)
@@ -117,18 +121,26 @@ prf1.pag <- function(G1, G2, summarize = TRUE) {
 }
 
 ### Separation agreement
-sep <- function(G1, G2, mode, max_size = NULL, oracle = NULL, ...) {
+sep <- function(
+    predicted, groundtruth, mode, max_size = NULL,
+    precomputed_predicted = NULL, precomputed_groundtruth = NULL, ...) {
+  G1 <- predicted
+  G2 <- groundtruth
   .check_graphs(G1, G2)
   if (isTRUE(all.equal(unclass(G1), unclass(G2)))) {
-    return(0)
+    return(data.frame(precision = 1, recall = 1, f1 = 1, fdr = 0, mcc = 1, acc = 1))
   }
-  t1 <- .compute_oracle_tests(G1, max_size = max_size, mode = mode)
-  if (!is.null(oracle)) {
-    t2 <- oracle
+  if (!is.null(precomputed_predicted)) {
+    t1 <- list(p.value = precomputed_predicted)
+  } else {
+    t1 <- .compute_oracle_tests(G1, max_size = max_size, mode = mode)
+  }
+  if (!is.null(precomputed_groundtruth)) {
+    t2 <- list(p.value = precomputed_groundtruth)
   } else {
     t2 <- .compute_oracle_tests(G2, max_size = max_size, mode = mode)
   }
-  mean(t1$p.value != t2$p.value)
+  .classification_metrics(1 - t1$p.value, 1 - t2$p.value)
 }
 
 ### Helpers
@@ -138,7 +150,7 @@ sep <- function(G1, G2, mode, max_size = NULL, oracle = NULL, ...) {
   stopifnot(rownames(G1) == rownames(G2))
 }
 
-.classification_metrics <- function(true_vec, pred_vec) {
+.classification_metrics <- function(pred_vec, true_vec) {
   tp <- sum(true_vec == 1 & pred_vec == 1)
   fp <- sum(true_vec == 0 & pred_vec == 1)
   tn <- sum(true_vec == 0 & pred_vec == 0)
@@ -148,7 +160,9 @@ sep <- function(G1, G2, mode, max_size = NULL, oracle = NULL, ...) {
   recall <- ifelse(tp + fn == 0, NA, tp / (tp + fn))
   f1 <- ifelse(precision + recall == 0, NA, 2 * precision * recall / (precision + recall))
   fdr <- ifelse(tp + fp == 0, NA, fp / (tp + fp))
-  nf <- sqrt((tn + fn) * (fp + tp) * (tn + fp) * (fn + tp))
+  nf <- exp(sum(0.5 * log(c(tn + fn, fp + tp, tn + fp, fn + tp))))
   mcc <- ifelse(nf == 0, NA, (tp * tn - fp * fn) / nf)
-  data.frame(precision = precision, recall = recall, f1 = f1, fdr = fdr, mcc = mcc)
+  acc <- mean(pred_vec == true_vec)
+  tpr <- tp / length(true_vec)
+  data.frame(precision = precision, recall = recall, f1 = f1, fdr = fdr, mcc = mcc, acc = acc, tpr = tpr)
 }

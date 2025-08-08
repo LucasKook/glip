@@ -47,5 +47,9 @@ lG <- learn_graph(
 
 ### Evaluate
 G <- lG$graph$graph
-.compute_graphical_representation(G, d - 2, mode)
-.compute_graphical_representation(sachs, d - 2, mode)
+learned <- .compute_graphical_representation(G, d - 2, mode)
+groundtruth <- .compute_graphical_representation(sachs, d - 2, mode)
+
+shd(learned, groundtruth)
+sep(learned, groundtruth, mode, 1, precomputed_predicted = 1 - lG$graph$tests$dcon)
+prf1(learned, groundtruth)
