@@ -73,10 +73,11 @@ ORACLE <- .compute_graphical_representation(gt, d - 2, mode)
 
 ### Run CITs
 cat("\nRunning conditional independence tests\n")
-tests <- otests <- tests_ms <- otests_ms <- .compute_oracle_tests(gt, d - 2, mode)
+use_ms <- ifelse(alldiscr, d - 2, ms)
+tests <- otests <- tests_ms <- otests_ms <- .compute_oracle_tests(gt, use_ms, mode, TRUE)
 if (!use_oracle_tests) {
-  tests <- learn_graph(
-    data = fdata, max_size = d - 2, mode = mode, test_args = targs,
+  tests <- tests_ms <- learn_graph(
+    data = fdata, max_size = use_ms, mode = mode, test_args = targs,
     return_tests_only = TRUE, all_discrete = alldiscr
   )
 }
@@ -87,9 +88,16 @@ if (ms < d - 2) {
 input_sep <- mean(otests$p.value != 1 * (tests$p.value > alpha))
 
 ### PC ALG (only under causal sufficiency/DAG case)
+if (alldiscr) {
+  suff <- list(C = cov(data), n = nrow(data))
+  cit <- gaussCItest
+} else {
+  suff <- list(tests = tests, V = V)
+  cit <- lookup_ci
+}
 cat("\nRunning PC\n")
 tstart <- Sys.time()
-pcres <- pcalg::pc(list(tests = tests, V = V), lookup_ci, labels = V, alpha = alpha)
+pcres <- pcalg::pc(suff, cit, labels = V, alpha = alpha)
 tstop <- Sys.time()
 runtime_PC <- tstop - tstart
 pcout <- as(pcres@graph, "matrix")
@@ -98,9 +106,8 @@ PC <- pcout
 ### FCI ALG
 cat("\nRunning FCI\n")
 tstart <- Sys.time()
-fcires <- pcalg::fciPlus(list(tests = tests, V = V), lookup_ci,
-  labels = V,
-  alpha = alpha, selectionBias = FALSE, verbose = FALSE
+fcires <- pcalg::fciPlus(suff, cit,
+  labels = V, alpha = alpha, selectionBias = FALSE, verbose = FALSE
 )
 tstop <- Sys.time()
 runtime_FCI <- tstop - tstart

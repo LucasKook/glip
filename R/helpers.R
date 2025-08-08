@@ -1,10 +1,17 @@
-.compute_oracle_tests <- function(G, max_size = NULL, mode = "dag") {
+.compute_oracle_tests <- function(G, max_size = NULL, mode = "dag", verbose = FALSE) {
   V <- .get_node_set(G)
   if (is.null(max_size)) {
     max_size <- length(V) - 2
   }
   sets <- .list_tests_graph(V, max_size = max_size)$sets
-  lapply(sets, \(x) {
+  if (verbose) {
+    pb <- txtProgressBar(0, length(sets), style = 3, width = 60)
+  }
+  lapply(seq_along(sets), \(iter) {
+    if (verbose) {
+      setTxtProgressBar(pb, iter)
+    }
+    x <- sets[[iter]]
     data.frame(
       X = x$X,
       Y = x$Y,
