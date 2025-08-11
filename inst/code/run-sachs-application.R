@@ -35,11 +35,12 @@ sachs <- matrix(c(
 dimnames(sachs) <- list(nms, nms)
 
 d <- NCOL(dat)
+ms <- 1
 
 ### Learn graph
 lG <- learn_graph(
   dat,
-  max_size = 1, mode = mode,
+  max_size = ms, mode = mode,
   trafo = \(x) as.numeric(x <= 0.01),
   test_args = list(reg_YonZ = "lrm", reg_XonZ = "lrm"),
   gurobi_args = list(Threads = ncores)
