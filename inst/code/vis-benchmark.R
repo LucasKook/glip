@@ -4,10 +4,10 @@
 library("tidyverse")
 library("scales")
 save <- TRUE
-max_time <- 100
+max_time <- 1800
 
 ### List files
-fin <- "./inst/results/benchmark/2025-07-31/full"
+fin <- "./inst/results/benchmark/2025-08-08/fixed"
 fout <- str_replace(fin, "results", "figures")
 if (!dir.exists(fout)) {
   dir.create(fout, recursive = TRUE)
@@ -32,7 +32,7 @@ p1 <- ggplot(timings, aes(x = time, color = method)) +
   scale_x_continuous(trans = "log10", labels = trans_format("log10", math_format(10^.x))) +
   theme(text = element_text(size = 13.5), legend.position = "top") +
   scale_color_brewer(palette = "Dark2", labels = c("asp" = "ASP", "glip" = "GLIP")) +
-  coord_flip(xlim = c(min(timings$time) * 0.99, max_time))
+  coord_flip(xlim = c(min(timings$time) * 0.99, min(max_time, max(timings$time))))
 
 if (is.null(res$input_sep)) {
   res$input_sep <- NA

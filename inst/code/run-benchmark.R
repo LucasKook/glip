@@ -68,7 +68,7 @@ out <- lapply(seq_len(nsim), \(seed) {
   cat("\nRunning conditional independence tests\n")
   tests <- otests <- tests_ms <- otests_ms <- .compute_oracle_tests(gt, d - 2, mode)
   if (!use_oracle_tests) {
-    tests <- learn_graph(
+    tests <- tests_ms <- learn_graph(
       data = data, max_size = d - 2, mode = mode, test_args = targs,
       return_tests_only = TRUE
     )
@@ -197,7 +197,8 @@ out <- lapply(seq_len(nsim), \(seed) {
       head_mcc = mean(CM$mcc[CM$which == "head"], na.rm = TRUE),
       time = as.difftime(timings[[idx]], units = "secs"),
       d = d, ms = ms, n = n, degree = degree, mode = mode, wtype = wtype,
-      use_oracle_tests = use_oracle_tests, iter = seed, seed = tseed
+      use_oracle_tests = use_oracle_tests, iter = seed, seed = tseed,
+      walltime = walltime
     )
   }) |> do.call("rbind", args = _)
 
