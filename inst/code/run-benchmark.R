@@ -27,7 +27,7 @@ use_oracle_tests <- as.numeric(darg(args[8], 0))
 sim_name <- darg(args[9], "test-run")
 wtype <- darg(args[10], "log")
 reg <- darg(args[11], "lrm")
-walltime <- 1800
+walltime <- as.numeric(darg(args[12], 1800))
 save <- TRUE
 
 # Parameters for running the optimization
@@ -200,7 +200,7 @@ out <- lapply(seq_len(nsim), \(seed) {
       time = as.difftime(timings[[idx]], units = "secs"),
       d = d, ms = ms, n = n, degree = degree, mode = mode, wtype = wtype,
       use_oracle_tests = use_oracle_tests, iter = seed, seed = tseed,
-      walltime = walltime
+      walltime = walltime, reg = reg
     )
   }) |> do.call("rbind", args = _)
 

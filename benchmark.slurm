@@ -40,15 +40,16 @@ ms=2
 deg=2
 alpha=0.01
 uot=0
-simname=maxsize2
+simname=ms2rf
 wtype=log
 nsim=20
-reg=lrm
+reg=rf
+wt=2400
 for d in {3..6}; do
   for mode in dag admg; do
-    for n in 100 400 3200; do
+    for n in 400 3200; do
       echo "Running with d=$d, mode=$mode, ms=$ms, deg=$deg, alpha=$alpha, wtype=$wtype, n=$n, reg=$reg"
-      Rscript --vanilla ./inst/code/run-benchmark.R $mode $d $ms $deg $n $nsim $alpha $uot $simname $wtype $reg
+      Rscript --vanilla ./inst/code/run-benchmark.R $mode $d $ms $deg $n $nsim $alpha $uot $simname $wtype $reg $wt
     done
   done
 done

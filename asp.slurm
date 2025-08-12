@@ -36,12 +36,12 @@ export GUROBI_HOME=/home/lkook/gurobi1202/
 export PATH=$PATH:/home/lkook/gurobi1202/linux64/bin
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/home/lkook/gurobi1202/linux64/lib
 
-nsim=25
-ms=-1
+nsim=20
+ms=1
 uot=0
-simname=large
-walltime=1800
-wtype=inv
+simname=ms1large
+walltime=2400
+wtype=log
 for d in 10; do
   for n in 100; do
     for mode in dag admg; do

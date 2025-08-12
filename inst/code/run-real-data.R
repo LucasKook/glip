@@ -21,7 +21,8 @@ ms <- as.numeric(darg(args[3], 1))
 alpha <- as.numeric(darg(args[4], 0.001))
 use_oracle_tests <- as.numeric(darg(args[5], 0))
 wtype <- darg(args[6], "log")
-walltime <- 1
+walltime <- 3600
+d_max <- ifelse(mode == "dag", 11, 8)
 save <- TRUE
 
 ### Folders
@@ -41,9 +42,18 @@ gt <- as.matrix(as_adjacency_matrix(graph_from_edgelist(
   as.matrix(dagitty::edges(dag)[, 1:2])
 ))[V, V])
 
+if (d > d_max) {
+  d <- d_max
+  ms <- ifelse(ms > d - 2, d - 2, ms)
+  V <- V[1:d]
+  data <- data[, V]
+  gt <- marginalize_dag_to_admg(gt, V)
+}
+
 ### Parameters for running the optimization
 ncores <- max(7, parallel::detectCores(logical = TRUE) - 2)
 ms <- ifelse(ms == -1, d - 2, ms)
+ms <- ifelse(ms > d - 2, d - 2, ms)
 cache <- TRUE
 
 ### Parameters for running the tests
@@ -88,7 +98,7 @@ if (ms < d - 2) {
 input_sep <- mean(otests$p.value != 1 * (tests$p.value > alpha))
 
 ### PC ALG (only under causal sufficiency/DAG case)
-if (alldiscr) {
+if (!alldiscr) {
   suff <- list(C = cov(data), n = nrow(data))
   cit <- gaussCItest
 } else {
@@ -130,8 +140,8 @@ lG <- .get_opt(mode)(tests_ms,
   V = V, cache = cache,
   trafo = \(x) as.numeric(x <= alpha),
   weight_type = wtype,
-  warmstart = gt,
-  edgehints = gt,
+  warmstart = if (mode == "dag") gt else NULL,
+  edgehints = 1 * (ORACLE != 0),
   gurobi_args = list(
     Threads = ncores,
     TimeLimit = walltime
@@ -214,3 +224,16 @@ if (save) {
   saveRDS(res, file.path(outdir, fout))
 }
 res
+
+sumtab <- res |>
+  group_by(method) |>
+  summarize(
+    shd = shd * d^2,
+    sep = sep,
+    prec = mean(c(tail_prec, head_prec)),
+    rec = mean(c(tail_rec, head_rec)),
+    fdr = mean(c(tail_fdr, head_fdr)),
+  ) |>
+  select(method, shd, sep, prec, rec, fdr)
+
+knitr::kable(sumtab, format = "latex", booktabs = TRUE, digits = 2)

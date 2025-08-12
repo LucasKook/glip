@@ -7,7 +7,7 @@ save <- TRUE
 max_time <- 1800
 
 ### List files
-fin <- "./inst/results/benchmark/2025-08-12/fixed"
+fin <- "./inst/results/benchmark/2025-08-12/maxsize2"
 fout <- str_replace(fin, "results", "figures")
 if (!dir.exists(fout)) {
   dir.create(fout, recursive = TRUE)
@@ -82,7 +82,6 @@ p3 <- res |>
   labs(x = "number of nodes", y = "SEP", color = element_blank()) +
   scale_color_brewer(palette = "Dark2", labels = c("input_sep" = "input", "sep" = "learned")) +
   theme(text = element_text(size = 13.5), legend.position = "top")
-p3
 
 if (save) {
   ggsave(file.path(fout, "timings.pdf"), p1, height = 6.5, width = 8)

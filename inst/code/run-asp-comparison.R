@@ -1,11 +1,11 @@
 ### Timing comparison with Hyttinen et al 2014 ASP
 ### LK 2025
 
-set.seed(12)
+set.seed(42)
 
 ### Dependencies
 devtools::load_all()
-setwd("./inst/asp/hyttinen2014uai_ver6/pkg/R")
+try(setwd("./inst/asp/hyttinen2014uai_ver6/pkg/R"))
 source("./load.R")
 loud()
 library("tidyverse")
@@ -14,13 +14,13 @@ library("tidyverse")
 args <- commandArgs(trailingOnly = TRUE)
 mode <- darg(args[1], "dag")
 d <- as.numeric(darg(args[2], 6))
-ms <- as.numeric(darg(args[3], -1))
+ms <- as.numeric(darg(args[3], 1))
 ms <- ifelse(ms == -1, d - 2, ms)
 N <- as.numeric(darg(args[4], 3e2))
 nsim <- as.numeric(darg(args[5], 1))
-use_oracle_tests <- as.numeric(darg(args[6], 0))
+use_oracle_tests <- as.numeric(darg(args[6], 1))
 sim_name <- darg(args[7], "test-run")
-walltime <- as.numeric(darg(args[6], 30))
+walltime <- as.numeric(darg(args[6], 120))
 WTYPE <- darg(args[8], "log")
 ncores <- max(7, parallel::detectCores(logical = TRUE) - 2)
 GARGS <- list(Threads = ncores, TimeLimit = walltime, BestObjStop = 1e-4)
@@ -46,7 +46,7 @@ pb <- txtProgressBar(0, nsim, style = 3, width = 60)
 out <- lapply(1:nsim, \(iter) {
   setTxtProgressBar(pb, iter)
   tmp <- pipeline(
-    n = d, N = N, test = test, verbose = 0,
+    n = d, N = N, schedule = ms, test = test, verbose = 0,
     clingoconf = clstr, restrict = restrict
   )
   res <- data.frame(
