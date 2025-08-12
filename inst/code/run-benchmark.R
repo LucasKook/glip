@@ -25,6 +25,7 @@ alpha <- as.numeric(darg(args[7], 0.01))
 use_oracle_tests <- as.numeric(darg(args[8], 0))
 sim_name <- darg(args[9], "test-run")
 wtype <- darg(args[10], "log")
+reg <- darg(args[11], "lrm")
 walltime <- 1800
 save <- TRUE
 
@@ -33,7 +34,7 @@ ncores <- max(7, parallel::detectCores(logical = TRUE) - 2)
 cache <- TRUE
 
 # Parameters for running the tests
-targs <- list(reg_YonZ = "lrm", reg_XonZ = "lrm")
+targs <- list(reg_YonZ = reg, reg_XonZ = reg)
 
 out <- lapply(seq_len(nsim), \(seed) {
   # Output file
@@ -116,7 +117,7 @@ out <- lapply(seq_len(nsim), \(seed) {
     trafo = \(x) as.numeric(x <= alpha),
     weight_type = wtype,
     warmstart = NULL,
-    edgehints = 1 * (R2SORT != 0),
+    edgehints = NULL,
     gurobi_args = list(
       Threads = ncores,
       TimeLimit = walltime
