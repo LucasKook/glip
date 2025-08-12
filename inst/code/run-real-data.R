@@ -15,14 +15,15 @@ cd <- import("CausalDisco.baselines", convert = TRUE)
 
 # Parse command line arguments
 args <- commandArgs(trailingOnly = TRUE)
-mode <- darg(args[1], "dag")
-dataset <- darg(args[2], "asia")
+mode <- darg(args[1], "admg")
+dataset <- darg(args[2], "hepar2")
 ms <- as.numeric(darg(args[3], 1))
 alpha <- as.numeric(darg(args[4], 0.001))
 use_oracle_tests <- as.numeric(darg(args[5], 0))
-wtype <- darg(args[6], "log")
-walltime <- 3600
-d_max <- ifelse(mode == "dag", 11, 8)
+wtype <- darg(args[6], "const")
+walltime <- as.numeric(darg(args[6], 30))
+d_max <- as.numeric(darg(args[7], ifelse(mode == "dag", 11, 8)))
+reg <- darg(args[8], "lrm")
 save <- TRUE
 
 ### Folders
@@ -57,8 +58,8 @@ ms <- ifelse(ms > d - 2, d - 2, ms)
 cache <- TRUE
 
 ### Parameters for running the tests
-targs <- list(reg_YonZ = "lrm", reg_XonZ = "lrm")
-alldiscr <- (dataset == "asia")
+targs <- list(reg_YonZ = reg, reg_XonZ = reg)
+alldiscr <- (dataset != "sachs")
 fdata <- data
 if (alldiscr) {
   fdata <- mutate_all(fdata, factor)
@@ -69,7 +70,7 @@ outdir <- file.path("inst", "results", "datasets")
 fout <- paste0(
   "res-mode_", mode, "-d_", d, "-ms_", ms,
   "-alpha_", alpha, "-oracle_", use_oracle_tests,
-  "-dataset_", dataset, ".rds"
+  "-dataset_", dataset, c("-all", "-texout", "-graphs", "-timings"), ".rds"
 )
 if (!dir.exists(outdir)) {
   dir.create(outdir, recursive = TRUE)
@@ -219,21 +220,26 @@ res <- lapply(seq_along(outputs), \(idx) {
   )
 }) |> do.call("rbind", args = _)
 
-if (save) {
-  cat("\nSaving results\n")
-  saveRDS(res, file.path(outdir, fout))
-}
-res
-
 sumtab <- res |>
   group_by(method) |>
   summarize(
     shd = shd * d^2,
     sep = sep,
-    prec = mean(c(tail_prec, head_prec)),
-    rec = mean(c(tail_rec, head_rec)),
-    fdr = mean(c(tail_fdr, head_fdr)),
+    prec = mean(c(tail_prec, head_prec), na.rm = TRUE),
+    rec = mean(c(tail_rec, head_rec), na.rm = TRUE),
+    fdr = mean(c(tail_fdr, head_fdr), na.rm = TRUE),
   ) |>
   select(method, shd, sep, prec, rec, fdr)
 
-knitr::kable(sumtab, format = "latex", booktabs = TRUE, digits = 2)
+texout <- knitr::kable(sumtab, format = "latex", booktabs = TRUE, digits = 2)
+
+if (save) {
+  cat("\nSaving results\n")
+  saveRDS(res, file.path(outdir, fout[1]))
+  saveRDS(texout, file.path(outdir, fout[2]))
+  saveRDS(outputs, file.path(outdir, fout[3]))
+  saveRDS(timings, file.path(outdir, fout[4]))
+}
+
+res
+texout
