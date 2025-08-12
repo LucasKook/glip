@@ -7,7 +7,7 @@ save <- TRUE
 max_time <- 1800
 
 ### List files
-fin <- "./inst/results/benchmark/2025-08-08/fixed"
+fin <- "./inst/results/benchmark/2025-08-12/fixed"
 fout <- str_replace(fin, "results", "figures")
 if (!dir.exists(fout)) {
   dir.create(fout, recursive = TRUE)
@@ -33,10 +33,6 @@ p1 <- ggplot(timings, aes(x = time, color = method)) +
   theme(text = element_text(size = 13.5), legend.position = "top") +
   scale_color_brewer(palette = "Dark2", labels = c("asp" = "ASP", "glip" = "GLIP")) +
   coord_flip(xlim = c(min(timings$time) * 0.99, min(max_time, max(timings$time))))
-
-if (is.null(res$input_sep)) {
-  res$input_sep <- NA
-}
 
 ### Performance
 pdat <- res |>
@@ -73,13 +69,20 @@ p2 <- ggplot(
   labs(y = "score", x = "number of nodes") +
   theme(text = element_text(size = 13.5), legend.position = "top")
 
-p3 <- ggplot(res |> mutate(mode = toupper(mode)), aes(x = sep, y = input_sep, color = method)) +
-  geom_point() +
+p3 <- res |>
+  mutate(mode = toupper(mode)) |>
+  pivot_longer(c("sep", "input_sep")) |>
+  filter(method == "GLIP") |>
+  ggplot(aes(x = d, y = value, color = name)) +
+  stat_summary(geom = "line") +
+  stat_summary() +
   geom_abline(slope = 1, intercept = 0) +
-  facet_grid(mode ~ d) +
+  facet_grid(mode ~ method + n) +
   theme_bw() +
-  labs(x = "SEP (learned versus oracle)", y = "SEP (input versus oracle)") +
+  labs(x = "number of nodes", y = "SEP", color = element_blank()) +
+  scale_color_brewer(palette = "Dark2", labels = c("input_sep" = "input", "sep" = "learned")) +
   theme(text = element_text(size = 13.5), legend.position = "top")
+p3
 
 if (save) {
   ggsave(file.path(fout, "timings.pdf"), p1, height = 6.5, width = 8)
