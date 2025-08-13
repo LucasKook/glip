@@ -139,6 +139,8 @@ out <- lapply(seq_len(nsim), \(seed) {
   NOTEARS <- .compute_graphical_representation(nto, d - 2, mode)
 
   ### Evaluate and summarize results
+  class(PC) <- class(GLIP)
+  class(FCI) <- class(GLIP)
   outputs <- list(
     GLIP = GLIP,
     PC = PC,
