@@ -1,14 +1,6 @@
-list_separations <- function(G, max_size = NULL, mode, ...) {
-  V <- .get_node_set(G)
-  max_size <- min(max(1, length(V) - 2), max_size)
-  tsts <- .list_tests_graph(V, max_size = max_size, ...)
-  idx <- which(.compute_oracle_tests(G, max_size, mode)$p.value == 1)
-  list(sets = tsts$sets[idx], formulas = tsts$formulas[idx])
-}
-
 falsify_graph <- function(
     G, data, max_size = NULL, mode = "dag", test = "gcm", test_args = NULL,
-    parallel = FALSE, ncores = NULL, ...) {
+    parallel = FALSE, ncores = NULL, all_discrete = FALSE, ...) {
   V <- colnames(G)
   max_size <- min(max(1, length(V) - 2), max_size)
 
@@ -34,9 +26,29 @@ falsify_graph <- function(
   pb <- utils::txtProgressBar(min = 0, max = length(fml), style = 3, width = 60)
   res <- my_apply(seq_along(fml), \(iter) {
     utils::setTxtProgressBar(pb, iter)
-    res <- do.call("comets", c(list(
-      formula = fml[[iter]], data = data, test = test
-    ), test_args))
+    if (all_discrete) {
+      res <- tryCatch(
+        {
+          x <- sets[[iter]]$X
+          y <- sets[[iter]]$Y
+          z <- sets[[iter]]$Z
+          pv <- if (identical(z, character(0))) {
+            bnlearn::ci.test(x, y, data = data, test = test)$p.value
+          } else {
+            bnlearn::ci.test(x, y, z, data, test = test)$p.value
+          }
+          list(p.value = pv)
+        },
+        error = \(e) {
+          warning("Test failed")
+          list(p.value = 1 - 2 * .Machine$double.eps)
+        }
+      )
+    } else {
+      res <- do.call("comets", c(list(
+        formula = fml[[iter]], data = data, test = test
+      ), test_args))
+    }
     data.frame(
       X = sets[[iter]][["X"]],
       Y = sets[[iter]][["Y"]],
@@ -51,4 +63,12 @@ falsify_graph <- function(
   }
 
   res
+}
+
+list_separations <- function(G, max_size = NULL, mode, ...) {
+  V <- .get_node_set(G)
+  max_size <- min(max(1, length(V) - 2), max_size)
+  tsts <- .list_tests_graph(V, max_size = max_size, ...)
+  idx <- which(.compute_oracle_tests(G, max_size, mode)$p.value == 1)
+  list(sets = tsts$sets[idx], formulas = tsts$formulas[idx])
 }

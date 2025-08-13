@@ -25,9 +25,6 @@ learn_graph <- function(
   all_tests <- .list_tests_graph(vars, max_size, naive = naive)
   sets <- all_tests$sets
   fml <- all_tests$formulas
-  if (all_discrete) {
-    fml <- all_tests$coin_formulas
-  }
 
   pb <- utils::txtProgressBar(min = 0, max = length(fml), style = 3, width = 60)
   res <- my_apply(seq_along(fml), \(iter) {
@@ -39,15 +36,10 @@ learn_graph <- function(
           y <- sets[[iter]]$Y
           z <- sets[[iter]]$Z
           pv <- if (identical(z, character(0))) {
-            bnlearn::ci.test(x, y, data = data, test = "mi-adf")$p.value
+            bnlearn::ci.test(x, y, data = data, test = test)$p.value
           } else {
-            bnlearn::ci.test(x, y, z, data, test = "mi-adf")$p.value
+            bnlearn::ci.test(x, y, z, data, test = test)$p.value
           }
-          # tst <- coin::independence_test(fml[[iter]], data)
-          # pv <- as.numeric(coin::pvalue(tst))
-          # if (is.nan(pv)) {
-          #   pv <- 1 - .Machine$double.eps
-          # }
           list(p.value = pv)
         },
         error = \(e) {
@@ -118,22 +110,7 @@ learn_graph <- function(
   fml <- lapply(sets, \(set) {
     .to_formula_graph(set[["Y"]], set[["X"]], set[["Z"]], ...)
   })
-  cfml <- lapply(sets, \(set) {
-    .to_formula_coin(set[["Y"]], set[["X"]], set[["Z"]], ...)
-  })
-  list(sets = sets, formulas = fml, coin_formulas = cfml)
-}
-
-.to_formula_coin <- function(X, Y, Z) {
-  if (identical(Z, character(0))) {
-    return(as.formula(paste0(Y, "~", X)))
-  }
-  as.formula(
-    paste0(
-      Y, "~", paste0(X, collapse = "+"), "| fct_lump_min(interaction(",
-      paste0(Z, collapse = ","), ", drop = TRUE), min = 3)"
-    )
-  )
+  list(sets = sets, formulas = fml)
 }
 
 .to_formula_graph <- function(X, Y, Z) {

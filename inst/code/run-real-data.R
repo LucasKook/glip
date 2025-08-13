@@ -15,15 +15,16 @@ cd <- import("CausalDisco.baselines", convert = TRUE)
 
 # Parse command line arguments
 args <- commandArgs(trailingOnly = TRUE)
-mode <- darg(args[1], "admg")
-dataset <- darg(args[2], "child")
+mode <- darg(args[1], "dag")
+dataset <- darg(args[2], "asia")
 ms <- as.numeric(darg(args[3], 1))
-alpha <- as.numeric(darg(args[4], 0.05))
+alpha <- as.numeric(darg(args[4], 0.001))
 use_oracle_tests <- as.numeric(darg(args[5], 0))
 wtype <- darg(args[6], "const")
-walltime <- as.numeric(darg(args[6], 360))
+walltime <- as.numeric(darg(args[6], 30))
 d_max <- as.numeric(darg(args[7], ifelse(mode == "dag", 11, 8)))
 reg <- darg(args[8], "lrm")
+test <- "gcm"
 save <- TRUE
 
 ### Folders
@@ -62,6 +63,7 @@ targs <- list(reg_YonZ = reg, reg_XonZ = reg)
 alldiscr <- (dataset != "sachs")
 fdata <- data
 if (alldiscr) {
+  test <- "mi"
   fdata <- data.frame(mutate_all(fdata, factor))
 }
 
@@ -70,7 +72,7 @@ outdir <- file.path("inst", "results", "datasets", dataset)
 fout <- paste0(
   "res-mode_", mode, "-d_", d, "-ms_", ms,
   "-alpha_", alpha, "-oracle_", use_oracle_tests,
-  "-dataset_", dataset, c("-all", "-texout", "-graphs", "-timings"), ".rds"
+  "-dataset_", dataset, c("-all", "-texout", "-graphs", "-timings", "-sumtab"), ".rds"
 )
 if (!dir.exists(outdir)) {
   dir.create(outdir, recursive = TRUE)
@@ -89,7 +91,7 @@ tests <- otests <- tests_ms <- otests_ms <- .compute_oracle_tests(gt, use_ms, mo
 if (!use_oracle_tests) {
   tests <- tests_ms <- learn_graph(
     data = fdata, max_size = use_ms, mode = mode, test_args = targs,
-    return_tests_only = TRUE, all_discrete = alldiscr
+    return_tests_only = TRUE, all_discrete = alldiscr, test = test
   )
 }
 if (ms < d - 2) {
@@ -241,7 +243,9 @@ if (save) {
   saveRDS(texout, file.path(outdir, fout[2]))
   saveRDS(outputs, file.path(outdir, fout[3]))
   saveRDS(timings, file.path(outdir, fout[4]))
+  saveRDS(sumtab, file.path(outdir, fout[5]))
 }
 
 res
+sumtab
 texout
