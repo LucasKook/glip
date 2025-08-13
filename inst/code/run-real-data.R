@@ -16,12 +16,12 @@ cd <- import("CausalDisco.baselines", convert = TRUE)
 # Parse command line arguments
 args <- commandArgs(trailingOnly = TRUE)
 mode <- darg(args[1], "admg")
-dataset <- darg(args[2], "hepar2")
+dataset <- darg(args[2], "sachs")
 ms <- as.numeric(darg(args[3], 1))
-alpha <- as.numeric(darg(args[4], 0.001))
+alpha <- as.numeric(darg(args[4], 0.05))
 use_oracle_tests <- as.numeric(darg(args[5], 0))
 wtype <- darg(args[6], "const")
-walltime <- as.numeric(darg(args[6], 30))
+walltime <- as.numeric(darg(args[6], 360))
 d_max <- as.numeric(darg(args[7], ifelse(mode == "dag", 11, 8)))
 reg <- darg(args[8], "lrm")
 save <- TRUE
@@ -66,7 +66,7 @@ if (alldiscr) {
 }
 
 ### Output file
-outdir <- file.path("inst", "results", "datasets")
+outdir <- file.path("inst", "results", "datasets", dataset)
 fout <- paste0(
   "res-mode_", mode, "-d_", d, "-ms_", ms,
   "-alpha_", alpha, "-oracle_", use_oracle_tests,
