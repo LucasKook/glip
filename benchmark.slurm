@@ -40,10 +40,10 @@ ms=2
 deg=2
 alpha=0.01
 uot=0
-simname=ms2rf
+simname=fixed
 wtype=log
 nsim=20
-reg=rf
+reg=lrm
 wt=2400
 for d in {3..6}; do
   for mode in dag admg; do

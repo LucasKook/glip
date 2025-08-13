@@ -40,7 +40,7 @@ nsim=20
 ms=1
 uot=0
 simname=ms1large
-walltime=2400
+walltime=1800
 wtype=log
 for d in 10; do
   for n in 100; do
