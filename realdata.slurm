@@ -37,13 +37,15 @@ export PATH=$PATH:/home/lkook/gurobi1202/linux64/bin
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/home/lkook/gurobi1202/linux64/lib
 
 ms=1
-alpha=0.01
+alpha=0.001
 uot=0
-wtype=log
-wt=2400
-reg=lrm
+wtype=const
+wt=3600
 dmax=8
-for ds in asia child alarm hepar2 sachs; do
-  echo "Running with ms=$ms, alpha=$alpha, wtype=$wtype, dataset=$ds"
-  Rscript --vanilla ./inst/code/run-benchmark.R $mode $ds $ms $alpha $uot $wtype $wt $dmax $reg
+reg=lrm
+for mode in dag admg; do
+  for ds in asia child alarm hepar2 sachs; do
+    echo "Running with ms=$ms, alpha=$alpha, wtype=$wtype, dataset=$ds"
+    Rscript --vanilla ./inst/code/run-benchmark.R $mode $ds $ms $alpha $uot $wtype $wt $dmax $reg
+  done
 done
