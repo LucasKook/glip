@@ -35,14 +35,25 @@ learn_graph <- function(
     if (all_discrete) {
       res <- tryCatch(
         {
-          tst <- coin::independence_test(fml[[iter]], data)
-          pv <- as.numeric(coin::pvalue(tst))
-          if (is.nan(pv)) {
-            pv <- .Machine$double.eps
+          x <- sets[[iter]]$X
+          y <- sets[[iter]]$Y
+          z <- sets[[iter]]$Z
+          pv <- if (identical(z, character(0))) {
+            bnlearn::ci.test(x, y, data = data, test = "mi-adf")$p.value
+          } else {
+            bnlearn::ci.test(x, y, z, data, test = "mi-adf")$p.value
           }
+          # tst <- coin::independence_test(fml[[iter]], data)
+          # pv <- as.numeric(coin::pvalue(tst))
+          # if (is.nan(pv)) {
+          #   pv <- 1 - .Machine$double.eps
+          # }
           list(p.value = pv)
         },
-        error = \(e) list(p.value = .Machine$double.eps)
+        error = \(e) {
+          warning("Test failed")
+          list(p.value = 1 - 2 * .Machine$double.eps)
+        }
       )
     } else {
       res <- do.call("comets", c(list(

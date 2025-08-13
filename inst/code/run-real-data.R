@@ -16,7 +16,7 @@ cd <- import("CausalDisco.baselines", convert = TRUE)
 # Parse command line arguments
 args <- commandArgs(trailingOnly = TRUE)
 mode <- darg(args[1], "admg")
-dataset <- darg(args[2], "sachs")
+dataset <- darg(args[2], "child")
 ms <- as.numeric(darg(args[3], 1))
 alpha <- as.numeric(darg(args[4], 0.05))
 use_oracle_tests <- as.numeric(darg(args[5], 0))
@@ -62,7 +62,7 @@ targs <- list(reg_YonZ = reg, reg_XonZ = reg)
 alldiscr <- (dataset != "sachs")
 fdata <- data
 if (alldiscr) {
-  fdata <- mutate_all(fdata, factor)
+  fdata <- data.frame(mutate_all(fdata, factor))
 }
 
 ### Output file
@@ -142,7 +142,7 @@ lG <- .get_opt(mode)(tests_ms,
   trafo = \(x) as.numeric(x <= alpha),
   weight_type = wtype,
   warmstart = if (mode == "dag") gt else NULL,
-  edgehints = 1 * (ORACLE != 0),
+  edgehints = if (mode == "dag") 1 * (PC != 0) else 1 * (FCI != 0),
   gurobi_args = list(
     Threads = ncores,
     TimeLimit = walltime
