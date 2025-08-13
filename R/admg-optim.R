@@ -261,53 +261,54 @@ trafo = \(x) as.numeric(x <= 0.05),
     ))
 
     ### RHS F1 F2
-    rf1f2 <- model$rhs[grep("f1f2min", names(model$rhs))]
-    clist <- o1l <- list()[rep(1, n_lb + n_lb * (d - 2))]
-    skip <- n_b + n_lb
-    cntr <- 1
-    for (j in seq_len(d)) {
-      for (i in seq_len(j - 1)) {
-        for (C in seq_len(n_C)) {
-          if (all(c(i, j) %in% CC[[C]])) {
-            ij <- bxij$idx[bxij$i == i & bxij$j == j]
-            ijC <- max(lbijc$idx[lbijc$i == i & lbijc$j == j & lbijc$C == C],
-                       lbijc$idx[lbijc$i == j & lbijc$j == i & lbijc$C == C])
-            clist[[cntr]] <- data.frame(
-              i = c(cntr, cntr),
-              j = c(skip + cntr, ij),
-              v = c(1, d - 1)
-            )
-            rf1f2[cntr] <- d
-            o1l[[cntr]] <- data.frame(i = i, j = j, k = NA, C = C, which = "F1", idx = cntr)
-            cntr <- cntr + 1
-            for (k in setdiff(seq_len(d), c(i, j))) {
-              if (k %in% CC[[C]]) {
-                ikC <- max(lbijc$idx[lbijc$i == i & lbijc$j == k & lbijc$C == C],
-                           lbijc$idx[lbijc$i == k & lbijc$j == i & lbijc$C == C])
-                jk <- bxij$idx[bxij$i == j & bxij$j == k]
-                clist[[cntr]] <- data.frame(
-                  i = c(cntr, cntr, cntr),
-                  j = c(skip + cntr, jk, n_b + ikC),
-                  v = c(1, d - 2, -1)
-                )
-                rf1f2[cntr] <- d - 1
-                o1l[[cntr]] <- data.frame(i = i, j = j, k = k, C = C, which = "F2", idx = cntr)
-                cntr <- cntr + 1
+    if (max_size > 1) {
+      rn <- grep("f1f2min", rownames(A), value = TRUE)
+      cn <- .multigrep(c("bxij", "lbijc", "fijc"), colnames(A), value = TRUE)
+      rf1f2 <- model$rhs[grep("f1f2min", names(model$rhs))]
+      clist <- o1l <- list()[rep(1, length(rn))]
+      skip <- n_b + n_lb
+      cntr <- 1
+      for (j in seq_len(d)) {
+        for (i in seq_len(j - 1)) {
+          for (C in seq_len(n_C)) {
+            if (all(c(i, j) %in% CC[[C]])) {
+              ij <- bxij$idx[bxij$i == i & bxij$j == j]
+              ijC <- max(lbijc$idx[lbijc$i == i & lbijc$j == j & lbijc$C == C],
+                        lbijc$idx[lbijc$i == j & lbijc$j == i & lbijc$C == C])
+              clist[[cntr]] <- data.frame(
+                i = c(cntr, cntr),
+                j = c(skip + cntr, ij),
+                v = c(1, d - 1)
+              )
+              rf1f2[cntr] <- d
+              o1l[[cntr]] <- data.frame(i = i, j = j, k = NA, C = C, which = "F1", idx = cntr)
+              cntr <- cntr + 1
+              for (k in setdiff(seq_len(d), c(i, j))) {
+                if (k %in% CC[[C]]) {
+                  ikC <- max(lbijc$idx[lbijc$i == i & lbijc$j == k & lbijc$C == C],
+                            lbijc$idx[lbijc$i == k & lbijc$j == i & lbijc$C == C])
+                  jk <- bxij$idx[bxij$i == j & bxij$j == k]
+                  clist[[cntr]] <- data.frame(
+                    i = c(cntr, cntr, cntr),
+                    j = c(skip + cntr, jk, n_b + ikC),
+                    v = c(1, d - 2, -1)
+                  )
+                  rf1f2[cntr] <- d - 1
+                  o1l[[cntr]] <- data.frame(i = i, j = j, k = k, C = C, which = "F2", idx = cntr)
+                  cntr <- cntr + 1
+                }
               }
             }
           }
         }
       }
+      clist <- do.call("rbind", clist)
+      o1l <- do.call("rbind", o1l)
+      A[grep("f1f2min", rownames(A)), .multigrep(c("bxij", "lbijc", "fijc"), colnames(A))] <- 
+        Matrix::sparseMatrix(i = clist$i, j = clist$j, x = clist$v,
+          dims = c(length(rn), length(cn)), dimnames = list(rn, cn))
+      model$rhs[grep("f1f2min", names(model$rhs))] <- rf1f2
     }
-    rn <- grep("f1f2min", rownames(A), value = TRUE)
-    cn <- .multigrep(c("bxij", "lbijc", "fijc"), colnames(A), value = TRUE)
-    clist <- do.call("rbind", clist)
-    o1l <- do.call("rbind", o1l)
-    A[grep("f1f2min", rownames(A)),
-      .multigrep(c("bxij", "lbijc", "fijc"), colnames(A))
-     ] <- Matrix::sparseMatrix(i = clist$i, j = clist$j, x = clist$v,
-        dims = c(length(rn), length(cn)), dimnames = list(rn, cn))
-    model$rhs[grep("f1f2min", names(model$rhs))] <- rf1f2
 
     ### CONSTRAINTS C10-11
     cm1011 <- rbind(
@@ -700,20 +701,22 @@ trafo = \(x) as.numeric(x <= 0.05),
     }
 
     O1 <- list()
-    for (j in seq_len(d)) {
-      for (i in seq_len(j - 1)) {
-        for (C in seq_len(n_C)) {
-          ijC <- max(lbijc$idx[lbijc$i == i & lbijc$j == j & lbijc$C == C],
-                    lbijc$idx[lbijc$i == j & lbijc$j == i & lbijc$C == C])
-          keep <- c(
-            o1l$idx[o1l$i == i & o1l$j == j & o1l$C == C],
-            o1l$idx[o1l$i == j & o1l$j == i & o1l$C == C]
-          )
-          O1 <- c(O1, list(list(
-              resvar = 3 * n_z + 4 * n_d + sum(nN1) + sum(nkc) + n_b + ijC,
-              vars = c(sort(3 * n_z + 2 * n_lb + 4 * n_d + sum(nN1) + sum(nkc) + n_b + keep), length(model$obj))
-            ))
-          )
+    if (max_size > 1) {
+      for (j in seq_len(d)) {
+        for (i in seq_len(j - 1)) {
+          for (C in seq_len(n_C)) {
+            ijC <- max(lbijc$idx[lbijc$i == i & lbijc$j == j & lbijc$C == C],
+                      lbijc$idx[lbijc$i == j & lbijc$j == i & lbijc$C == C])
+            keep <- c(
+              o1l$idx[o1l$i == i & o1l$j == j & o1l$C == C],
+              o1l$idx[o1l$i == j & o1l$j == i & o1l$C == C]
+            )
+            O1 <- c(O1, list(list(
+                resvar = 3 * n_z + 4 * n_d + sum(nN1) + sum(nkc) + n_b + ijC,
+                vars = c(sort(3 * n_z + 2 * n_lb + 4 * n_d + sum(nN1) + sum(nkc) + n_b + keep), length(model$obj))
+              ))
+            )
+          }
         }
       }
     }
