@@ -176,9 +176,9 @@ darg <- function(x, d) {
   }
 }
 
-.multigrep <- function(patterns, x) {
+.multigrep <- function(patterns, x, ...) {
   unlist(lapply(patterns, \(p) {
-    grep(p, x)
+    grep(p, x, ...)
   }))
 }
 

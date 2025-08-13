@@ -56,11 +56,11 @@ create_cg <- function(d, V = letters[1:d], prob = 0.5) {
 ### compute largest LWF-Markov equivalent chain graph in the Markov equivalence
 ### class of G
 compute_largest_cg <- function(G) {
-  G <- G
+  Gtmp <- G
   V <- colnames(G)
   G <- matrix(nrow = nrow(G), ncol = ncol(G))
   dimnames(G) <- list(V, V)
-  G[] <- G
+  G[] <- Gtmp
   class(G) <- c("lcg", class(G))
 
 

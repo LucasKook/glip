@@ -1,6 +1,6 @@
 admg_optim <- function(
     tests, d = 3, max_size = d - 2, V = letters[1:d],
-    trafo = \(x) as.numeric(x <= 0.05),
+trafo = \(x) as.numeric(x <= 0.05),
     weight_type = c("const", "inv", "log", "size"),
     warmstart = NULL,
     edgehints = NULL,
@@ -241,7 +241,7 @@ admg_optim <- function(
     model$rhs <- rhs
   } else {
     A <- MatrixExtra::emptySparse(
-      nrow = length(model$rhs), ncol = length(model$obj)
+      nrow = length(model$rhs), ncol = length(model$obj), format = "C"
     )
 
     colnames(A) <- make.unique(rep(
@@ -261,12 +261,8 @@ admg_optim <- function(
     ))
 
     ### RHS F1 F2
-    tmp <- A[
-      grep("f1f2min", rownames(A)),
-      .multigrep(c("bxij", "lbijc", "fijc"), colnames(A))
-    ]
     rf1f2 <- model$rhs[grep("f1f2min", names(model$rhs))]
-    o1l <- data.frame()
+    clist <- o1l <- list()[rep(1, n_lb + n_lb * (d - 2))]
     skip <- n_b + n_lb
     cntr <- 1
     for (j in seq_len(d)) {
@@ -276,21 +272,26 @@ admg_optim <- function(
             ij <- bxij$idx[bxij$i == i & bxij$j == j]
             ijC <- max(lbijc$idx[lbijc$i == i & lbijc$j == j & lbijc$C == C],
                        lbijc$idx[lbijc$i == j & lbijc$j == i & lbijc$C == C])
-            tmp[cntr, skip + cntr] <- 1 + .fill(tmp[cntr, skip + cntr])
-            tmp[cntr, ij] <- d - 1 + .fill(tmp[cntr, ij])
+            clist[[cntr]] <- data.frame(
+              i = c(cntr, cntr),
+              j = c(skip + cntr, ij),
+              v = c(1, d - 1)
+            )
             rf1f2[cntr] <- d
-            o1l <- rbind(o1l, data.frame(i = i, j = j, k = NA, C = C, which = "F1", idx = cntr))
+            o1l[[cntr]] <- data.frame(i = i, j = j, k = NA, C = C, which = "F1", idx = cntr)
             cntr <- cntr + 1
             for (k in setdiff(seq_len(d), c(i, j))) {
               if (k %in% CC[[C]]) {
                 ikC <- max(lbijc$idx[lbijc$i == i & lbijc$j == k & lbijc$C == C],
-                          lbijc$idx[lbijc$i == k & lbijc$j == i & lbijc$C == C])
+                           lbijc$idx[lbijc$i == k & lbijc$j == i & lbijc$C == C])
                 jk <- bxij$idx[bxij$i == j & bxij$j == k]
-                tmp[cntr, skip + cntr] <- 1 + .fill(tmp[cntr, skip + cntr])
-                tmp[cntr, jk] <- d - 2 + .fill(tmp[cntr, jk])
-                tmp[cntr, n_b + ikC] <- - 1 + .fill(tmp[cntr, n_b + ikC])
+                clist[[cntr]] <- data.frame(
+                  i = c(cntr, cntr, cntr),
+                  j = c(skip + cntr, jk, n_b + ikC),
+                  v = c(1, d - 2, -1)
+                )
                 rf1f2[cntr] <- d - 1
-                o1l <- rbind(o1l, data.frame(i = i, j = j, k = k, C = C, which = "F2", idx = cntr))
+                o1l[[cntr]] <- data.frame(i = i, j = j, k = k, C = C, which = "F2", idx = cntr)
                 cntr <- cntr + 1
               }
             }
@@ -298,9 +299,14 @@ admg_optim <- function(
         }
       }
     }
+    rn <- grep("f1f2min", rownames(A), value = TRUE)
+    cn <- .multigrep(c("bxij", "lbijc", "fijc"), colnames(A), value = TRUE)
+    clist <- do.call("rbind", clist)
+    o1l <- do.call("rbind", o1l)
     A[grep("f1f2min", rownames(A)),
       .multigrep(c("bxij", "lbijc", "fijc"), colnames(A))
-     ] <- tmp
+     ] <- Matrix::sparseMatrix(i = clist$i, j = clist$j, x = clist$v,
+        dims = c(length(rn), length(cn)), dimnames = list(rn, cn))
     model$rhs[grep("f1f2min", names(model$rhs))] <- rf1f2
 
     ### CONSTRAINTS C10-11
@@ -311,7 +317,9 @@ admg_optim <- function(
     A[grep("C10to11", rownames(A)), .multigrep(c("zbijc", "lbijc"), colnames(A))] <- cm1011
 
     ### CONSTRAINTS C6-9
-    tmp <- A[grep("C6to9", rownames(A)), .multigrep(c("dxij", "bxij", "sxij"), colnames(A))]
+    rn <- grep("C6to9", rownames(A), value = TRUE)
+    cn <- .multigrep(c("dxij", "bxij", "sxij"), colnames(A), value = TRUE)
+    clist <- list()[rep(1, length(rn))]
     cntr <- 1
     for (i in seq_len(d)) {
       for (j in setdiff(seq_len(d), i)) {
@@ -319,21 +327,36 @@ admg_optim <- function(
         bij <- max(bxij$idx[bxij$i == i & bxij$j == j],
                    bxij$idx[bxij$i == j & bxij$j == i])
         ### C6
-        tmp[cntr, dij] <- -1 + .fill(tmp[cntr, dij])
-        tmp[cntr, n_d + bij] <- -1 + .fill(tmp[cntr, n_d + bij])
-        tmp[cntr, n_d + n_b + dij] <- 1 + .fill(tmp[cntr, n_d + n_b + bij])
+        clist[[cntr]] <-
+          data.frame(
+            i = c(cntr, cntr, cntr),
+            j = c(dij, n_d + bij, n_d + n_b + dij),
+            v = c(-1, -1, 1)
+          )
         cntr <- cntr + 1
         ### C7
-        tmp[cntr, dij] <- 1 + .fill(tmp[cntr, dij])
-        tmp[cntr, n_d + n_b + dij] <- -1 + .fill(tmp[cntr, n_d + n_b + dij])
+        clist[[cntr]] <-
+          data.frame(
+            i = c(cntr, cntr),
+            j = c(dij, n_d + n_b + dij),
+            v = c(1, -1)
+          )
         cntr <- cntr + 1
         ### C8 + C9
-        tmp[cntr, n_d + bij] <- 1 + .fill(tmp[cntr, n_d + bij])
-        tmp[cntr, n_d + n_b + dij] <- -1 + .fill(tmp[cntr, n_d + n_b + dij])
+        clist[[cntr]] <-
+          data.frame(
+            i = c(cntr, cntr),
+            j = c(n_d + bij, n_d + n_b + dij),
+            v = c(1, -1)
+          )
         cntr <- cntr + 1
       }
     }
-    A[grep("C6to9", rownames(A)), .multigrep(c("dxij", "bxij", "sxij"), colnames(A))] <- tmp
+    clist <- do.call("rbind", clist)
+    A[grep("C6to9", rownames(A)), .multigrep(c("dxij", "bxij", "sxij"), colnames(A))] <-
+      Matrix::sparseMatrix(i = clist$i, j = clist$j, x = clist$v,
+        dims = c(length(rn), length(cn)), dimnames = list(rn, cn))
+
 
     ### CONSTRAINTS FOR Z and L consistency (C4) + (C5)
 
@@ -353,14 +376,12 @@ admg_optim <- function(
       cat("\nWorking on constraint K1-5")
     }
 
-    tmp <- A[
-      grep("p1min", rownames(A)),
-      .multigrep(c("dxij", "lijc", "sxij", "lbijc", "zbijc", "uijklm"), colnames(A))
-    ]
+    rn <- grep("p1min", rownames(A), value = TRUE)
+    cn <- .multigrep(c("dxij", "lijc", "sxij", "lbijc", "zbijc", "uijklm"), colnames(A), value = TRUE)
     skip <- n_d + n_z + n_d + n_lb + n_lb
     cntr <- 1
     rhs_m1 <- rep(0, sum(nkc))
-    m1lup <- data.frame()
+    clist <- m1lup <- list()[rep(1, sum(nkc))]
 
     for (i in seq_len(d)) {
       for (j in setdiff(seq_len(d), i)) {
@@ -368,11 +389,14 @@ admg_optim <- function(
         for (C in seq_len(n_C)) {
           if (all(!(c(i, j) %in% CC[[C]]))) {
             ij <- n_d + n_z + xij$idx[xij$i == i & xij$j == j]
-            tmp[cntr, skip + cntr] <- 1 + .fill(tmp[cntr, skip + cntr])
-            tmp[cntr, ij] <- n_tilde + .fill(tmp[cntr, ij])
+            clist[[cntr]] <- data.frame(
+              i = c(cntr, cntr),
+              j = c(skip + cntr, ij),
+              v = c(1, n_tilde)
+            )
             rhs_m1[cntr] <- n_tilde + 1
-            m1lup <- rbind(m1lup, data.frame(i = i, j = j, k = NA,
-              l = NA, m = NA, C = C, idx = cntr, which = "K1"))
+            m1lup[[cntr]] <- data.frame(i = i, j = j, k = NA,
+              l = NA, m = NA, C = C, idx = cntr, which = "K1")
             cntr <- cntr + 1
           }
         }
@@ -384,23 +408,27 @@ admg_optim <- function(
                 kj <- xij$idx[xij$i == k & xij$j == j]
                 ikC <- max(zijc$idx[zijc$i == i & zijc$j == k & zijc$C == C],
                           zijc$idx[zijc$i == k & zijc$j == i & zijc$C == C])
-                tmp[cntr, skip + cntr] <- 1 + .fill(tmp[cntr, skip + cntr])
-                tmp[cntr, kj] <- (n_tilde - 1) + .fill(tmp[cntr, kj])
-                tmp[cntr, n_d + ikC] <- -1 + .fill(tmp[cntr, n_d + ikC])
+                clist[[cntr]] <- data.frame(
+                  i = c(cntr, cntr, cntr),
+                  j = c(skip + cntr, kj, n_d + ikC),
+                  v = c(1, n_tilde - 1, -1)
+                )
                 rhs_m1[cntr] <- n_tilde
-                m1lup <- rbind(m1lup, data.frame(i = i, j = j, k = k,
-                  l = NA, m = NA, C = C, idx = cntr, which = "K2"))
+                m1lup[[cntr]] <- data.frame(i = i, j = j, k = k,
+                  l = NA, m = NA, C = C, idx = cntr, which = "K2")
                 cntr <- cntr + 1
               } else {
                 ### K3
                 ik <- n_d + n_z + xij$idx[xij$i == i & xij$j == k]
                 jk <- n_d + n_z + xij$idx[xij$i == j & xij$j == k]
-                tmp[cntr, skip + cntr] <- 1 + .fill(tmp[cntr, skip + cntr])
-                tmp[cntr, ik] <- (n_tilde - 1) + .fill(tmp[cntr, ik])
-                tmp[cntr, jk] <- (n_tilde - 1) + .fill(tmp[cntr, jk])
+                clist[[cntr]] <- data.frame(
+                  i = c(cntr, cntr, cntr),
+                  j = c(skip + cntr, ik, jk),
+                  v = c(1, n_tilde - 1, n_tilde - 1)
+                )
                 rhs_m1[cntr] <- 2 * n_tilde
-                m1lup <- rbind(m1lup, data.frame(i = i, j = j, k = k,
-                  l = NA, m = NA, C = C, idx = cntr, which = "K3a"))
+                m1lup[[cntr]] <- data.frame(i = i, j = j, k = k,
+                  l = NA, m = NA, C = C, idx = cntr, which = "K3a")
                 cntr <- cntr + 1
                 for (k2 in setdiff(seq_len(d), c(i, j, k))) {
                   if (k2 %in% CC[[C]]) {
@@ -412,14 +440,14 @@ admg_optim <- function(
                       lbijc$idx[lbijc$i == k & lbijc$j == k2 & lbijc$C == C],
                       lbijc$idx[lbijc$i == k2 & lbijc$j == k & lbijc$C == C]
                     )
-                    tmp[cntr, skip + cntr] <- 1 + .fill(tmp[cntr, skip + cntr])
-                    tmp[cntr, ik] <- (n_tilde - 2) + .fill(tmp[cntr, ik])
-                    tmp[cntr, jk2] <- (n_tilde - 2) + .fill(tmp[cntr, jk])
-                    tmp[cntr, kk2c] <- -1 + .fill(tmp[cntr, kk2c])
-                    tmp[cntr, n_lb + kk2c] <- (n_tilde - 2) + .fill(tmp[cntr, n_lb + kk2c])
+                    clist[[cntr]] <- data.frame(
+                      i = c(cntr, cntr, cntr, cntr, cntr),
+                      j = c(skip + cntr, ik, jk2, kk2c, n_lb + kk2c),
+                      v = c(1, n_tilde - 2, n_tilde - 2, -1, n_tilde - 2)
+                    )
                     rhs_m1[cntr] <- 3 * n_tilde - 4
-                    m1lup <- rbind(m1lup, data.frame(i = i, j = j, k = k,
-                      l = NA, m = NA, C = C, idx = cntr, which = "K3b"))
+                    m1lup[[cntr]] <- data.frame(i = i, j = j, k = k,
+                      l = NA, m = NA, C = C, idx = cntr, which = "K3b")
                     cntr <- cntr + 1
                   }
                 }
@@ -434,13 +462,14 @@ admg_optim <- function(
                 lk <- xij$idx[xij$i == l & xij$j == k]
                 jlC <- max(zijc$idx[zijc$i == j & zijc$j == l & zijc$C == C],
                           zijc$idx[zijc$i == l & zijc$j == j & zijc$C == C])
-                tmp[cntr, skip + cntr] <- 1 + .fill(tmp[cntr, skip + cntr])
-                tmp[cntr, n_d + jlC] <- -1 + .fill(tmp[cntr, n_d + jlC])
-                tmp[cntr, ik] <- (n_tilde - 2) + .fill(tmp[cntr, ik])
-                tmp[cntr, lk] <- (n_tilde - 2) + .fill(tmp[cntr, lk])
+                clist[[cntr]] <- data.frame(
+                  i = c(cntr, cntr, cntr, cntr),
+                  j = c(skip + cntr, n_d + jlC, ik, lk),
+                  v = c(1, -1, n_tilde - 2, n_tilde - 2)
+                )
                 rhs_m1[cntr] <- 2 * (n_tilde - 1)
-                m1lup <- rbind(m1lup, data.frame(i = i, j = j, k = k,
-                  l = l, m = NA, C = C, idx = cntr, which = "K4ab"))
+                m1lup[[cntr]] <- data.frame(i = i, j = j, k = k,
+                  l = l, m = NA, C = C, idx = cntr, which = "K4ab")
                 cntr <- cntr + 1
                 ### K4cd
                 for (k2 in setdiff(seq_len(d), c(i, j, k, l))) {
@@ -452,15 +481,14 @@ admg_optim <- function(
                     )
                     ik <- n_d + n_z + xij$idx[xij$i == i & xij$j == k]
                     lk <- xij$idx[xij$i == l & xij$j == k]
-                    tmp[cntr, skip + cntr] <- 1 + .fill(tmp[cntr, skip + cntr])
-                    tmp[cntr, jlC] <- -1 + .fill(tmp[cntr, jlC])
-                    tmp[cntr, kk2c] <- -1 + .fill(tmp[cntr, kk2c])
-                    tmp[cntr, ik] <- (n_tilde - 3) + .fill(tmp[cntr, ik])
-                    tmp[cntr, lk] <- (n_tilde - 3) + .fill(tmp[cntr, lk])
-                    tmp[cntr, n_lb + kk2c] <- (n_tilde - 3) + .fill(tmp[cntr, n_lb + kk2c])
+                    clist[[cntr]] <- data.frame(
+                      i = c(cntr, cntr, cntr, cntr, cntr, cntr),
+                      j = c(skip + cntr, jlC, kk2c, ik, lk, n_lb + kk2c),
+                      v = c(1, -1, -1, n_tilde - 3, n_tilde - 3, n_tilde - 3)
+                    )
                     rhs_m1[cntr] <- 3 * n_tilde - 7
-                    m1lup <- rbind(m1lup, data.frame(i = i, j = j, k = k,
-                      l = l, m = NA, C = C, idx = cntr, which = "K4cd"))
+                    m1lup[[cntr]] <- data.frame(i = i, j = j, k = k,
+                      l = l, m = NA, C = C, idx = cntr, which = "K4cd")
                     cntr <- cntr + 1
                   }
                 }
@@ -476,14 +504,14 @@ admg_optim <- function(
                             zijc$idx[zijc$i == l & zijc$j == i & zijc$C == C])
                   mjC <- max(zijc$idx[zijc$i == m & zijc$j == j & zijc$C == C],
                             zijc$idx[zijc$i == j & zijc$j == m & zijc$C == C])
-                  tmp[cntr, skip + cntr] <- 1 + .fill(tmp[cntr, skip + cntr])
-                  tmp[cntr, n_d + ilC] <- -1 + .fill(tmp[cntr, n_d + ilC])
-                  tmp[cntr, n_d + mjC] <- -1 + .fill(tmp[cntr, n_d + mjC])
-                  tmp[cntr, lk] <- (n_tilde - 3) + .fill(tmp[cntr, lk])
-                  tmp[cntr, mk] <- (n_tilde - 3) + .fill(tmp[cntr, mk])
+                  clist[[cntr]] <- data.frame(
+                    i = c(cntr, cntr, cntr, cntr, cntr),
+                    j = c(skip + cntr, n_d + ilC, n_d + mjC, lk, mk),
+                    v = c(1, -1, -1, n_tilde - 3, n_tilde - 3)
+                  )
                   rhs_m1[cntr] <- 2 * (n_tilde - 2)
-                  m1lup <- rbind(m1lup, data.frame(i = i, j = j, k = k,
-                    l = l, m = m, C = C, idx = cntr, which = "K5a"))
+                  m1lup[[cntr]] <- data.frame(i = i, j = j, k = k,
+                    l = l, m = m, C = C, idx = cntr, which = "K5a")
                   cntr <- cntr + 1
                   for (k2 in setdiff(seq_len(d), c(i, j, k, l, m))) {
                     ### K5b
@@ -493,16 +521,14 @@ admg_optim <- function(
                         lbijc$idx[lbijc$i == k & lbijc$j == k2 & lbijc$C == C],
                         lbijc$idx[lbijc$i == k2 & lbijc$j == k & lbijc$C == C]
                       )
-                      tmp[cntr, skip + cntr] <- 1 + .fill(tmp[cntr, skip + cntr])
-                      tmp[cntr, n_d + ilC] <- -1 + .fill(tmp[cntr, n_d + ilC])
-                      tmp[cntr, n_d + mjC] <- -1 + .fill(tmp[cntr, n_d + mjC])
-                      tmp[cntr, lk] <- (n_tilde - 4) + .fill(tmp[cntr, lk])
-                      tmp[cntr, mk] <- (n_tilde - 4) + .fill(tmp[cntr, mk])
-                      tmp[cntr, kk2c] <- -1 + .fill(tmp[cntr, kk2c])
-                      tmp[cntr, n_lb + kk2c] <- (n_tilde - 4) + .fill(tmp[cntr, n_lb + kk2c])
+                      clist[[cntr]] <- data.frame(
+                        i = c(cntr, cntr, cntr, cntr, cntr, cntr, cntr),
+                        j = c(skip + cntr, n_d + ilC, n_d + mjC, lk, mk, kk2c, n_lb + kk2c),
+                        v = c(1, -1, -1, n_tilde - 4, n_tilde - 4, -1, n_tilde - 4)
+                      )
                       rhs_m1[cntr] <- 3 * n_tilde - 10
-                      m1lup <- rbind(m1lup, data.frame(i = i, j = j, k = k,
-                        l = l, m = m, C = C, idx = cntr, which = "K5b"))
+                      m1lup[[cntr]] <- data.frame(i = i, j = j, k = k,
+                        l = l, m = m, C = C, idx = cntr, which = "K5b")
                       cntr <- cntr + 1
                     }
                   }
@@ -516,10 +542,12 @@ admg_optim <- function(
 
     nP1 <- cntr - 1
 
-    A[
-      grep("p1min", rownames(A)),
-      .multigrep(c("dxij", "lijc", "sxij", "lbijc", "zbijc", "uijklm"), colnames(A))
-    ] <- tmp
+    clist <- do.call("rbind", clist)
+    m1lup <- do.call("rbind", m1lup)
+    A[grep("p1min", rownames(A)),
+      .multigrep(c("dxij", "lijc", "sxij", "lbijc", "zbijc", "uijklm"), colnames(A))] <-
+      Matrix::sparseMatrix(i = clist$i, j = clist$j, x = clist$v,
+        dims = c(length(rn), length(cn)), dimnames = list(rn, cn))
     model$rhs[grep("p1min", names(model$rhs))] <- rhs_m1
 
     ### Indicators dij-> (C2) + (C3)
@@ -538,19 +566,27 @@ admg_optim <- function(
         cat("\nWorking on constraint DAG1")
       }
 
-      tmp <- A[grep("acyc", rownames(A)), grep("deij", colnames(A))]
+      rn <- grep("acyc", rownames(A), value = TRUE)
+      cn <- grep("deij", colnames(A), value = TRUE)
+      clist <- list()[rep(1, length(rn))]
       cntr <- 1
       for (i in seq_len(d)) {
         for (j in setdiff(seq_len(d), i)) {
           ij <- xij$idx[xij$i == i & xij$j == j]
           ji <- xij$idx[xij$i == j & xij$j == i]
-          tmp[cntr, ij] <- 1 + .fill(tmp[cntr, ij])
-          tmp[cntr, ji] <- 1 + .fill(tmp[cntr, ji])
+          clist[[cntr]] <- data.frame(
+            i = c(cntr, cntr),
+            j = c(ij, ji),
+            v = c(1, 1)
+          )
           model$rhs[grep("acyc", names(model$rhs))[cntr]] <- 1
           cntr <- cntr + 1
         }
       }
-      A[grep("acyc", rownames(A)), grep("deij", colnames(A))] <- tmp
+      clist <- do.call("rbind", clist)
+      A[grep("acyc", rownames(A)), grep("deij", colnames(A))] <-
+        Matrix::sparseMatrix(i = clist$i, j = clist$j, x = clist$v,
+          dims = c(length(rn), length(cn)), dimnames = list(rn, cn))
 
     }
 
@@ -560,34 +596,44 @@ admg_optim <- function(
       cat("\nWorking on constraints D1-D2")
     }
 
-    tmp <- A[grep("minN1", rownames(A)), .multigrep(c("dxij", "leij", "nijk"), colnames(A))]
+    rn <- grep("minN1", rownames(A), value = TRUE)
+    cn <- .multigrep(c("dxij", "leij", "nijk"), colnames(A), value = TRUE)
     rN1 <- rep(0, sum(nN1))
     cntr <- 1
     skip <- 2 * n_d
-    tab_N1 <- data.frame()
+    tab_N1 <- clist <- list()[rep(1, sum(nN1))]
     for (i in seq_len(d)) {
       for (j in setdiff(seq_len(d), i)) {
         ij <- xij$idx[xij$i == i & xij$j == j]
-        tmp[cntr, skip + cntr] <- 1 + .fill(tmp[cntr, skip + cntr])
-        tmp[cntr, ij] <- d - 1 + .fill(tmp[cntr, ij])
+        clist[[cntr]] <- data.frame(
+          i = c(cntr, cntr),
+          j = c(skip + cntr, ij),
+          v = c(1, d - 1)
+        )
         rN1[cntr] <- d
-        tab_N1 <- rbind(tab_N1, data.frame(i = i, j = j, idx = cntr, name = "D1"))
+        tab_N1[[cntr]] <- data.frame(i = i, j = j, idx = cntr, name = "D1")
         cntr <- cntr + 1
         for (k in setdiff(seq_len(d), c(i, j))) {
           ik <- xij$idx[xij$i == i & xij$j == k]
           kj <- xij$idx[xij$i == k & xij$j == j]
-          tmp[cntr, skip + cntr] <- 1 + .fill(tmp[cntr, skip + cntr])
-          tmp[cntr, kj] <- d - 2 + .fill(tmp[cntr, kj])
-          tmp[cntr, n_d + ik] <- -1 + .fill(tmp[cntr, n_d + ik])
+          clist[[cntr]] <- data.frame(
+            i = c(cntr, cntr, cntr),
+            j = c(skip + cntr, kj, n_d + ik),
+            v = c(1, d - 2, -1)
+          )
           rN1[cntr] <- d - 1
-          tab_N1 <- rbind(tab_N1, data.frame(i = i, j = j, idx = cntr, name = "D2"))
+          tab_N1[[cntr]] <- data.frame(i = i, j = j, idx = cntr, name = "D2")
           cntr <- cntr + 1
         }
       }
     }
 
+    tab_N1 <- do.call("rbind", tab_N1)
+    clist <- do.call("rbind", clist)
     model$rhs[grep("d1d2min", names(model$rhs))] <- rN1
-    A[grep("minN1", rownames(A)), .multigrep(c("dxij", "leij", "nijk"), colnames(A))] <- tmp
+    A[grep("minN1", rownames(A)), .multigrep(c("dxij", "leij", "nijk"), colnames(A))] <-
+      Matrix::sparseMatrix(i = clist$i, j = clist$j, x = clist$v,
+        dims = c(length(rn), length(cn)), dimnames = list(rn, cn))
 
     ### CONSTRAINTS FOR LINEARIZING THE OBJECTIVE
 
