@@ -117,8 +117,8 @@ out <- lapply(seq_len(nsim), \(seed) {
     V = V, cache = cache,
     trafo = \(x) as.numeric(x <= alpha),
     weight_type = wtype,
-    warmstart = NULL,
-    edgehints = NULL,
+    warmstart = if (mode == "dag") .ess_to_dag(PC) else .pag_to_admg(FCI),
+    edgehints = if (mode == "dag") 1 * (PC != 0) else 1 * (FCI != 0),
     gurobi_args = list(
       Threads = ncores,
       TimeLimit = walltime

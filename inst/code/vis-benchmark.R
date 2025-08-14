@@ -4,7 +4,7 @@
 library("tidyverse")
 library("scales")
 save <- TRUE
-max_time <- 1800
+max_time <- 2400
 
 ### List files
 fin <- "./inst/results/benchmark/2025-08-13/fixed"
@@ -72,7 +72,7 @@ p2 <- ggplot(
 p3 <- res |>
   mutate(mode = toupper(mode)) |>
   pivot_longer(c("sep", "input_sep")) |>
-  filter(method == "GLIP") |>
+  filter(method %in% c("GLIP", "PC", "FCI")[1]) |>
   ggplot(aes(x = d, y = value, color = name)) +
   stat_summary(geom = "line") +
   stat_summary() +

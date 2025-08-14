@@ -187,3 +187,28 @@ darg <- function(x, d) {
   tmp[] <- 0
   list(M1 = G, M2 = tmp)
 }
+
+.pag_to_admg <- function(G) {
+  if ("pag" %in% class(G)) {
+    class(G) <- c("matrix", "array")
+  }
+  mag <- pcalg::pag2magAM(G, x = 1, max.chordal = nrow(G) + 1)
+  V <- rownames(G)
+  d <- length(V)
+  tmp <- matrix(0, nrow = d, ncol = d, dimnames = list(V, V))
+  admg <- list(M1 = tmp, M2 = tmp)
+  for (i in V) {
+    for (j in setdiff(V, i)) {
+      admg$M1[i, j] <- 1 * (mag[i, j] == 2 & mag[j, i] == 3)
+      admg$M2[i, j] <- 1 * (mag[i, j] == 2 & mag[j, i] == 2)
+    }
+  }
+  admg
+}
+
+.ess_to_dag <- function(G) {
+  if ("ess" %in% class(G) | "pag" %in% class(G)) {
+    class(G) <- c("matrix", "array")
+  }
+  as(pcalg::pdag2dag(as(G, "graphNEL"))$graph, "matrix")
+}

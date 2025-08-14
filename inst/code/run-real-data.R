@@ -147,7 +147,7 @@ lG <- .get_opt(mode)(tests_ms,
   V = V, cache = cache,
   trafo = \(x) as.numeric(x <= alpha),
   weight_type = wtype,
-  warmstart = if (mode == "dag") gt else NULL,
+  warmstart = if (mode == "dag") .ess_to_dag(PC) else .pag_to_admg(FCI),
   edgehints = if (mode == "dag") 1 * (PC != 0) else 1 * (FCI != 0),
   gurobi_args = list(
     Threads = ncores,
@@ -236,7 +236,7 @@ sumtab <- res |>
     prec = mean(c(tail_prec, head_prec), na.rm = TRUE),
     rec = mean(c(tail_rec, head_rec), na.rm = TRUE)
   ) |>
-  select(method, shd, sep, prec, rec, fdr)
+  select(method, shd, sep, prec, rec)
 
 texout <- knitr::kable(sumtab, format = "latex", booktabs = TRUE, digits = 2)
 

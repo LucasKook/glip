@@ -15,6 +15,10 @@ trafo = \(x) as.numeric(x <= 0.05),
     warning("Solver `gurobi` not available.")
   }
 
+  if (!is.null(warmstart) & !is.list(warmstart) & is.matrix(warmstart)) {
+    warmstart <- .to_admg(warmstart)
+  }
+
   mode <- match.arg(mode)
   weight_type <- match.arg(weight_type)
 
@@ -162,9 +166,9 @@ trafo = \(x) as.numeric(x <= 0.05),
   model$branchpriority <- rep(0, length(model$obj))
   model$branchpriority[.multigrep(c("xij", "bxij", "sxij"), names(model$obj))] <- 1
   ### Warm start and edge hints
-  guess <- numeric(n_d)
-  bguess <- numeric(n_b)
-  sguess <- numeric(n_d)
+  guess <- ws_xij <- numeric(n_d)
+  bguess <- ws_bxij <- numeric(n_b)
+  sguess <- ws_sxij <- numeric(n_d)
   for (i in seq_len(d)) {
     for (j in setdiff(seq_len(d), i)) {
       bidx <- bxij$idx[bxij$i == i & bxij$j == j]
@@ -178,6 +182,15 @@ trafo = \(x) as.numeric(x <= 0.05),
         guess[xidx] <- edgehints[i, j]
         sguess[xidx] <- edgehints[i, j]
         bguess[bidx] <- 1 * (edgehints[i, j] | edgehints[j, i])
+      }
+      if (is.null(warmstart)) {
+        ws_xij[xidx] <- 0
+        ws_bxij[bidx] <- 0
+        ws_sxij[xidx] <- 0
+      } else {
+        ws_xij[xidx] <- warmstart$M1[i, j]
+        ws_bxij[bidx] <- warmstart$M2[i, j]
+        ws_sxij[xidx] <- 1 * (warmstart$M1[i, j] | warmstart$M2[i, j])
       }
     }
   }
@@ -193,7 +206,7 @@ trafo = \(x) as.numeric(x <= 0.05),
   model$varhintpri[grep("sxij", names(model$obj))] <- 2 - sguess
   model$varhintpri <- as.integer(model$varhintpri)
   model$start <- rep(NA, length(model$obj))
-  model$start[.multigrep(c("dxij", "bxij", "sxij"), names(model$obj))] <- 0
+  model$start[.multigrep(c("dxij", "bxij", "sxij"), names(model$obj))] <- c(ws_xij, ws_bxij, ws_sxij)
   model$modelsense <- "min"
   model$vtype <- rep(c("C", "B", "I", "B", "I", "B", "I", "B", "I", "I"),
     c(n_z, n_z + n_d, n_z + n_d + sum(nN1), n_d, sum(nkc), n_b + n_d,
