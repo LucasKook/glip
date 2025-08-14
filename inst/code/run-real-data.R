@@ -17,15 +17,15 @@ cd <- import("CausalDisco.baselines", convert = TRUE)
 
 # Parse command line arguments
 args <- commandArgs(trailingOnly = TRUE)
-mode <- darg(args[1], "dag")
-dataset <- darg(args[2], "sachs")
+mode <- darg(args[1], "admg")
+dataset <- darg(args[2], "asia")
 ms <- as.numeric(darg(args[3], 1))
 alpha <- as.numeric(darg(args[4], 0.001))
 use_oracle_tests <- as.numeric(darg(args[5], 0))
 wtype <- darg(args[6], "const")
-walltime <- as.numeric(darg(args[7], 120))
+walltime <- as.numeric(darg(args[7], 1))
 d_max <- as.numeric(darg(args[8], 11))
-d_max <- min(d_max, ifelse(mode == "dag", 11, 8))
+d_max <- min(d_max, ifelse(mode == "dag", 4, 4))
 reg <- darg(args[9], "lrm")
 nsim <- as.numeric(darg(args[10], 2))
 test <- "gcm"
@@ -38,9 +38,9 @@ inp_data <- file.path(inp, paste0(dataset, ".txt"))
 inp_graph <- file.path(inp, paste0(dataset, ".graph.txt"))
 
 ### Read data
-data <- read_table(inp_data, show_col_types = FALSE)
-V <- colnames(data)
-d <- NCOL(data)
+data <- odata <- read_table(inp_data, show_col_types = FALSE)
+V <- oV <- colnames(data)
+d <- od <- NCOL(data)
 
 ### Ground truth graph
 dagstr <- paste0(read_lines(inp_graph), collapse = ";")
@@ -59,11 +59,11 @@ out <- lapply(seq_len(nsim), \(iter) {
   setTxtProgressBar(pb, iter)
 
   newV <- V
-  if (d > d_max) {
+  if (od > d_max) {
     d <- d_max
     ms <- ifelse(ms > d - 2, d - 2, ms)
     newV <- V[perms[[iter]]]
-    data <- data[, newV]
+    data <- odata[, newV]
     gt <- marginalize_dag_to_admg(gt, newV)
     if (mode == "dag") {
       gt <- gt$M1
@@ -268,8 +268,8 @@ out <- lapply(seq_len(nsim), \(iter) {
 sumtab <- out |>
   group_by(method) |>
   summarize(
-    SHD = mean(shd * d^2),
-    SEP = mean(sep),
+    SHD = mean(shd * d^2, na.rm = TRUE),
+    SEP = mean(sep, na.rm = TRUE),
     PREC = mean(c(tail_prec, head_prec), na.rm = TRUE),
     REC = mean(c(tail_rec, head_rec), na.rm = TRUE),
     sdSHD = sd(shd * d^2), sdSEP = sd(sep),
