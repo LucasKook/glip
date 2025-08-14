@@ -41,10 +41,10 @@ alpha=0.001
 uot=0
 wtype=const
 wt=120
-dmax=4
+dmax=6
 reg=lrm
-nsim=2
-for mode in dag admg; do
+nsim=20
+for mode in admg; do
   for ds in asia child alarm hepar2 sachs; do
     echo "Running with ms=$ms, alpha=$alpha, wtype=$wtype, dataset=$ds, dmax=$dmax, nsim=$nsim, reg=$reg"
     Rscript --vanilla ./inst/code/run-real-data.R $mode $ds $ms $alpha $uot $wtype $wt $dmax $reg $nsim
