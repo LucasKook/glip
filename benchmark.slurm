@@ -38,14 +38,14 @@ export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/home/lkook/gurobi1202/linux64/lib
 
 ms=2
 deg=2
-alpha=0.01
+alpha=0.001
 uot=0
-simname=fixed
+simname=loweralpha
 wtype=const
 nsim=20
 reg=lrm
 wt=2400
-for d in {7..8}; do
+for d in {3..6}; do
   for mode in dag admg; do
     for n in 400 3200; do
       echo "Running with d=$d, mode=$mode, ms=$ms, deg=$deg, alpha=$alpha, wtype=$wtype, n=$n, reg=$reg"

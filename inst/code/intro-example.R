@@ -19,6 +19,7 @@ dgp <- function(n, cor = 0.9) {
 }
 
 cors <- c(0, 0.9, 0.9999)
+alpha <- 0.05
 nsim <- 50
 n <- 3e2
 
@@ -31,13 +32,16 @@ out <- lapply(cors, \(tcor) {
     d <- dgp(n, cor = tcor)
     ### Run GLIP
     tmp <- capture.output(
-      lP <- learn_graph(d, test_args = list(
-        reg_YonZ = "lrm",
-        reg_XonZ = "lrm"
-      ), mode = "admg")
+      lP <- learn_graph(d,
+        trafo = \(x) 1 * (x <= alpha),
+        test_args = list(
+          reg_YonZ = "lrm",
+          reg_XonZ = "lrm"
+        ), mode = "admg"
+      )
     )
     ### Run FCI
-    out <- fci(list(C = cor(d), n = NROW(d)), gaussCItest, 0.05, colnames(d),
+    out <- fci(list(C = cor(d), n = NROW(d)), gaussCItest, alpha, colnames(d),
       selectionBias = FALSE
     )
     ### Return

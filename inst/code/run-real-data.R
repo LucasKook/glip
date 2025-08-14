@@ -21,10 +21,10 @@ ms <- as.numeric(darg(args[3], 1))
 alpha <- as.numeric(darg(args[4], 0.001))
 use_oracle_tests <- as.numeric(darg(args[5], 0))
 wtype <- darg(args[6], "const")
-walltime <- as.numeric(darg(args[6], 30))
-d_max <- as.numeric(darg(args[7], 11))
+walltime <- as.numeric(darg(args[7], 120))
+d_max <- as.numeric(darg(args[8], 11))
 d_max <- min(d_max, ifelse(mode == "dag", 11, 8))
-reg <- darg(args[8], "lrm")
+reg <- darg(args[9], "lrm")
 test <- "gcm"
 save <- TRUE
 
@@ -51,6 +51,9 @@ if (d > d_max) {
   V <- V[1:d]
   data <- data[, V]
   gt <- marginalize_dag_to_admg(gt, V)
+  if (mode == "dag") {
+    gt <- gt$M1
+  }
 }
 
 ### Parameters for running the optimization
@@ -231,8 +234,7 @@ sumtab <- res |>
     shd = shd * d^2,
     sep = sep,
     prec = mean(c(tail_prec, head_prec), na.rm = TRUE),
-    rec = mean(c(tail_rec, head_rec), na.rm = TRUE),
-    fdr = mean(c(tail_fdr, head_fdr), na.rm = TRUE),
+    rec = mean(c(tail_rec, head_rec), na.rm = TRUE)
   ) |>
   select(method, shd, sep, prec, rec, fdr)
 
