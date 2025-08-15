@@ -7,7 +7,8 @@ save <- TRUE
 
 ### List files
 fin <- "./inst/results/datasets/admg-dmax-6"
-files <- list.files(fin, pattern = "all-tab.rds", full.names = TRUE, recursive = TRUE)
+files <- list.files(fin, pattern = "-all.rds", full.names = TRUE, recursive = TRUE)
+files <- grep("asia", files, value = TRUE)
 
 res <- lapply(files, readRDS)
 names(res) <- files

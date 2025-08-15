@@ -105,7 +105,11 @@ prf1.default <- function(predicted, groundtruth, summarize = TRUE) {
   }
   res |>
     dplyr::group_by(which) |>
-    dplyr::summarize_at(c("precision", "recall", "f1", "fdr", "mcc", "acc"), mean, na.rm = TRUE)
+    dplyr::summarize_at(
+      c("precision", "recall", "f1", "fdr", "mcc", "acc"), mean,
+      na.rm = TRUE
+    ) |>
+    dplyr::mutate_all(~ ifelse(is.nan(.x), NA, .x))
 }
 
 #' @exportS3Method prf1 pag
