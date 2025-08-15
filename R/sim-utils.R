@@ -109,7 +109,7 @@ prf1.default <- function(predicted, groundtruth, summarize = TRUE) {
       c("precision", "recall", "f1", "fdr", "mcc", "acc"), mean,
       na.rm = TRUE
     ) |>
-    dplyr::mutate_all(~ ifelse(is.nan(.x), NA, .x))
+    dplyr::mutate_all(~ dplyr::case_when(is.nan(.x) ~ NA, !is.nan(.x) ~ .x))
 }
 
 #' @exportS3Method prf1 pag
