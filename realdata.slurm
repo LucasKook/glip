@@ -41,9 +41,9 @@ alpha=0.001
 uot=0
 wtype=const
 wt=120
-dmax=8
+dmax=6
 reg=lrm
-nsim=20
+nsim=50
 for mode in admg; do
   for ds in asia child alarm hepar2 sachs; do
     echo "Running with ms=$ms, alpha=$alpha, wtype=$wtype, dataset=$ds, dmax=$dmax, nsim=$nsim, reg=$reg"

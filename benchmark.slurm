@@ -40,11 +40,11 @@ ms=2
 deg=2
 alpha=0.001
 uot=0
-simname=loweralpha
+simname=shortwt
 wtype=const
-nsim=20
+nsim=50
 reg=lrm
-wt=2400
+wt=120
 for d in {3..6}; do
   for mode in dag admg; do
     for n in 400 3200; do
