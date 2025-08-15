@@ -281,7 +281,8 @@ sumtab <- out |>
   dplyr::mutate_all(~ dplyr::case_when(is.nan(.x) ~ NA, !is.nan(.x) ~ .x))
 
 to_table <- function(x, y, digits = 2) {
-  paste0(round(x, digits), " (", round(y, digits), ")")
+  del <- paste0("%.", digits, "f")
+  paste0(sprintf(del, x), " (", sprintf(del, y), ")")
 }
 
 texout <- sumtab |>
@@ -291,6 +292,7 @@ texout <- sumtab |>
     PREC = to_table(PREC, sdPREC),
     REC = to_table(REC, sdREC)
   ) |>
+  select(method, SHD, SEP, PREC, REC) |>
   knitr::kable(format = "latex", booktabs = TRUE, digits = 2)
 
 if (save) {
