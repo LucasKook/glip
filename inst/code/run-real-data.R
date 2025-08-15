@@ -25,7 +25,7 @@ use_oracle_tests <- as.numeric(darg(args[5], 0))
 wtype <- darg(args[6], "const")
 walltime <- as.numeric(darg(args[7], 1))
 d_max <- as.numeric(darg(args[8], 11))
-d_max <- min(d_max, ifelse(mode == "dag", 6, 6))
+d_max <- min(d_max, ifelse(mode == "dag", 11, 8))
 reg <- darg(args[9], "lrm")
 nsim <- as.numeric(darg(args[10], 2))
 test <- "gcm"
