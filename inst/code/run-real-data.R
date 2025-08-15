@@ -239,7 +239,8 @@ out <- lapply(seq_len(nsim), \(iter) {
       time = as.difftime(timings[[idx]], units = "secs"),
       d = d, ms = ms, mode = mode, wtype = wtype,
       use_oracle_tests = use_oracle_tests, iter = iter
-    )
+    ) |>
+    dplyr::mutate_all(~ dplyr::case_when(is.nan(.x) ~ NA, !is.nan(.x) ~ .x))
   }) |> do.call("rbind", args = _)
 
   sumtab <- res |>
@@ -249,7 +250,8 @@ out <- lapply(seq_len(nsim), \(iter) {
       SEP = mean(sep),
       PREC = mean(c(tail_prec, head_prec), na.rm = TRUE),
       REC = mean(c(tail_rec, head_rec), na.rm = TRUE)
-    )
+    ) |>
+    dplyr::mutate_all(~ dplyr::case_when(is.nan(.x) ~ NA, !is.nan(.x) ~ .x))
 
   texout <- knitr::kable(sumtab, format = "latex", booktabs = TRUE, digits = 2)
 
@@ -275,7 +277,8 @@ sumtab <- out |>
     sdSHD = sd(shd * d^2), sdSEP = sd(sep),
     sdPREC = sd(c(tail_prec, head_prec), na.rm = TRUE),
     sdREC = sd(c(tail_rec, head_rec), na.rm = TRUE)
-  )
+  ) |>
+  dplyr::mutate_all(~ dplyr::case_when(is.nan(.x) ~ NA, !is.nan(.x) ~ .x))
 
 to_table <- function(x, y, digits = 2) {
   paste0(round(x, digits), " (", round(y, digits), ")")
