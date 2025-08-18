@@ -44,7 +44,7 @@ simname=shortwt
 wtype=const
 nsim=50
 reg=lrm
-wt=120
+wt=600
 for d in {3..6}; do
   for mode in dag admg; do
     for n in 400 3200; do

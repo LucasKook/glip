@@ -7,7 +7,7 @@ library("knitr")
 save <- TRUE
 
 ### List files
-fin <- "./inst/results/datasets/2025-08-15/d8"
+fin <- "./inst/results/datasets/2025-08-18"
 files <- list.files(fin, pattern = "all-tab.rds", full.names = TRUE, recursive = TRUE)
 
 to_table <- function(x, y, digits = 2) {

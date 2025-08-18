@@ -41,7 +41,7 @@ alpha=0.001
 uot=0
 wtype=const
 wt=120
-dmax=6
+dmax=8
 reg=lrm
 nsim=50
 for mode in admg; do
