@@ -33,7 +33,7 @@ save <- TRUE
 
 ### Folders
 inp <- "./inst/data/datasets"
-outdir <- file.path("inst", "results", "datasets", Sys.Date(), paste0("d", d, "ms", ms), dataset)
+outdir <- file.path("inst", "results", "datasets", Sys.Date(), paste0("d", d_max, "ms", ms), dataset)
 inp_data <- file.path(inp, paste0(dataset, ".txt"))
 inp_graph <- file.path(inp, paste0(dataset, ".graph.txt"))
 
