@@ -36,17 +36,18 @@ export GUROBI_HOME=/home/lkook/gurobi1202/
 export PATH=$PATH:/home/lkook/gurobi1202/linux64/bin
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/home/lkook/gurobi1202/linux64/lib
 
-ms=1
 alpha=0.001
 uot=0
 wtype=const
-wt=120
-dmax=8
+wt=300
+dmax=6
 reg=lrm
 nsim=50
 for mode in admg; do
   for ds in asia child alarm hepar2 sachs; do
-    echo "Running with ms=$ms, alpha=$alpha, wtype=$wtype, dataset=$ds, dmax=$dmax, nsim=$nsim, reg=$reg"
-    Rscript --vanilla ./inst/code/run-real-data.R $mode $ds $ms $alpha $uot $wtype $wt $dmax $reg $nsim
+    for ms in {1..2}; do
+      echo "Running with ms=$ms, alpha=$alpha, wtype=$wtype, dataset=$ds, dmax=$dmax, nsim=$nsim, reg=$reg"
+      Rscript --vanilla ./inst/code/run-real-data.R $mode $ds $ms $alpha $uot $wtype $wt $dmax $reg $nsim
+    done
   done
 done

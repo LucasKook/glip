@@ -24,7 +24,7 @@ alpha <- as.numeric(darg(args[4], 0.001))
 use_oracle_tests <- as.numeric(darg(args[5], 0))
 wtype <- darg(args[6], "const")
 walltime <- as.numeric(darg(args[7], 1))
-d_max <- as.numeric(darg(args[8], 11))
+d_max <- as.numeric(darg(args[8], 6))
 d_max <- min(d_max, ifelse(mode == "dag", 11, 8))
 reg <- darg(args[9], "lrm")
 nsim <- as.numeric(darg(args[10], 2))
@@ -33,7 +33,7 @@ save <- TRUE
 
 ### Folders
 inp <- "./inst/data/datasets"
-outdir <- file.path("inst", "results", "datasets", Sys.Date(), dataset)
+outdir <- file.path("inst", "results", "datasets", Sys.Date(), paste0("d", d, "ms", ms), dataset)
 inp_data <- file.path(inp, paste0(dataset, ".txt"))
 inp_graph <- file.path(inp, paste0(dataset, ".graph.txt"))
 
@@ -222,11 +222,15 @@ out <- lapply(seq_len(nsim), \(iter) {
       precomputed_predicted = precomputed_predicted,
       precomputed_groundtruth = otests_ms$p.value
     )
+    FULL_SEP <- sep(learned, ORACLE, ifelse(mode == "dag", "pdag", "mag"), d - 2,
+      precomputed_groundtruth = otests$p.value
+    )
     CM <- prf1(learned, ORACLE)
     data.frame(
       method = method,
       shd = SHD,
       sep = 1 - SEP$acc,
+      full_sep = 1 - FULL_SEP$acc,
       input_sep = input_sep,
       tail_prec = 1 - mean(CM$precision[CM$which == "tail"], na.rm = TRUE),
       tail_rec = 1 - mean(CM$recall[CM$which == "tail"], na.rm = TRUE),
@@ -248,6 +252,7 @@ out <- lapply(seq_len(nsim), \(iter) {
     summarize(
       SHD = mean(shd * d^2),
       SEP = mean(sep),
+      FSEP = mean(full_sep),
       PREC = mean(c(tail_prec, head_prec), na.rm = TRUE),
       REC = mean(c(tail_rec, head_rec), na.rm = TRUE)
     ) |>
@@ -272,9 +277,10 @@ sumtab <- out |>
   summarize(
     SHD = mean(shd * d^2, na.rm = TRUE),
     SEP = mean(sep, na.rm = TRUE),
+    FSEP = mean(full_sep, na.rm = TRUE),
     PREC = mean(c(tail_prec, head_prec), na.rm = TRUE),
     REC = mean(c(tail_rec, head_rec), na.rm = TRUE),
-    sdSHD = sd(shd * d^2), sdSEP = sd(sep),
+    sdSHD = sd(shd * d^2), sdSEP = sd(sep), sdFSEP = sd(full_sep),
     sdPREC = sd(c(tail_prec, head_prec), na.rm = TRUE),
     sdREC = sd(c(tail_rec, head_rec), na.rm = TRUE)
   ) |>
@@ -289,10 +295,11 @@ texout <- sumtab |>
   mutate(
     SHD = to_table(SHD, sdSHD),
     SEP = to_table(SEP, sdSEP),
+    FSEP = to_table(FSEP, sdSEP),
     PREC = to_table(PREC, sdPREC),
     REC = to_table(REC, sdREC)
   ) |>
-  select(method, SHD, SEP, PREC, REC) |>
+  select(method, SHD, SEP, FSEP, PREC, REC) |>
   knitr::kable(format = "latex", booktabs = TRUE, digits = 2)
 
 if (save) {

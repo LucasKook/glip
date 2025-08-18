@@ -14,12 +14,12 @@ cd <- import("CausalDisco.baselines", convert = TRUE)
 
 # Parse command line arguments
 args <- commandArgs(trailingOnly = TRUE)
-mode <- darg(args[1], "dag")
+mode <- darg(args[1], "admg")
 d <- as.numeric(darg(args[2], 3))
 ms <- as.numeric(darg(args[3], d - 2))
 ms <- ifelse(ms == -1, d - 2, ms)
 ms <- ifelse(ms > d - 2, d - 2, ms)
-degree <- as.numeric(darg(args[4], 2))
+degree <- as.numeric(darg(args[4], 3))
 n <- as.numeric(darg(args[5], 1e3))
 nsim <- as.numeric(darg(args[6], 1))
 alpha <- as.numeric(darg(args[7], 0.01))
@@ -28,6 +28,7 @@ sim_name <- darg(args[9], "test-run")
 wtype <- darg(args[10], "log")
 reg <- darg(args[11], "lrm")
 walltime <- as.numeric(darg(args[12], 1800))
+admg_add <- as.numeric(darg(args[13], 3))
 save <- TRUE
 
 # Parameters for running the optimization
@@ -54,7 +55,7 @@ out <- lapply(seq_len(nsim), \(seed) {
   ### Generate random graph and data
   cat("\nGenerating random graph and data\n")
   set.seed(tseed <- 1e4 + 3e4 * (mode == "dag") + n + seed)
-  graph <- random_graph(d = d, prob = pr, mode = mode)
+  graph <- random_graph(d = d, prob = pr, mode = mode, admg_add = admg_add)
   data <- data.frame(py_data <- scale(rgraph(graph, n = n)))
   py_data <- r_to_py(py_data)$copy()
   V <- colnames(data)
@@ -64,7 +65,7 @@ out <- lapply(seq_len(nsim), \(seed) {
     "dag" = graph$DAG,
     "admg" = graph$ADMG
   )
-  ORACLE <- .compute_graphical_representation(gt, d - 2, mode)
+  ORACLE <<- .compute_graphical_representation(gt, d - 2, mode)
 
   ### Run CITs
   cat("\nRunning conditional independence tests\n")

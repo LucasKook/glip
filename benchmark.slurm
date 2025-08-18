@@ -37,10 +37,11 @@ export PATH=$PATH:/home/lkook/gurobi1202/linux64/bin
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/home/lkook/gurobi1202/linux64/lib
 
 ms=2
-deg=2
+deg=3
+admgadd=3
 alpha=0.001
 uot=0
-simname=shortwt
+simname=more-confounding
 wtype=const
 nsim=50
 reg=lrm
@@ -49,7 +50,7 @@ for d in {3..6}; do
   for mode in dag admg; do
     for n in 400 3200; do
       echo "Running with d=$d, mode=$mode, ms=$ms, deg=$deg, alpha=$alpha, wtype=$wtype, n=$n, reg=$reg"
-      Rscript --vanilla ./inst/code/run-benchmark.R $mode $d $ms $deg $n $nsim $alpha $uot $simname $wtype $reg $wt
+      Rscript --vanilla ./inst/code/run-benchmark.R $mode $d $ms $deg $n $nsim $alpha $uot $simname $wtype $reg $wt $admgadd
     done
   done
 done
