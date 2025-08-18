@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=glip-real # short name for your job
+#SBATCH --job-name=glip # short name for your job
 #SBATCH --mail-user=lkook@wu.ac.at
 #SBATCH --mail-type=END
 #SBATCH --mail-type=FAIL
@@ -7,7 +7,7 @@
 #SBTACH -e %x_%j_%N.err
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=16
-#SBATCH --mem-per-cpu=4G
+#SBATCH --mem-per-cpu=8G
 #SBATCH --partition=highmem
 
 echo "Running job $SLURM_JOB_NAME with ID $SLURM_JOB_ID"
@@ -36,18 +36,21 @@ export GUROBI_HOME=/home/lkook/gurobi1202/
 export PATH=$PATH:/home/lkook/gurobi1202/linux64/bin
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/home/lkook/gurobi1202/linux64/lib
 
+ms=2
+deg=3
+admgadd=3
 alpha=0.001
 uot=0
+simname=more-confounding
 wtype=const
-wt=300
-dmax=6
-reg=lrm
 nsim=50
-for mode in admg; do
-  for ds in asia child alarm hepar2 sachs; do
-    for ms in {1..2}; do
-      echo "Running with ms=$ms, alpha=$alpha, wtype=$wtype, dataset=$ds, dmax=$dmax, nsim=$nsim, reg=$reg"
-      Rscript --vanilla ./inst/code/run-real-data.R $mode $ds $ms $alpha $uot $wtype $wt $dmax $reg $nsim
+reg=lrm
+wt=600
+for d in {3..6}; do
+  for mode in dag admg; do
+    for n in 400 3200; do
+      echo "Running with d=$d, mode=$mode, ms=$ms, deg=$deg, alpha=$alpha, wtype=$wtype, n=$n, reg=$reg"
+      Rscript --vanilla ./inst/code/run-simulation.R $mode $d $ms $deg $n $nsim $alpha $uot $simname $wtype $reg $wt $admgadd
     done
   done
 done
