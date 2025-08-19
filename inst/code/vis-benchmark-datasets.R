@@ -7,7 +7,7 @@ library("knitr")
 save <- TRUE
 
 ### List files
-fin <- "./inst/results/datasets/2025-08-18/d8"
+fin <- "./inst/results/datasets/2025-08-18/d6ms2"
 files <- list.files(fin, pattern = "all-tab.rds", full.names = TRUE, recursive = TRUE)
 
 to_table <- function(x, y, digits = 2) {
@@ -21,22 +21,15 @@ res <- lapply(files, \(x) {
     mutate(
       SHD = to_table(SHD, sdSHD),
       SEP = to_table(SEP, sdSEP),
+      FSEP = to_table(FSEP, sdFSEP),
       PREC = to_table(PREC, sdPREC),
       REC = to_table(REC, sdREC)
     ) |>
     mutate(Method = method, Dataset = toupper(str_extract(x, "alarm|asia|child|sachs|hepar2"))) |>
-    select(Dataset, Method, SHD, SEP, PREC, REC)
+    select(Dataset, Method, SHD, SEP, FSEP, PREC, REC)
 }) |> bind_rows()
 res
 
-knitr::kable(res, format = "latex", booktabs = TRUE, digits = 2, align = "lrrrrr") |>
+out <- knitr::kable(res, format = "latex", booktabs = TRUE, digits = 2, align = "lrrrrr") |>
   kableExtra::collapse_rows(columns = 1, latex_hline = "major")
-
-### ### Read files
-### res <- lapply(files, \(x) {
-###   sumtab <- readRDS(x)
-###   knitr::kable(sumtab, format = "latex", booktabs = TRUE, digits = 2)
-### })
-### names(res) <- files
-###
-### res
+write_lines(out, file.path(fin, "table.tex"))
