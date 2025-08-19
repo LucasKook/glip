@@ -7,7 +7,7 @@ library("knitr")
 save <- TRUE
 
 ### List files
-fin <- "./inst/results/datasets/2025-08-18/d6ms2"
+fin <- "./inst/results/datasets/2025-08-18/d6ms1"
 files <- list.files(fin, pattern = "all-tab.rds", full.names = TRUE, recursive = TRUE)
 
 to_table <- function(x, y, digits = 2) {
@@ -30,6 +30,6 @@ res <- lapply(files, \(x) {
 }) |> bind_rows()
 res
 
-out <- knitr::kable(res, format = "latex", booktabs = TRUE, digits = 2, align = "lrrrrr") |>
+out <- knitr::kable(res, format = "latex", booktabs = TRUE, digits = 2, align = "lrrrrrr") |>
   kableExtra::collapse_rows(columns = 1, latex_hline = "major")
 write_lines(out, file.path(fin, "table.tex"))
