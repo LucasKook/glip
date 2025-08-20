@@ -4,8 +4,8 @@
 library("tidyverse")
 library("scales")
 save <- TRUE
-max_time <- 300
-walltime <- 300
+max_time <- 600
+walltime <- c(300, 600)
 
 ### List files
 fin <- "./inst/results/asp-comparison/2025-08-18/small"
