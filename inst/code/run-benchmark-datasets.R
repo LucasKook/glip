@@ -78,7 +78,7 @@ out <- lapply(seq_len(nsim), \(iter) {
 
   ### Parameters for running the tests
   targs <- list(reg_YonZ = reg, reg_XonZ = reg)
-  alldiscr <- (dataset != "sachs")
+  alldiscr <- (dataset %in% c("alarm", "asia", "child", "hepar2", "sachs"))
   fdata <- data
   if (alldiscr) {
     test <- "mi"

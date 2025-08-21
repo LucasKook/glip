@@ -12,9 +12,9 @@ library("tidyverse")
 
 ### Parse command line arguments
 args <- commandArgs(trailingOnly = TRUE)
-mode <- darg(args[1], "dag")
-d <- as.numeric(darg(args[2], 10))
-ms <- as.numeric(darg(args[3], 1))
+mode <- darg(args[1], "dmg")
+d <- as.numeric(darg(args[2], 5))
+ms <- as.numeric(darg(args[3], -1))
 ms <- ifelse(ms == -1, d - 2, ms)
 N <- as.numeric(darg(args[4], 3e2))
 nsim <- as.numeric(darg(args[5], 1))
@@ -37,10 +37,12 @@ if (!dir.exists(wdir)) {
 ### Prepare arguments
 test <- c("oracle", "classic")[2 - use_oracle_tests]
 n <- d
-restrict <- "acyclic"
-if (mode == "dag") {
-  restrict <- c(restrict, "sufficient")
-}
+restrict <- switch(mode,
+  "dag" = c("acyclic", "sufficient"),
+  "dg" = c("sufficient"),
+  "dmg" = c(),
+  "admg" = c("acyclic")
+)
 
 ### Run
 pb <- txtProgressBar(0, nsim, style = 3, width = 60)
