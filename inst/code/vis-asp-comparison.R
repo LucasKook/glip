@@ -4,8 +4,8 @@
 library("tidyverse")
 library("scales")
 save <- TRUE
-max_time <- 600
-walltime <- c(300, 600)
+max_time <- 1200
+walltime <- c(300, 600, 1200)
 
 ### List files
 fin <- "./inst/results/asp-comparison/2025-08-18/small"
@@ -23,7 +23,12 @@ res <- tibble(file = files) |>
 ### Timings
 timings <- res |>
   pivot_longer(c("glip", "asp"), names_to = "method", values_to = "time") |>
-  mutate(time = as.numeric(time), time = ifelse(is.infinite(time), walltime, time))
+  mutate(time = as.numeric(time), time = case_when(
+    is.infinite(time) & d <= 6 ~ walltime[1],
+    is.infinite(time) & d %in% c(7, 8) ~ walltime[2],
+    is.infinite(time) & d >= 9 ~ walltime[3],
+    .default = time
+  ))
 
 p1 <- ggplot(timings, aes(x = time, color = method)) +
   stat_ecdf(pad = FALSE) +
