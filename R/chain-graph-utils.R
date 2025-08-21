@@ -157,3 +157,35 @@ moralize_cg <- function(G) {
   }
   1 * (newG + t(newG) > 0)
 }
+
+### Generate random chain graphs, Ma et al algorithm
+### n:number of variables
+### d:degree of nodes
+create_cg_ma <- function(n, d) {
+  order <- sample(1:n, n, replace = FALSE)
+
+  amat <- matrix(0, n, n)
+  prob <- d / (n - 1)
+  for (i in 2:n) {
+    for (j in 1:(i - 1)) {
+      amat[i, j] <- Rlab::rbern(1, prob = prob)
+    }
+  }
+  amat <- amat + t(amat)
+
+  k <- sample(1:n, 1)
+  if (k != 1) {
+    chain_cut <- cut(1:n, k, 1:k)
+  } else {
+    chain_cut <- 1:n
+  }
+  for (i in 1:n) {
+    for (j in 1:n) {
+      if (as.integer(chain_cut[which(order == i)]) > as.integer(chain_cut[which(order == j)])) {
+        amat[i, j] <- 0
+      }
+    }
+  }
+  rownames(amat) <- colnames(amat) <- letters[1:n]
+  amat
+}
