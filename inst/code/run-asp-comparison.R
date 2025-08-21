@@ -22,6 +22,7 @@ use_oracle_tests <- as.numeric(darg(args[6], 0))
 sim_name <- darg(args[7], "test-run")
 walltime <- as.numeric(darg(args[8], 120))
 WTYPE <- darg(args[9], "const")
+alpha <- as.numeric(darg(args[10], 0.01))
 ncores <- max(7, parallel::detectCores(logical = TRUE) - 2)
 GARGS <- list(Threads = ncores, TimeLimit = walltime, BestObjStop = 1e-4)
 clstr <- paste0("--configuration=crafty --time-limit=", walltime, " --quiet=1,0")
@@ -46,8 +47,9 @@ pb <- txtProgressBar(0, nsim, style = 3, width = 60)
 out <- lapply(1:nsim, \(iter) {
   setTxtProgressBar(pb, iter)
   tmp <- pipeline(
-    n = d, N = N, schedule = ms, test = test, verbose = 0,
-    clingoconf = clstr, restrict = restrict
+    n = d, N = N, schedule = ms, test = test, verbose = 11,
+    clingoconf = clstr, restrict = restrict, weight = "constant",
+    p = alpha
   )
   res <- data.frame(
     mode = mode, d = d, n = N, ms = ms, nsim = nsim,

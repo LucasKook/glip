@@ -37,16 +37,17 @@ export PATH=$PATH:/home/lkook/gurobi1202/linux64/bin
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/home/lkook/gurobi1202/linux64/lib
 
 nsim=20
-ms=1
+ms=-1
 uot=0
 simname=large-ms1
-walltime=1200
+walltime=300
 wtype=const
-for d in {9..10}; do
+alpha=0.01
+for d in {3..6}; do
   for n in 100; do
     for mode in dag admg; do
       echo "Running with d=$d, mode=$mode, nsim=$nsim, n=$n"
-      Rscript --vanilla ./inst/code/run-asp-comparison.R $mode $d $ms $n $nsim $uot $simname $walltime $wtype
+      Rscript --vanilla ./inst/code/run-asp-comparison.R $mode $d $ms $n $nsim $uot $simname $walltime $wtype $alpha
     done
   done
 done
