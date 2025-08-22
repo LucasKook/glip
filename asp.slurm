@@ -36,14 +36,14 @@ export GUROBI_HOME=/home/lkook/gurobi1202/
 export PATH=$PATH:/home/lkook/gurobi1202/linux64/bin
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/home/lkook/gurobi1202/linux64/lib
 
-nsim=20
-ms=-1
+nsim=10
+ms=1
 uot=0
 simname=large-ms1
-walltime=600
+walltime=1200
 wtype=const
 alpha=0.01
-for d in {7..8}; do
+for d in {9..12}; do
   for n in 100; do
     for mode in dag admg; do
       echo "Running with d=$d, mode=$mode, nsim=$nsim, n=$n"
