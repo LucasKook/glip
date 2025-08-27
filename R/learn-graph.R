@@ -1,9 +1,9 @@
 learn_graph <- function(
     data, max_size = NULL, mode = "dag", test = "gcm", naive = FALSE,
-    parallel = FALSE, ncores = NULL, trafo = \(x) as.numeric(x <= 0.05),
+    parallel = FALSE, ncores = NULL, alpha = 0.05, trafo = \(x) as.numeric(x <= alpha),
     weight_type = "const", warmstart = NULL, edgehints = NULL,
     gurobi_args = list(), test_args = NULL, return_tests_only = FALSE,
-    verbose = FALSE, cache = TRUE, all_discrete = FALSE, ...) {
+    verbose = FALSE, cache = TRUE, comets = TRUE, ...) {
   if (mode %in% c("dmg", "dg")) {
     warning("Using `mode = 'dmg'` or `mode = 'dg'` relies on d-separation
       and thus implicitly assumes a linear Gaussian SCM.")
@@ -23,44 +23,7 @@ learn_graph <- function(
 
   ### Set naive = TRUE to run tests under causal sufficiency assumption
   all_tests <- .list_tests_graph(vars, max_size, naive = naive)
-  sets <- all_tests$sets
-  fml <- all_tests$formulas
-
-  pb <- utils::txtProgressBar(min = 0, max = length(fml), style = 3, width = 60)
-  res <- my_apply(seq_along(fml), \(iter) {
-    utils::setTxtProgressBar(pb, iter)
-    if (all_discrete) {
-      res <- tryCatch(
-        {
-          x <- sets[[iter]]$X
-          y <- sets[[iter]]$Y
-          z <- sets[[iter]]$Z
-          pv <- if (identical(z, character(0))) {
-            bnlearn::ci.test(x, y, data = data, test = test)$p.value
-          } else {
-            bnlearn::ci.test(x, y, z, data, test = test)$p.value
-          }
-          list(p.value = pv)
-        },
-        error = \(e) {
-          warning("Test failed")
-          list(p.value = 1 - 2 * .Machine$double.eps)
-        }
-      )
-    } else {
-      res <- do.call("comets", c(list(
-        formula = fml[[iter]], data = data, test = test
-      ), test_args))
-    }
-    data.frame(
-      X = sets[[iter]][["X"]],
-      Y = sets[[iter]][["Y"]],
-      Z = paste0(sets[[iter]][["Z"]], collapse = ","),
-      size = length(sets[[iter]][["Z"]]),
-      formula = paste0(deparse(fml[[iter]]), collapse = ""),
-      p.value = res$p.value, weight = 1
-    )
-  }) |> do.call("rbind", args = _)
+  res <- .run_tests(all_tests, data, test, test_args, my_apply, comets, ...)
 
   if (parallel) {
     plan(sequential)
@@ -68,6 +31,24 @@ learn_graph <- function(
 
   if (return_tests_only) {
     return(res)
+  }
+
+  if (is.null(warmstart) & mode != "chain") {
+    suff <- list(tests = res, V = vars)
+    cit <- lookup_ci
+    if (mode %in% c("dag", "dg")) {
+      pcres <- pcalg::pc(suff, cit, labels = vars, alpha = alpha)
+      PC <- as(pcres@graph, "matrix")
+      warmstart <- .ess_to_dag(PC)
+      edgehints <- 1 * (PC != 0)
+    } else {
+      fcires <- pcalg::fciPlus(suff, cit,
+        labels = vars, alpha = alpha, selectionBias = FALSE, verbose = FALSE
+      )
+      FCI <- as(fcires@amat, "matrix")
+      warmstart <- .pag_to_admg(FCI)
+      edgehints <- 1 * (FCI != 0)
+    }
   }
 
   opt <- .get_opt(mode)

@@ -1,6 +1,6 @@
 falsify_graph <- function(
     G, data, max_size = NULL, mode = "dag", test = "gcm", test_args = NULL,
-    parallel = FALSE, ncores = NULL, all_discrete = FALSE, ...) {
+    parallel = FALSE, ncores = NULL, comets = TRUE, ...) {
   V <- colnames(G)
   max_size <- min(max(1, length(V) - 2), max_size)
 
@@ -20,13 +20,23 @@ falsify_graph <- function(
     my_apply <- lapply
   }
 
+  res <- .run_tests(to_test, data, test, test_args, my_apply, comets, ...)
+
+  if (parallel) {
+    plan(sequential)
+  }
+
+  res
+}
+
+.run_tests <- function(to_test, data, test, test_args, my_apply, comets, ...) {
   sets <- to_test$sets
   fml <- to_test$formulas
 
   pb <- utils::txtProgressBar(min = 0, max = length(fml), style = 3, width = 60)
-  res <- my_apply(seq_along(fml), \(iter) {
+  my_apply(seq_along(fml), \(iter) {
     utils::setTxtProgressBar(pb, iter)
-    if (all_discrete) {
+    if (!comets) {
       res <- tryCatch(
         {
           x <- sets[[iter]]$X
@@ -40,7 +50,7 @@ falsify_graph <- function(
           list(p.value = pv)
         },
         error = \(e) {
-          warning("Test failed")
+          warning("Package `bnlearn`'s `ci.test()` failed. Consider using `comets = TRUE`.")
           list(p.value = 1 - 2 * .Machine$double.eps)
         }
       )
@@ -53,16 +63,11 @@ falsify_graph <- function(
       X = sets[[iter]][["X"]],
       Y = sets[[iter]][["Y"]],
       Z = paste0(sets[[iter]][["Z"]], collapse = ","),
+      size = length(sets[[iter]][["Z"]]),
       formula = paste0(deparse(fml[[iter]]), collapse = ""),
       p.value = res$p.value, weight = 1
     )
   }) |> do.call("rbind", args = _)
-
-  if (parallel) {
-    plan(sequential)
-  }
-
-  res
 }
 
 list_separations <- function(G, max_size = NULL, mode, ...) {

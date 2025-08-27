@@ -15,12 +15,12 @@ cd <- import("CausalDisco.baselines", convert = TRUE)
 # Parse command line arguments
 args <- commandArgs(trailingOnly = TRUE)
 mode <- darg(args[1], "admg")
-d <- as.numeric(darg(args[2], 3))
-ms <- as.numeric(darg(args[3], d - 2))
+d <- as.numeric(darg(args[2], 5))
+ms <- as.numeric(darg(args[3], -1))
 ms <- ifelse(ms == -1, d - 2, ms)
 ms <- ifelse(ms > d - 2, d - 2, ms)
 degree <- as.numeric(darg(args[4], 3))
-n <- as.numeric(darg(args[5], 1e3))
+n <- as.numeric(darg(args[5], 3e2))
 nsim <- as.numeric(darg(args[6], 1))
 alpha <- as.numeric(darg(args[7], 0.01))
 use_oracle_tests <- as.numeric(darg(args[8], 0))
@@ -30,6 +30,9 @@ reg <- darg(args[11], "lrm")
 walltime <- as.numeric(darg(args[12], 1800))
 admg_add <- as.numeric(darg(args[13], 3))
 save <- TRUE
+
+use_comets <- FALSE
+test <- ifelse(use_comets, "gcm", "zf")
 
 # Parameters for running the optimization
 ncores <- max(7, parallel::detectCores(logical = TRUE) - 2)
@@ -73,7 +76,7 @@ out <- lapply(seq_len(nsim), \(seed) {
   if (!use_oracle_tests) {
     tests <- tests_ms <- learn_graph(
       data = data, max_size = d - 2, mode = mode, test_args = targs,
-      return_tests_only = TRUE
+      return_tests_only = TRUE, comets = use_comets, test = test
     )
   }
   if (ms < d - 2) {

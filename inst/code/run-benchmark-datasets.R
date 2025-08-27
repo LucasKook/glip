@@ -109,7 +109,7 @@ out <- lapply(seq_len(nsim), \(iter) {
   if (!use_oracle_tests) {
     tests <- tests_ms <- learn_graph(
       data = fdata, max_size = use_ms, mode = mode, test_args = targs,
-      return_tests_only = TRUE, all_discrete = alldiscr, test = test
+      return_tests_only = TRUE, comets = !alldiscr, test = test
     )
   }
   if (ms < d - 2) {

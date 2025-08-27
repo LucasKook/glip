@@ -33,11 +33,11 @@ out <- lapply(cors, \(tcor) {
     ### Run GLIP
     tmp <- capture.output(
       lP <- learn_graph(d,
+        alpha = alpha,
+        comets = FALSE,
+        test = "zf",
         trafo = \(x) 1 * (x <= alpha),
-        test_args = list(
-          reg_YonZ = "lrm",
-          reg_XonZ = "lrm"
-        ), mode = "admg"
+        mode = "admg"
       )
     )
     ### Run FCI

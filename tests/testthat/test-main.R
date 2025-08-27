@@ -22,6 +22,10 @@ test_that("Learning graph works", {
   dd <- data.frame(X = rnorm(100), Y = rnorm(100), Z = rnorm(100))
   tmp <- capture.output(opt <- learn_graph(dd))
   expect_equal(sum(opt$computed), 0)
+  tmp <- capture.output(opt <- learn_graph(dd, comets = FALSE, test = "zf"))
+  expect_equal(sum(opt$computed), 0)
+  tmp <- capture.output(opt <- learn_graph(dd, comets = FALSE, test = "cor"))
+  expect_equal(sum(opt$computed), 0)
 })
 
 test_that("Falsifying graph works", {

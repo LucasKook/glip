@@ -22,31 +22,32 @@ dat <- dat[, which]
 V <- colnames(dat)
 d <- ncol(dat)
 
-###Params
+### Params
 wt <- 60
 alpha <- 0.01
 ms <- 2
 
 ### Run FCI
-out <- fci(list(C = cor(dat), n = NROW(dat)), 
-  gaussCItest, alpha, V, selectionBias = FALSE
+out <- fci(list(C = cor(dat), n = NROW(dat)),
+  gaussCItest, alpha, V,
+  selectionBias = FALSE
 )
 FCI <- out@amat
 
 ### Run GLIP
 lP <- learn_graph(dat,
+  alpha = alpha,
   trafo = \(x) 1 * (x <= alpha),
   max_size = ms,
-  test_args = list(
-    reg_YonZ = "lrm",
-    reg_XonZ = "lrm"
-  ), mode = "admg",
+  mode = "admg",
   verbose = TRUE,
   warmstart = .pag_to_admg(FCI),
   edgehints = 1 * (FCI != 0),
   cache = TRUE,
   gurobi_args = list(TimeLimit = wt),
-  weight = "const"
+  weight = "const",
+  comets = FALSE,
+  test = "zf"
 )
 
 ORACLE <- .compute_graphical_representation(gt, d - 2, "admg")

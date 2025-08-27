@@ -28,6 +28,9 @@ walltime <- as.numeric(darg(args[11], 30))
 save <- TRUE
 mode <- "chain"
 
+use_comets <- FALSE # or TRUE and gcm/pcm test
+test <- "zf"
+
 # Parameters for running the optimization
 ncores <- max(7, parallel::detectCores(logical = TRUE) - 2)
 cache <- TRUE
@@ -66,7 +69,7 @@ out <- lapply(seq_len(nsim), \(seed) {
   if (!use_oracle_tests) {
     tests <- learn_graph(
       data = data, max_size = ms, mode = mode, test_args = targs,
-      return_tests_only = TRUE
+      return_tests_only = TRUE, comets = use_comets, test = test
     )
   }
   input_sep <- mean(otests$p.value != 1 * (tests$p.value > alpha))
