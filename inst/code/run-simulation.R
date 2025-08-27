@@ -27,7 +27,7 @@ use_oracle_tests <- as.numeric(darg(args[8], 0))
 sim_name <- darg(args[9], "test-run")
 wtype <- darg(args[10], "log")
 reg <- darg(args[11], "lrm")
-walltime <- as.numeric(darg(args[12], 1800))
+walltime <- as.numeric(darg(args[12], 10))
 admg_add <- as.numeric(darg(args[13], 3))
 save <- TRUE
 
@@ -59,7 +59,8 @@ out <- lapply(seq_len(nsim), \(seed) {
   cat("\nGenerating random graph and data\n")
   set.seed(tseed <- 1e4 + 3e4 * (mode == "dag") + n + seed)
   graph <- random_graph(d = d, prob = pr, mode = mode, admg_add = admg_add)
-  data <- data.frame(py_data <- scale(rgraph(graph, n = n)))
+  errMat <- mvtnorm::rmvnorm(n, sigma = (Sigma <- diag(0.5 + rchisq(ncol(graph$DAG), df = 2))))
+  data <- data.frame(py_data <- scale(rgraph(graph, n = n, errMat = errMat)))
   py_data <- r_to_py(py_data)$copy()
   V <- colnames(data)
 
@@ -72,7 +73,7 @@ out <- lapply(seq_len(nsim), \(seed) {
 
   ### Run CITs
   cat("\nRunning conditional independence tests\n")
-  tests <- otests <- tests_ms <- otests_ms <- .compute_oracle_tests(gt, d - 2, mode)
+  tests <- otests <- tests_ms <- otests_ms <- .compute_oracle_tests(gt, d - 2, mode, verbose = TRUE)
   if (!use_oracle_tests) {
     tests <- tests_ms <- learn_graph(
       data = data, max_size = d - 2, mode = mode, test_args = targs,
