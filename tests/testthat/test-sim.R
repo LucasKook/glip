@@ -24,3 +24,14 @@ test_that("evaluation metrics work", {
   expect_equal(shd(G3, G4), 0)
   expect_equal(sep(G3[1:5, 1:5], G4[1:5, 1:5], "mag", 1)$acc, 1)
 })
+
+test_that("random admg generation works", {
+  set.seed(113)
+  G <- random_graph(d = 5, mode = "admg", admg_add = 3, degree = 3)
+  dag_tests <- .compute_oracle_tests(G$DAG,
+    mode = "dag", restrict_to = colnames(G$ADMG$M1)
+  )
+  admg_tests <- .compute_oracle_tests(G$ADMG, mode = "admg")
+  subs <- dplyr::full_join(admg_tests, dag_tests, by = c("X", "Y", "Z", "size"))
+  expect_true(all.equal(subs$p.value.x, subs$p.value.y))
+})

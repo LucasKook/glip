@@ -1,7 +1,13 @@
-.compute_oracle_tests <- function(G, max_size = NULL, mode = "dag", verbose = FALSE) {
+.compute_oracle_tests <- function(
+    G, max_size = NULL, mode = "dag", verbose = FALSE,
+    restrict_to = NULL) {
   V <- .get_node_set(G)
+  if (!is.null(restrict_to)) {
+    V <- restrict_to
+  }
+  d <- length(V)
   if (is.null(max_size)) {
-    max_size <- length(V) - 2
+    max_size <- d - 2
   }
   sets <- .list_tests_graph(V, max_size = max_size)$sets
   if (verbose) {

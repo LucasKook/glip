@@ -58,7 +58,8 @@ out <- lapply(seq_len(nsim), \(seed) {
   ### Generate random graph and data
   cat("\nGenerating random graph and data\n")
   set.seed(tseed <- 1e4 + 3e4 * (mode == "dag") + n + seed)
-  graph <- random_graph(d = d, prob = pr, mode = mode, admg_add = admg_add)
+  graph <- random_graph(d = d, prob = pr, mode = mode, 
+    admg_add = admg_add, degree = degree)
   errMat <- mvtnorm::rmvnorm(n, sigma = (Sigma <- diag(0.5 + rchisq(ncol(graph$DAG), df = 2))))
   data <- data.frame(py_data <- scale(rgraph(graph, n = n, errMat = errMat)))
   py_data <- r_to_py(py_data)$copy()
