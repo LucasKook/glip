@@ -7,8 +7,8 @@
 #SBTACH -e %x_%j_%N.err
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=16
-#SBATCH --mem-per-cpu=4G
-#SBATCH --partition=highmem
+#SBATCH --mem-per-cpu=8G
+#SBATCH --partition=medium
 
 echo "Running job $SLURM_JOB_NAME with ID $SLURM_JOB_ID"
 echo "Allocated hosts: $SLURM_JOB_NODELIST"
@@ -36,14 +36,14 @@ export GUROBI_HOME=/home/lkook/gurobi1202/
 export PATH=$PATH:/home/lkook/gurobi1202/linux64/bin
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/home/lkook/gurobi1202/linux64/lib
 
-nsim=10
+nsim=20
 ms=1
 uot=0
-simname=large-ms1
-walltime=1200
+simname=walltime-comparison
+walltime=300
 wtype=const
 alpha=0.01
-for d in {9..12}; do
+for d in {3..10}; do
   for n in 100; do
     for mode in dag admg; do
       echo "Running with d=$d, mode=$mode, nsim=$nsim, n=$n"
