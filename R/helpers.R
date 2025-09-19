@@ -49,7 +49,8 @@
     "admg" = admg_optim,
     "dmg" = admg_optim,
     "chain" = chain_optim,
-    "dagdcon" = dcon_optim
+    "dagdcon" = dcon_optim,
+    "daglean" = dcon_lean_optim
   )
 }
 
@@ -61,6 +62,7 @@
     "dmg" = .check_msep(A, B, C, G),
     "chain" = .check_csep(A, B, C, G),
     "dagdcon" = .check_msep(A, B, C, G),
+    "daglean" = .check_msep(A, B, C, G),
     "mag" = .check_dsepmag(A, B, C, G),
     "pdag" = .check_dseppdag(A, B, C, G)
   )
@@ -114,7 +116,8 @@
     "admg" = .random_dmg(d, V, acyclic = TRUE, ...),
     "dmg" = .random_dmg(d, V, acyclic = FALSE, ...),
     "chain" = .random_cg(d, V, ...),
-    "dagdcon" = .random_dmg(d, V, acyclic = TRUE, ...)$M1
+    "dagdcon" = .random_dmg(d, V, acyclic = TRUE, ...)$M1,
+    "daglean" = .random_dmg(d, V, acyclic = TRUE, ...)$M1
   )
 }
 
@@ -141,7 +144,8 @@
     "admg" = .admg2pag(G),
     "dmg" = NULL,
     "chain" = .cg2lcg(G),
-    "dagdcon" = .dag2ess(G)
+    "dagdcon" = .dag2ess(G),
+    "daglean" = .dag2ess(G)
   )
 }
 
