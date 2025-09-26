@@ -39,8 +39,8 @@ chain_lean_optim <- function(
   nlc <- c(
     "L1" = d * (d - 1) * n_C,
     "L2" = d * (d - 1) * max(d - 2, 0) * n_C,
-    "L3" = d * (d - 1) * max(d - 2, 0) * n_C / 2,
-    "L4" = d * (d - 1) * max(d - 2, 0) * n_C / 2
+    "L3" = d * (d - 1) * max(d - 2, 0) * n_C,
+    "L4" = d * (d - 1) * max(d - 2, 0) * n_C
   )
 
   # Array indices for path indicators

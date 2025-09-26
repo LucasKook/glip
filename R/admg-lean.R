@@ -42,9 +42,9 @@ admg_lean_optim <- function(
   nkc <- c(
     "K1" = n_d * n_C,
     "K2" = n_d * max(d - 2, 0) * n_C,
-    "K3a" = n_d * max(d - 2, 0) * n_C / 2,
-    "K3b" = n_d * max(d - 3, 0) * max(d - 2, 0) * n_C / 2,
-    "K4" = n_d * max(d - 2, 0) * n_C / 2
+    "K3a" = n_d * max(d - 2, 0) * n_C,
+    "K3b" = n_d * max(d - 3, 0) * max(d - 2, 0) * n_C,
+    "K4" = n_d * max(d - 2, 0) * n_C
   )
 
   # Array indices for path indicators
