@@ -44,13 +44,17 @@
 
 .get_opt <- function(mode) {
   switch(mode,
-    "dag" = dag_optim,
-    "dg" = dag_optim,
-    "admg" = admg_optim,
-    "dmg" = admg_optim,
-    "chain" = chain_optim,
-    "dagdcon" = dcon_optim,
-    "daglean" = dcon_lean_optim
+    "dag-dc" = dag_optim,
+    "dg-dc" = dag_optim,
+    "admg" = admg_lean_optim,
+    "dmg" = admg_lean_optim,
+    "admg-dc" = admg_optim,
+    "dmg-dc" = admg_optim,
+    "chain" = chain_lean_optim,
+    "chain-dcon" = chain_optim,
+    "dag-dcon" = dcon_optim,
+    "dag" = dcon_lean_optim,
+    "dg" = dcon_lean_optim
   )
 }
 
@@ -59,10 +63,14 @@
     "dag" = .check_msep(A, B, C, G),
     "dg" = .check_msep(A, B, C, G),
     "admg" = .check_msep(A, B, C, G),
+    "admg-dc" = .check_msep(A, B, C, G),
+    "dmg-dc" = .check_msep(A, B, C, G),
     "dmg" = .check_msep(A, B, C, G),
     "chain" = .check_csep(A, B, C, G),
-    "dagdcon" = .check_msep(A, B, C, G),
-    "daglean" = .check_msep(A, B, C, G),
+    "chain-dcon" = .check_csep(A, B, C, G),
+    "dag-dcon" = .check_msep(A, B, C, G),
+    "dag-dc" = .check_msep(A, B, C, G),
+    "dg-dc" = .check_msep(A, B, C, G),
     "mag" = .check_dsepmag(A, B, C, G),
     "pdag" = .check_dseppdag(A, B, C, G)
   )
@@ -114,10 +122,14 @@
     "dag" = .random_dmg(d, V, acyclic = TRUE, ...)$M1,
     "dg" = .random_dmg(d, V, acyclic = FALSE, ...)$M1,
     "admg" = .random_dmg(d, V, acyclic = TRUE, ...),
+    "admg-dc" = .random_dmg(d, V, acyclic = TRUE, ...),
+    "dmg-dc" = .random_dmg(d, V, acyclic = FALSE, ...),
     "dmg" = .random_dmg(d, V, acyclic = FALSE, ...),
     "chain" = .random_cg(d, V, ...),
-    "dagdcon" = .random_dmg(d, V, acyclic = TRUE, ...)$M1,
-    "daglean" = .random_dmg(d, V, acyclic = TRUE, ...)$M1
+    "chain-dcon" = .random_cg(d, V, ...),
+    "dag-dcon" = .random_dmg(d, V, acyclic = TRUE, ...)$M1,
+    "dag-dc" = .random_dmg(d, V, acyclic = TRUE, ...)$M1,
+    "dg-dc" = .random_dmg(d, V, acyclic = TRUE, ...)$M1
   )
 }
 
@@ -142,10 +154,14 @@
     "dag" = .dag2ess(G),
     "dg" = NULL,
     "admg" = .admg2pag(G),
+    "admg-dc" = .admg2pag(G),
+    "dmg-dc" = NULL,
     "dmg" = NULL,
     "chain" = .cg2lcg(G),
-    "dagdcon" = .dag2ess(G),
-    "daglean" = .dag2ess(G)
+    "chain-dcon" = .cg2lcg(G),
+    "dag-dcon" = .dag2ess(G),
+    "dag-dc" = .dag2ess(G),
+    "dg-dc" = NULL
   )
 }
 

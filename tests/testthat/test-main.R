@@ -1,11 +1,13 @@
+all_modes <- c("dag", "chain", "admg", "dag-dcon", "dg", "dmg", "dag-dc", "admg-dc", "dg-dc", "dmg-dc", "chain-dcon")
+
 test_that("Check equivalence function works", {
   G1 <- G2 <- G3 <- create_dmg(4, prob = 0, M2prob = 0, diag = FALSE)
   G1$M1["a", "b"] <- G1$M1["b", "c"] <- 1
   G2$M1["c", "b"] <- G2$M1["b", "a"] <- 1
   G3$M1["c", "b"] <- G3$M1["a", "b"] <- 1
   sapply(seq_len(2), \(m) {
-    sapply(c("dag", "chain", "admg", "dagdcon", "dg", "dmg"), \(mode) {
-      if (!mode %in% c("admg", "dmg")) {
+    sapply(all_modes, \(mode) {
+      if (!grepl("dmg", mode)) {
         G1 <- G1$M1
         G2 <- G2$M1
         G3 <- G3$M1
@@ -39,7 +41,7 @@ test_that("Falsifying graph works", {
 test_that("Empty graph is feasible", {
   sapply(3:5, \(d) {
     V <- letters[1:d]
-    sapply(c("dag", "chain", "admg", "dagdcon", "dg", "dmg"), \(mode) {
+    sapply(all_modes, \(mode) {
       G <- .generate_random_graph(d, V = V, mode = mode, prob = 0)
       if (is.list(G)) {
         G$M1[] <- 0
@@ -68,7 +70,7 @@ test_that("Empty graph is feasible", {
 #   sapply(1:nsim, \(iter) {
 #     sapply(5:10, \(d) {
 #       V <- 1:d
-#       sapply(c("dag", "admg", "dagdcon"), \(mode) {
+#       sapply(c("dag", "admg", "dag-dcon"), \(mode) {
 #         print(d)
 #         print(mode)
 #         G <- .generate_random_graph(d, V = V, mode = mode, prob = 0.5)

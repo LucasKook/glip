@@ -1,14 +1,8 @@
-admg_optim <- function(
-    tests, d = 3, max_size = d - 2, V = letters[1:d],
-trafo = \(x) as.numeric(x <= 0.05),
-    weight_type = c("const", "inv", "log", "size"),
-    warmstart = NULL,
-    edgehints = NULL,
-    gurobi_args = list(),
-    verbose = FALSE,
-    cache = TRUE,
-    cache_dir = "./.cache-admg",
-    mode = c("admg-dc", "dmg-dc"),
+admg_lean_optim <- function(
+    tests, d = 3, max_size = d - 2, V = letters[1:d], trafo = \(x) as.numeric(x <= 0.05),
+    weight_type = c("const", "inv", "log", "size"), warmstart = NULL, edgehints = NULL,
+    gurobi_args = list(), verbose = FALSE, cache = TRUE, cache_dir = "./.cache-admg-lean",
+    mode = c("admg", "dmg"),
     ...) {
 
   if (!requireNamespace("gurobi")) {
@@ -24,8 +18,8 @@ trafo = \(x) as.numeric(x <= 0.05),
 
   fn <- file.path(
     cache_dir,
-    paste0(c("lhs", "rhs", "P1", "N1", "O1"), "dim", d, "max",
-      max_size, mode, c(".mtx", ".rds", ".rds", ".rds", ".rds"))
+    paste0(c("lhs", "rhs", "P1", "N1", "O1", "R1"), "dim", d, "max",
+      max_size, mode, c(".mtx", ".rds", ".rds", ".rds", ".rds", ".rds"))
   )
 
   ### COMPUTE DIMENSIONS
@@ -48,13 +42,23 @@ trafo = \(x) as.numeric(x <= 0.05),
   nkc <- c(
     "K1" = n_d * n_C,
     "K2" = n_d * max(d - 2, 0) * n_C,
-    "K3a" = n_d * max(d - 2, 0) * n_C,
-    "K3b" = n_d * max(d - 3, 0) * max(d - 2, 0) * n_C,
-    "K4ab" = n_d * max(d - 2, 0) * max(d - 3, 0) * n_C,
-    "K4cd" = n_d * max(d - 2, 0) * max(d - 3, 0) * max(d - 4, 0) * n_C,
-    "K5a" = d * (d - 1) * max(d - 2, 0) * max(d - 3, 0)^2 * n_C,
-    "K5b" = d * (d - 1) * max(d - 2, 0) * max(d - 3, 0) * max(d - 4, 0)^2 * n_C
+    "K3a" = n_d * max(d - 2, 0) * n_C / 2,
+    "K3b" = n_d * max(d - 3, 0) * max(d - 2, 0) * n_C / 2,
+    "K4" = n_d * max(d - 2, 0) * n_C / 2
   )
+
+  # Array indices for path indicators
+  dic <- data.frame()
+  counter <- 1
+  for (i in seq_len(d)) {
+    for (C in seq_along(CC)) {
+      dic <- rbind(
+        dic, data.frame(i = i, C = C, iinc = i %in% CC[[C]], idx = counter)
+      )
+      counter <- counter + 1
+    }
+  }
+  ndic <- NROW(dic)
 
   # Array indices for d-separation statements
   zijc <- data.frame()
@@ -161,6 +165,8 @@ trafo = \(x) as.numeric(x <= 0.05),
     rep(0, n_lb), # corresponds to l_{ij}^{<->,C}
     rep(0, n_lb), # corresponds to z_{ij}^{<->,C}
     rep(0, n_lb + n_lb * (d - 2)), # corresponds to rhs of F1 and F2
+    "diC" = rep(0, d * n_C), # diC
+    0,
     0
   )
   model$branchpriority <- rep(0, length(model$obj))
@@ -208,16 +214,16 @@ trafo = \(x) as.numeric(x <= 0.05),
   model$start <- rep(NA, length(model$obj))
   model$start[.multigrep(c("dxij", "bxij", "sxij"), names(model$obj))] <- c(ws_xij, ws_bxij, ws_sxij)
   model$modelsense <- "min"
-  model$vtype <- rep(c("C", "B", "I", "B", "I", "B", "I", "B", "I", "I"),
+  model$vtype <- rep(c("C", "B", "I", "B", "I", "B", "I", "B", "I", "B", "I", "B"),
     c(n_z, n_z + n_d, n_z + n_d + sum(nN1), n_d, sum(nkc), n_b + n_d,
-      n_lb, n_lb, n_lb + n_lb * (d - 2), 1))
-  model$lb <- rep(c(0, 1, 0, 1, 0, 1, 0, 1, d),
+      n_lb, n_lb, n_lb + n_lb * (d - 2), ndic, 1, 1))
+  model$lb <- rep(c(0, 1, 0, 1, 0, 1, 0, 1, 0, d, 1),
     c(2 * n_z + n_d, n_z + n_d + sum(nN1), n_d, sum(nkc), n_b + n_d,
-      n_lb, n_lb, n_lb + n_lb * (d - 2), 1))
-  model$ub <- rep(c(Inf, 1, Inf, d, 2 * d, 1, 6 * n_tilde, 1, d,
-    1, 2 * (d - 1) + 1, d),
+      n_lb, n_lb, n_lb + n_lb * (d - 2), ndic, 1, 1))
+  model$ub <- rep(c(Inf, 1, Inf, d, 2 * d, 1, 4 * d, 1, d,
+    1, 2 * (d - 1) + 1, 1, d, 1),
     c(n_z, n_z + n_d, n_z, n_d, sum(nN1), n_d, sum(nkc), n_b + n_d,
-      n_lb, n_lb, n_lb + n_lb * (d - 2), 1))
+      n_lb, n_lb, n_lb + n_lb * (d - 2), ndic, 1, 1))
   model$rhs <- c(
     "labs" = -p, # linearize objective
     "labs" = p, # linearize objective
@@ -225,11 +231,14 @@ trafo = \(x) as.numeric(x <= 0.05),
     "acyc" = rep(0, n_d), # E1
     "indic" = rep(c(d - 1, -1), each = n_d), # dij->
     "p1min" = rep(0, sum(nkc)), # aux P1
-    "ZLcons" = rep(n_tilde + 1, n_z), # (C2) in the writeup
-    "ZLcons" = rep(- n_tilde - 1, n_z), # (C3) in the writeup
+    "ZLcons" = rep(d, n_z), # (C4) in the writeup
+    "ZLcons" = rep(- d, n_z), # (C5) in the writeup
     "C6to9" = rep(0, 3 * d * (d - 1)), # C6to9
     "C10to11" = rep(c(d, -d), each = n_lb), # C10 to 11
-    "f1f2min" = rep(0, n_lb + n_lb * (d - 2)) # Min O1 aux
+    "f1f2min" = rep(0, n_lb + n_lb * (d - 2)), # Min O1 aux
+    "r1b" = rep(0, nr1b <- d * sum(sapply(seq_len(max_size) - 1, \(x) {
+      choose(d, x)
+    })))
   )
   model$sense <- c(
     rep(">=", 2 * n_z), # linearize objective
@@ -240,7 +249,8 @@ trafo = \(x) as.numeric(x <= 0.05),
     rep("<=", 2 * n_z), # Z, L consistency
     rep("<=", 3 * d * (d - 1)), # C6to9
     rep("<=", 2 * n_lb), # C10to11
-    rep("=", n_lb + n_lb * (d - 2)) # Min O1 aux
+    rep("=", n_lb + n_lb * (d - 2)), # Min O1 aux
+    rep("=", nr1b)
   )
 
   if (cache && all(file.exists(fn))) {
@@ -251,6 +261,7 @@ trafo = \(x) as.numeric(x <= 0.05),
     P1 <- readRDS(fn[3])
     N1 <- readRDS(fn[4])
     O1 <- readRDS(fn[5])
+    R1 <- readRDS(fn[6])
     model$rhs <- rhs
   } else {
     A <- MatrixExtra::emptySparse(
@@ -258,8 +269,8 @@ trafo = \(x) as.numeric(x <= 0.05),
     )
 
     colnames(A) <- make.unique(rep(
-      c("tijC", "zijC", "dxij", "lijc", "leij", "nijk", "deij", "uijklm", "bxij", "sxij", "lbijc", "zbijc", "fijc", "constd"),
-      c(n_z, n_z, n_d, n_z, n_d, sum(nN1), n_d, sum(nkc), n_b, n_d, n_lb, n_lb, n_lb + n_lb * (d - 2), 1)
+      c("tijC", "zijC", "dxij", "lijc", "leij", "nijk", "deij", "uijklm", "bxij", "sxij", "lbijc", "zbijc", "fijc", "diC", "constd", "const1"),
+      c(n_z, n_z, n_d, n_z, n_d, sum(nN1), n_d, sum(nkc), n_b, n_d, n_lb, n_lb, n_lb + n_lb * (d - 2), ndic, 1, 1)
     ))
     rownames(A) <- make.unique(c(
       rep("labs", 2 * n_z),
@@ -270,8 +281,32 @@ trafo = \(x) as.numeric(x <= 0.05),
       rep("ZLcons", 2 * n_z),
       rep("C6to9", 3 * d * (d - 1)),
       rep("C10to11", 2 * n_lb),
-      rep("f1f2min", n_lb + n_lb * (d - 2))
+      rep("f1f2min", n_lb + n_lb * (d - 2)),
+      rep("r1b", nr1b)
     ))
+
+    ### R1b
+    if (verbose) {
+      cat("\nWorking on constraint R1b")
+    }
+
+    rn <- grep("r1b", rownames(A), value = TRUE)
+    cn <- grep("diC", colnames(A), value = TRUE)
+    clist <- list()[rep(1, length(rn))]
+    cntr <- 1
+    for (i in seq_len(d)) {
+      for (C in seq_len(n_C)) {
+        if (i %in% CC[[C]]) {
+          iC <- dic$idx[dic$i == i & dic$C == C]
+          clist[[cntr]] <- data.frame(i = cntr, j = iC, v = 1)
+          cntr <- cntr + 1
+        }
+      }
+    }
+    clist <- do.call("rbind", clist)
+    A[grep("r1b", rownames(A)), grep("diC", colnames(A))] <-
+      Matrix::sparseMatrix(i = clist$i, j = clist$j, x = clist$v,
+        dims = c(length(rn), length(cn)), dimnames = list(rn, cn))
 
     ### RHS F1 F2
     if (max_size > 1) {
@@ -376,7 +411,7 @@ trafo = \(x) as.numeric(x <= 0.05),
 
     cmat_zl <- rbind(
       cbind(diag(n_z), diag(n_z)), # (C4)
-      cbind(-diag(n_z) * n_tilde, -diag(n_z)) # (C5)
+      cbind(-diag(n_z) * (d - 1), -diag(n_z)) # (C5)
     )
 
     A[
@@ -391,8 +426,8 @@ trafo = \(x) as.numeric(x <= 0.05),
     }
 
     rn <- grep("p1min", rownames(A), value = TRUE)
-    cn <- .multigrep(c("dxij", "lijc", "sxij", "lbijc", "zbijc", "uijklm"), colnames(A), value = TRUE)
-    skip <- n_d + n_z + n_d + n_lb + n_lb
+    cn <- .multigrep(c("dxij", "lijc", "sxij", "lbijc", "zbijc", "diC", "uijklm"), colnames(A), value = TRUE)
+    skip <- n_d + n_z + n_d + n_lb + n_lb + ndic
     cntr <- 1
     rhs_m1 <- rep(0, sum(nkc))
     clist <- m1lup <- list()[rep(1, sum(nkc))]
@@ -406,9 +441,9 @@ trafo = \(x) as.numeric(x <= 0.05),
             clist[[cntr]] <- data.frame(
               i = c(cntr, cntr),
               j = c(skip + cntr, ij),
-              v = c(1, n_tilde)
+              v = c(1, d - 1)
             )
-            rhs_m1[cntr] <- n_tilde + 1
+            rhs_m1[cntr] <- d
             m1lup[[cntr]] <- data.frame(i = i, j = j, k = NA,
               l = NA, m = NA, C = C, idx = cntr, which = "K1")
             cntr <- cntr + 1
@@ -425,11 +460,31 @@ trafo = \(x) as.numeric(x <= 0.05),
                 clist[[cntr]] <- data.frame(
                   i = c(cntr, cntr, cntr),
                   j = c(skip + cntr, kj, n_d + ikC),
-                  v = c(1, n_tilde - 1, -1)
+                  v = c(1, d - 2, -1)
                 )
-                rhs_m1[cntr] <- n_tilde
+                rhs_m1[cntr] <- d - 1
                 m1lup[[cntr]] <- data.frame(i = i, j = j, k = k,
                   l = NA, m = NA, C = C, idx = cntr, which = "K2")
+                cntr <- cntr + 1
+                ### K4
+                kC <- dic$idx[dic$i == k & dic$C == C]
+                ikC <- max(zijc$idx[zijc$i == i & zijc$j == k & zijc$C == C],
+                          zijc$idx[zijc$i == k & zijc$j == i & zijc$C == C])
+                kjC <- max(zijc$idx[zijc$i == k & zijc$j == j & zijc$C == C],
+                          zijc$idx[zijc$i == j & zijc$j == k & zijc$C == C])
+                clist[[cntr]] <- data.frame(
+                  i = c(cntr, cntr, cntr, cntr),
+                  j = c(
+                    skip + cntr, 
+                    n_d + ikC, 
+                    n_d + kjC, 
+                    2 * n_d + n_z + 2 * n_lb + kC
+                  ),
+                  v = c(1, -1, -1, - d + 2)
+                )
+                rhs_m1[cntr] <- 0
+                m1lup[[cntr]] <- data.frame(i = i, j = j, k = k,
+                  l = NA, m = NA, C = C, idx = cntr, which = "K4")
                 cntr <- cntr + 1
               } else {
                 ### K3
@@ -438,9 +493,9 @@ trafo = \(x) as.numeric(x <= 0.05),
                 clist[[cntr]] <- data.frame(
                   i = c(cntr, cntr, cntr),
                   j = c(skip + cntr, ik, jk),
-                  v = c(1, n_tilde - 1, n_tilde - 1)
+                  v = c(1, d - 2, d - 2)
                 )
-                rhs_m1[cntr] <- 2 * n_tilde
+                rhs_m1[cntr] <- 2 * (d - 1)
                 m1lup[[cntr]] <- data.frame(i = i, j = j, k = k,
                   l = NA, m = NA, C = C, idx = cntr, which = "K3a")
                 cntr <- cntr + 1
@@ -457,94 +512,12 @@ trafo = \(x) as.numeric(x <= 0.05),
                     clist[[cntr]] <- data.frame(
                       i = c(cntr, cntr, cntr, cntr, cntr),
                       j = c(skip + cntr, ik, jk2, kk2c, n_lb + kk2c),
-                      v = c(1, n_tilde - 2, n_tilde - 2, -1, n_tilde - 2)
+                      v = c(1, d - 3, d - 3, -1, d - 3)
                     )
-                    rhs_m1[cntr] <- 3 * n_tilde - 4
+                    rhs_m1[cntr] <- 3 * d - 7
                     m1lup[[cntr]] <- data.frame(i = i, j = j, k = k,
                       l = NA, m = NA, C = C, idx = cntr, which = "K3b")
                     cntr <- cntr + 1
-                  }
-                }
-              }
-            }
-          }
-          for (l in setdiff(seq_len(d), c(i, j, k))) {
-            ### K4
-            for (C in seq_len(n_C)) {
-              if (all(!c(i, j, l) %in% CC[[C]]) && (k %in% CC[[C]])) {
-                ik <- n_d + n_z + xij$idx[xij$i == i & xij$j == k]
-                lk <- xij$idx[xij$i == l & xij$j == k]
-                jlC <- max(zijc$idx[zijc$i == j & zijc$j == l & zijc$C == C],
-                          zijc$idx[zijc$i == l & zijc$j == j & zijc$C == C])
-                clist[[cntr]] <- data.frame(
-                  i = c(cntr, cntr, cntr, cntr),
-                  j = c(skip + cntr, n_d + jlC, ik, lk),
-                  v = c(1, -1, n_tilde - 2, n_tilde - 2)
-                )
-                rhs_m1[cntr] <- 2 * (n_tilde - 1)
-                m1lup[[cntr]] <- data.frame(i = i, j = j, k = k,
-                  l = l, m = NA, C = C, idx = cntr, which = "K4ab")
-                cntr <- cntr + 1
-                ### K4cd
-                for (k2 in setdiff(seq_len(d), c(i, j, k, l))) {
-                  if (k2 %in% CC[[C]]) {
-                    kk2c <- n_d + n_z + n_d
-                    kk2c <- kk2c + max(
-                      lbijc$idx[lbijc$i == k & lbijc$j == k2 & lbijc$C == C],
-                      lbijc$idx[lbijc$i == k2 & lbijc$j == k & lbijc$C == C]
-                    )
-                    ik <- n_d + n_z + xij$idx[xij$i == i & xij$j == k]
-                    lk <- xij$idx[xij$i == l & xij$j == k]
-                    clist[[cntr]] <- data.frame(
-                      i = c(cntr, cntr, cntr, cntr, cntr, cntr),
-                      j = c(skip + cntr, jlC, kk2c, ik, lk, n_lb + kk2c),
-                      v = c(1, -1, -1, n_tilde - 3, n_tilde - 3, n_tilde - 3)
-                    )
-                    rhs_m1[cntr] <- 3 * n_tilde - 7
-                    m1lup[[cntr]] <- data.frame(i = i, j = j, k = k,
-                      l = l, m = NA, C = C, idx = cntr, which = "K4cd")
-                    cntr <- cntr + 1
-                  }
-                }
-              }
-            }
-            for (m in setdiff(seq_len(d), c(i, j, k))) {
-              ### K5
-              for (C in seq_len(n_C)) {
-                if (all(!c(i, j, l, m) %in% CC[[C]]) && (k %in% CC[[C]])) {
-                  lk <- xij$idx[xij$i == l & xij$j == k]
-                  mk <- xij$idx[xij$i == m & xij$j == k]
-                  ilC <- max(zijc$idx[zijc$i == i & zijc$j == l & zijc$C == C],
-                            zijc$idx[zijc$i == l & zijc$j == i & zijc$C == C])
-                  mjC <- max(zijc$idx[zijc$i == m & zijc$j == j & zijc$C == C],
-                            zijc$idx[zijc$i == j & zijc$j == m & zijc$C == C])
-                  clist[[cntr]] <- data.frame(
-                    i = c(cntr, cntr, cntr, cntr, cntr),
-                    j = c(skip + cntr, n_d + ilC, n_d + mjC, lk, mk),
-                    v = c(1, -1, -1, n_tilde - 3, n_tilde - 3)
-                  )
-                  rhs_m1[cntr] <- 2 * (n_tilde - 2)
-                  m1lup[[cntr]] <- data.frame(i = i, j = j, k = k,
-                    l = l, m = m, C = C, idx = cntr, which = "K5a")
-                  cntr <- cntr + 1
-                  for (k2 in setdiff(seq_len(d), c(i, j, k, l, m))) {
-                    ### K5b
-                    if (k2 %in% CC[[C]]) {
-                      kk2c <- n_d + n_z + n_d
-                      kk2c <- kk2c + max(
-                        lbijc$idx[lbijc$i == k & lbijc$j == k2 & lbijc$C == C],
-                        lbijc$idx[lbijc$i == k2 & lbijc$j == k & lbijc$C == C]
-                      )
-                      clist[[cntr]] <- data.frame(
-                        i = c(cntr, cntr, cntr, cntr, cntr, cntr, cntr),
-                        j = c(skip + cntr, n_d + ilC, n_d + mjC, lk, mk, kk2c, n_lb + kk2c),
-                        v = c(1, -1, -1, n_tilde - 4, n_tilde - 4, -1, n_tilde - 4)
-                      )
-                      rhs_m1[cntr] <- 3 * n_tilde - 10
-                      m1lup[[cntr]] <- data.frame(i = i, j = j, k = k,
-                        l = l, m = m, C = C, idx = cntr, which = "K5b")
-                      cntr <- cntr + 1
-                    }
                   }
                 }
               }
@@ -559,7 +532,7 @@ trafo = \(x) as.numeric(x <= 0.05),
     clist <- do.call("rbind", clist)
     m1lup <- do.call("rbind", m1lup)
     A[grep("p1min", rownames(A)),
-      .multigrep(c("dxij", "lijc", "sxij", "lbijc", "zbijc", "uijklm"), colnames(A))] <-
+      .multigrep(c("dxij", "lijc", "sxij", "lbijc", "zbijc", "diC", "uijklm"), colnames(A))] <-
       Matrix::sparseMatrix(i = clist$i, j = clist$j, x = clist$v,
         dims = c(length(rn), length(cn)), dimnames = list(rn, cn))
     model$rhs[grep("p1min", names(model$rhs))] <- rhs_m1
@@ -573,7 +546,7 @@ trafo = \(x) as.numeric(x <= 0.05),
     )
 
     ### Swap constraints for ADMGs
-    if (mode == "admg-dc") {
+    if (mode == "admg") {
 
       ### DAG1
       if (verbose) {
@@ -726,13 +699,41 @@ trafo = \(x) as.numeric(x <= 0.05),
             )
             O1 <- c(O1, list(list(
                 resvar = 3 * n_z + 4 * n_d + sum(nN1) + sum(nkc) + n_b + ijC,
-                vars = c(sort(3 * n_z + 2 * n_lb + 4 * n_d + sum(nN1) + sum(nkc) + n_b + keep), length(model$obj))
+                vars = c(sort(3 * n_z + 2 * n_lb + 4 * n_d + sum(nN1) + sum(nkc) + n_b + keep), length(model$obj) - 1)
               ))
             )
           }
         }
       }
     }
+
+    ### Min constraint R1a
+
+    if (verbose) {
+      cat("\nWorking on constraint R1")
+    }
+
+    R1 <- list()
+    for (i in seq_len(d)) {
+      for (C in seq_len(n_C)) {
+        if (!i %in% CC[[C]]) {
+          ic <- dic$idx[dic$i == i & dic$C == C]
+          keep <- c()
+          for (k in CC[[C]]) {
+            keep <- c(keep, xij$idx[xij$i == i & xij$j == k])
+          }
+          R1 <- c(R1, list(list(
+              resvar = 3 * n_z + 4 * n_d + sum(nN1) + sum(nkc) + n_b + 
+                3 * n_lb + n_lb * (d - 2) + ic,
+              vars = c(sort(3 * n_z + 2 * n_d + sum(nN1) + keep), 
+              length(model$obj))
+            ))
+          )
+        }
+      }
+    }
+
+    ### Cache
 
     if (cache) {
       if (!dir.exists(cache_dir)) {
@@ -743,12 +744,13 @@ trafo = \(x) as.numeric(x <= 0.05),
       saveRDS(P1, fn[3])
       saveRDS(N1, fn[4])
       saveRDS(O1, fn[5])
+      saveRDS(R1, fn[6])
     }
   }
 
   ### INCLUDE CONSTRAINTS
   model$A <- A
-  model$genconmin <- c(N1, P1, O1)
+  model$genconmin <- c(N1, P1, O1, R1)
 
   if (verbose) {
     cat("\nModel setup done. Solving now...\n")
@@ -771,6 +773,7 @@ trafo = \(x) as.numeric(x <= 0.05),
     sedge <- x[3 * n_z + 3 * n_d + sum(nN1) + sum(nkc) + n_b + 1:n_d]
     bminlen <- x[3 * n_z + 4 * n_d + sum(nN1) + sum(nkc) + n_b + 1:n_lb]
     bminleni <- x[3 * n_z + 4 * n_d + sum(nN1) + sum(nkc) + n_b + n_lb + 1:n_lb]
+    dic$dic <- x[3 * n_z + 4 * n_d + sum(nN1) + sum(nkc) + n_b + 3 * n_lb + n_lb * (d - 2) + 1:nrow(dic)]
     M1 <- M2 <- matrix(0, nrow = d, ncol = d)
     dimnames(M1) <- dimnames(M2) <- list(V, V)
     for (i in seq_len(d)) {
@@ -785,7 +788,7 @@ trafo = \(x) as.numeric(x <= 0.05),
       list(M1 = M1, M2 = M2), edge = edge, bedge = bedge,
       dcon = zijC, antlen = leij, minlen = lijC,
       pind = deij, sedge = sedge, bminlen = bminlen,
-      bminleni = bminleni
+      bminleni = bminleni, dic = dic
     )
   }
 

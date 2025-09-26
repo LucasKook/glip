@@ -9,11 +9,11 @@ devtools::load_all()
 library("pcalg")
 
 ### Params
-d <- as.numeric(darg(args[1], 6))
+d <- as.numeric(darg(args[1], 3))
 pp <- as.numeric(darg(args[2], 0.5))
-mode <- darg(args[3], "daglean")
-seeds <- eval(parse(text = darg(args[4], "1:100")))
-max_size <- as.numeric(darg(args[5], d - 2))
+mode <- darg(args[3], "admg")
+seeds <- eval(parse(text = darg(args[4], "1:2")))
+max_size <- as.numeric(darg(args[5], -1))
 max_size <- ifelse(max_size == -1, d - 2, max_size)
 walltime <- as.numeric(darg(args[6], Inf))
 V <- letters[1:d]
@@ -41,7 +41,7 @@ tmp <- sapply(seeds, \(idx) {
 
   tests <- .compute_oracle_tests(G, max_size, mode)
   capt <- capture.output(
-    lG <- .get_opt(mode)(tests,
+    lG <<- .get_opt(mode)(tests,
       d = d, max_size = max_size,
       V = V, cache = cache,
       gurobi_args = list(
@@ -51,14 +51,14 @@ tmp <- sapply(seeds, \(idx) {
     )
   )
 
-  learned <- .compute_graphical_representation(lG$graph, max_size, mode)
-  ground_truth <- .compute_graphical_representation(G, max_size, mode)
+  learned <<- .compute_graphical_representation(lG$graph, max_size, mode)
+  ground_truth <<- .compute_graphical_representation(G, max_size, mode)
 
   ### Compute output graph
   if (!isTRUE(all.equal(learned, ground_truth))) {
     message("\nWrong graph found, writing...")
     tmp <- capture.output({
-      print(capt)
+      # print(capt)
       print(lG$tests)
       cat("\nTrue graph:\n")
       print(G)

@@ -71,6 +71,8 @@ inst/code/sanity-check.R
 .cache-dag/
 .cache-dcon/
 .cache-dcon-lean/
+.cache-admg-lean/
+.cache-chain-lean/
 
 .Rbuildignore
 

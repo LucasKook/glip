@@ -8,7 +8,7 @@ dag_optim <- function(
     verbose = FALSE,
     cache = TRUE,
     cache_dir = "./.cache-dag",
-    mode = c("dag", "dg"),
+    mode = c("dag-dc", "dg-dc"),
     ...) {
 
   if (!requireNamespace("gurobi")) {
@@ -343,7 +343,7 @@ dag_optim <- function(
     )
 
     ### Swap constraints for DAGs/chain graphs
-    if (mode == "dag") {
+    if (mode == "dag-dc") {
 
       ### DAG1
       if (verbose) {

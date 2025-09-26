@@ -8,6 +8,7 @@ dcon_optim <- function(
     verbose = FALSE,
     cache = TRUE,
     cache_dir = "./.cache-dcon",
+    mode = c("dag-dcon", "dg-dcon"),
     ...) {
 
   if (!requireNamespace("gurobi")) {
@@ -362,32 +363,34 @@ dcon_optim <- function(
       cbind(-diag(n_d), (d - 1) * diag(n_d)) # (C3)
     )
 
-    ### DAG1
-    if (verbose) {
-      cat("\nWorking on constraint DAG1")
-    }
-
-    rn <- grep("acyc", rownames(A), value = TRUE)
-    cn <- grep("deij", colnames(A), value = TRUE)
-    clist <- list()[rep(1, length(rn))]
-    cntr <- 1
-    for (i in seq_len(d)) {
-      for (j in setdiff(seq_len(d), i)) {
-        ij <- xij$idx[xij$i == i & xij$j == j]
-        ji <- xij$idx[xij$i == j & xij$j == i]
-        clist[[cntr]] <- data.frame(
-          i = c(cntr, cntr),
-          j = c(ij, ji),
-          v = c(1, 1)
-        )
-        model$rhs[grep("acyc", names(model$rhs))[cntr]] <- 1
-        cntr <- cntr + 1
+    if (mode == "dag-dcon") {
+      ### DAG1
+      if (verbose) {
+        cat("\nWorking on constraint DAG1")
       }
+
+      rn <- grep("acyc", rownames(A), value = TRUE)
+      cn <- grep("deij", colnames(A), value = TRUE)
+      clist <- list()[rep(1, length(rn))]
+      cntr <- 1
+      for (i in seq_len(d)) {
+        for (j in setdiff(seq_len(d), i)) {
+          ij <- xij$idx[xij$i == i & xij$j == j]
+          ji <- xij$idx[xij$i == j & xij$j == i]
+          clist[[cntr]] <- data.frame(
+            i = c(cntr, cntr),
+            j = c(ij, ji),
+            v = c(1, 1)
+          )
+          model$rhs[grep("acyc", names(model$rhs))[cntr]] <- 1
+          cntr <- cntr + 1
+        }
+      }
+      clist <- do.call("rbind", clist)
+      A[grep("acyc", rownames(A)), grep("deij", colnames(A))] <-
+        Matrix::sparseMatrix(i = clist$i, j = clist$j, x = clist$v,
+          dims = c(length(rn), length(cn)), dimnames = list(rn, cn))
     }
-    clist <- do.call("rbind", clist)
-    A[grep("acyc", rownames(A)), grep("deij", colnames(A))] <-
-      Matrix::sparseMatrix(i = clist$i, j = clist$j, x = clist$v,
-        dims = c(length(rn), length(cn)), dimnames = list(rn, cn))
 
     ### Auxiliary variables for min constraint N1 (D1), (D2)
 
