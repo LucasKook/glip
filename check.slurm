@@ -36,7 +36,7 @@ export GUROBI_HOME=/home/lkook/gurobi1202/
 export PATH=$PATH:/home/lkook/gurobi1202/linux64/bin
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/home/lkook/gurobi1202/linux64/lib
 
-for d in {3..12}; do
+for d in {3..20}; do
   for mode in dag admg; do
     for ((ms = 1; ms <= 2; ms++)); do
       echo "Running with d=$d, ms=$ms, mode=$mode"
