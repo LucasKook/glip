@@ -25,7 +25,6 @@ use_oracle_tests <- as.numeric(darg(args[5], 0))
 wtype <- darg(args[6], "const")
 walltime <- as.numeric(darg(args[7], 1))
 d_max <- as.numeric(darg(args[8], 6))
-d_max <- min(d_max, ifelse(mode == "dag", 11, 8))
 reg <- darg(args[9], "lrm")
 nsim <- as.numeric(darg(args[10], 2))
 test <- "gcm"
@@ -41,6 +40,7 @@ inp_graph <- file.path(inp, paste0(dataset, ".graph.txt"))
 data <- odata <- read_table(inp_data, show_col_types = FALSE)
 V <- oV <- colnames(data)
 d <- od <- NCOL(data)
+d_max <- min(d_max, d)
 
 ### Ground truth graph
 dagstr <- paste0(read_lines(inp_graph), collapse = ";")
