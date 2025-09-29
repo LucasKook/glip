@@ -15,7 +15,7 @@ mode <- darg(args[3], "admg")
 seeds <- eval(parse(text = darg(args[4], "1:100")))
 max_size <- as.numeric(darg(args[5], -1))
 max_size <- ifelse(max_size == -1, d - 2, max_size)
-walltime <- as.numeric(darg(args[6], 1))
+walltime <- as.numeric(darg(args[6], Inf))
 V <- letters[1:d]
 cache <- TRUE
 ncores <- max(7, parallel::detectCores(logical = TRUE) - 2)
