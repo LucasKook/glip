@@ -12,7 +12,7 @@ library("tidyverse")
 
 ### Parse command line arguments
 args <- commandArgs(trailingOnly = TRUE)
-mode <- darg(args[1], "dag")
+mode <- darg(args[1], "admg")
 d <- as.numeric(darg(args[2], 16))
 ms <- as.numeric(darg(args[3], 1))
 ms <- ifelse(ms == -1, d - 2, ms)
