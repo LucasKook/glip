@@ -36,11 +36,11 @@ export GUROBI_HOME=/home/lkook/gurobi1202/
 export PATH=$PATH:/home/lkook/gurobi1202/linux64/bin
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/home/lkook/gurobi1202/linux64/lib
 
-nsim=20
+nsim=50
 ms=1
 uot=1
-simname=oracle
-walltime=300
+simname=oracle-weak
+walltime=600
 wtype=const
 alpha=0.01
 for d in {3..16}; do

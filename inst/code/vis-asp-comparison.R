@@ -4,11 +4,11 @@
 library("tidyverse")
 library("scales")
 save <- TRUE
-max_time <- 1200
-walltime <- c(300, 600, 1200)
+max_time <- 300
+walltime <- c(300, 300, 300)
 
 ### List files
-fin <- "./inst/results/asp-comparison/2025-08-21/large-ms1"
+fin <- "./inst/results/asp-comparison/2025-09-29/oracle"
 fout <- str_replace(fin, "results", "figures")
 if (!dir.exists(fout)) {
   dir.create(fout, recursive = TRUE)
