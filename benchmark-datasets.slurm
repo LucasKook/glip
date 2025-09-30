@@ -7,8 +7,8 @@
 #SBTACH -e %x_%j_%N.err
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=16
-#SBATCH --mem-per-cpu=4G
-#SBATCH --partition=highmem
+#SBATCH --mem-per-cpu=8G
+#SBATCH --partition=small
 
 echo "Running job $SLURM_JOB_NAME with ID $SLURM_JOB_ID"
 echo "Allocated hosts: $SLURM_JOB_NODELIST"
@@ -39,11 +39,11 @@ export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/home/lkook/gurobi1202/linux64/lib
 alpha=0.001
 uot=0
 wtype=const
-wt=300
+wt=600
 reg=lrm
 nsim=50
 for mode in admg; do
-  for ds in sachs; do
+  for ds in alarm asia child hepar2 sachs; do
     for dmax in 6 8; do
       for ms in {1..2}; do
         echo "Running with ms=$ms, alpha=$alpha, wtype=$wtype, dataset=$ds, dmax=$dmax, nsim=$nsim, reg=$reg"
