@@ -6,7 +6,7 @@
 #SBATCH -o %x_%j_%N.out
 #SBTACH -e %x_%j_%N.err
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=16
+#SBATCH --cpus-per-task=12
 #SBATCH --mem-per-cpu=8G
 #SBATCH --partition=medium
 
