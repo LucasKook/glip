@@ -43,7 +43,7 @@ simname=oracle-weak
 walltime=600
 wtype=const
 alpha=0.01
-for d in {3..16}; do
+for d in {14..16}; do
   for n in 100; do
     for mode in dag admg; do
       echo "Running with d=$d, mode=$mode, nsim=$nsim, n=$n"
