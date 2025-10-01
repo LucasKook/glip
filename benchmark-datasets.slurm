@@ -43,7 +43,7 @@ wt=600
 reg=lrm
 nsim=50
 for mode in admg; do
-  for ds in alarm asia child hepar2 sachs; do
+  for ds in child hepar2 sachs; do
     for dmax in 6 8; do
       for ms in {1..2}; do
         echo "Running with ms=$ms, alpha=$alpha, wtype=$wtype, dataset=$ds, dmax=$dmax, nsim=$nsim, reg=$reg"
