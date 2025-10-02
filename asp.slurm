@@ -40,7 +40,7 @@ nsim=50
 ms=1
 uot=1
 simname=oracle-weak
-walltime=600
+walltime=300
 wtype=const
 alpha=0.01
 for d in 16; do # {3..16}

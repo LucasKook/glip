@@ -39,7 +39,7 @@ export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/home/lkook/gurobi1202/linux64/lib
 alpha=0.001
 uot=0
 wtype=const
-wt=600
+wt=300
 reg=lrm
 nsim=50
 for mode in admg; do

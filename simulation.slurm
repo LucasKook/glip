@@ -43,10 +43,10 @@ alpha=0.001
 uot=0
 simname=more-confounding
 wtype=const
-nsim=20
+nsim=50
 reg=lrm
-wt=600
-for d in {3..8}; do
+wt=300
+for d in {3..10}; do
   for mode in dag admg; do
     for n in 400 3200; do
       echo "Running with d=$d, mode=$mode, ms=$ms, deg=$deg, alpha=$alpha, wtype=$wtype, n=$n, reg=$reg"

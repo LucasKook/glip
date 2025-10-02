@@ -1,6 +1,6 @@
 .compute_oracle_tests <- function(
     G, max_size = NULL, mode = "dag", verbose = FALSE,
-    restrict_to = NULL) {
+    restrict_to = NULL, parallel = FALSE, ncores = NULL) {
   V <- .get_node_set(G)
   if (!is.null(restrict_to)) {
     V <- restrict_to
@@ -13,7 +13,16 @@
   if (verbose) {
     pb <- txtProgressBar(0, length(sets), style = 3, width = 60)
   }
-  lapply(seq_along(sets), \(iter) {
+
+  if (parallel) {
+    nc <- min(parallel::detectCores() - 1, 15, ncores)
+    plan(multisession, workers = nc)
+    my_apply <- \(...) future_lapply(..., future.seed = TRUE)
+  } else {
+    my_apply <- lapply
+  }
+
+  res <- my_apply(seq_along(sets), \(iter) {
     if (verbose) {
       setTxtProgressBar(pb, iter)
     }
@@ -26,6 +35,12 @@
       p.value = .check_separation(x$X, x$Y, x$Z, G, mode)
     )
   }) |> do.call("rbind", args = _)
+
+  if (parallel) {
+    plan(sequential)
+  }
+
+  res
 }
 
 .get_node_set <- function(G) {

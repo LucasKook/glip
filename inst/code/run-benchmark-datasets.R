@@ -10,6 +10,7 @@ library("tidyverse")
 library("dagitty")
 library("igraph")
 library("reticulate")
+library("future.apply")
 use_condaenv("glip", required = TRUE)
 utils <- import("dagma.utils", convert = TRUE)
 dagma <- import("dagma.linear", convert = TRUE)
@@ -71,7 +72,7 @@ out <- lapply(seq_len(nsim), \(iter) {
   }
 
   ### Parameters for running the optimization
-  ncores <- max(7, parallel::detectCores(logical = TRUE) - 2)
+  ncores <- parallel::detectCores(logical = TRUE) - 1
   ms <- ifelse(ms == -1, d - 2, ms)
   ms <- ifelse(ms > d - 2, d - 2, ms)
   cache <- TRUE
@@ -105,7 +106,7 @@ out <- lapply(seq_len(nsim), \(iter) {
   ### Run CITs
   cat("\nRunning conditional independence tests\n")
   use_ms <- ifelse(alldiscr, d - 2, ms)
-  tests <- otests <- tests_ms <- otests_ms <- .compute_oracle_tests(gt, use_ms, mode, TRUE)
+  tests <- otests <- tests_ms <- otests_ms <- .compute_oracle_tests(gt, use_ms, mode, TRUE, parallel = 1 * (d > 8))
   if (!use_oracle_tests) {
     tests <- tests_ms <- learn_graph(
       data = fdata, max_size = use_ms, mode = mode, test_args = targs,
@@ -220,10 +221,11 @@ out <- lapply(seq_len(nsim), \(iter) {
     }
     SEP <- sep(learned, ORACLE, ifelse(mode == "dag", "pdag", "mag"), ms,
       precomputed_predicted = precomputed_predicted,
-      precomputed_groundtruth = otests_ms$p.value
+      precomputed_groundtruth = otests_ms$p.value,
+      parallel = 1 * (d > 8)
     )
     FULL_SEP <- sep(learned, ORACLE, ifelse(mode == "dag", "pdag", "mag"), d - 2,
-      precomputed_groundtruth = otests$p.value
+      precomputed_groundtruth = otests$p.value, parallel = 1 * (d > 8)
     )
     CM <- prf1(learned, ORACLE)
     data.frame(

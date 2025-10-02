@@ -137,12 +137,12 @@ sep <- function(
   if (!is.null(precomputed_predicted)) {
     t1 <- list(p.value = precomputed_predicted)
   } else {
-    t1 <- .compute_oracle_tests(G1, max_size = max_size, mode = mode)
+    t1 <- .compute_oracle_tests(G1, max_size = max_size, mode = mode, ...)
   }
   if (!is.null(precomputed_groundtruth)) {
     t2 <- list(p.value = precomputed_groundtruth)
   } else {
-    t2 <- .compute_oracle_tests(G2, max_size = max_size, mode = mode)
+    t2 <- .compute_oracle_tests(G2, max_size = max_size, mode = mode, ...)
   }
   .classification_metrics(1 - t1$p.value, 1 - t2$p.value)
 }
