@@ -42,9 +42,9 @@ uot=0
 simname=weak
 walltime=600
 wtype=const
-alpha=0.001
+alpha=0.01
 for d in {3..20}; do
-  for n in 300; do
+  for n in 10000; do
     for mode in dag admg; do
       echo "Running with d=$d, mode=$mode, nsim=$nsim, n=$n"
       Rscript --vanilla ./inst/code/run-asp-comparison.R $mode $d $ms $n $nsim $uot $simname $walltime $wtype $alpha
