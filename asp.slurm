@@ -39,11 +39,11 @@ export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/home/lkook/gurobi1202/linux64/lib
 nsim=20
 ms=1
 uot=0
-simname=weak-large-n
-walltime=600
+simname=weak-large-n-large-wt
+walltime=3600
 wtype=const
-alpha=0.01
-for d in {3..20}; do
+alpha=0.001
+for d in {10..20}; do
   for n in 10000; do
     for mode in dag admg; do
       echo "Running with d=$d, mode=$mode, nsim=$nsim, n=$n"
