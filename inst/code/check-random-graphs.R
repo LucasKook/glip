@@ -28,6 +28,7 @@ if (!dir.exists(out)) {
 
 ### Run
 glog <- list()
+runtime <- c()
 tmp <- sapply(seeds, \(idx) {
   cat("\n", idx)
   set.seed(idx)
@@ -50,6 +51,8 @@ tmp <- sapply(seeds, \(idx) {
       ), mode = mode, verbose = TRUE
     )
   )
+
+  runtime <<- c(runtime, lG$optim$runtime)
 
   learned <<- .compute_graphical_representation(lG$graph, max_size, mode)
   ground_truth <<- .compute_graphical_representation(G, max_size, mode)
@@ -75,3 +78,6 @@ tmp <- sapply(seeds, \(idx) {
     )))
   }
 })
+
+cat("\nSummary of runtimes:\n")
+summary(runtime)

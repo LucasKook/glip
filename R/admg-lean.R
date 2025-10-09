@@ -1,7 +1,7 @@
 admg_lean_optim <- function(
     tests, d = 3, max_size = d - 2, V = letters[1:d], trafo = \(x) as.numeric(x <= 0.05),
     weight_type = c("const", "inv", "log", "size"), warmstart = NULL, edgehints = NULL,
-    gurobi_args = list(), verbose = FALSE, cache = TRUE, cache_dir = "./.cache-admg-lean",
+    gurobi_args = list(), verbose = FALSE, cache = TRUE, cache_dir = "./.cache-admg-lean-redundant",
     mode = c("admg", "dmg"),
     ...) {
 
@@ -238,7 +238,8 @@ admg_lean_optim <- function(
     "f1f2min" = rep(0, n_lb + n_lb * (d - 2)), # Min O1 aux
     "r1b" = rep(0, nr1b <- d * sum(sapply(seq_len(max_size) - 1, \(x) {
       choose(d, x)
-    })))
+    }))),
+    "redundant" = rep(0, d * (d - 1) / 2)
   )
   model$sense <- c(
     rep(">=", 2 * n_z), # linearize objective
@@ -250,7 +251,8 @@ admg_lean_optim <- function(
     rep("<=", 3 * d * (d - 1)), # C6to9
     rep("<=", 2 * n_lb), # C10to11
     rep("=", n_lb + n_lb * (d - 2)), # Min O1 aux
-    rep("=", nr1b)
+    rep("=", nr1b),
+    rep("<=", d * (d - 1) / 2)
   )
 
   if (cache && all(file.exists(fn))) {
@@ -282,7 +284,8 @@ admg_lean_optim <- function(
       rep("C6to9", 3 * d * (d - 1)),
       rep("C10to11", 2 * n_lb),
       rep("f1f2min", n_lb + n_lb * (d - 2)),
-      rep("r1b", nr1b)
+      rep("r1b", nr1b),
+      rep("redundant", d * (d - 1) / 2)
     ))
 
     ### R1b
@@ -572,6 +575,29 @@ admg_lean_optim <- function(
       }
       clist <- do.call("rbind", clist)
       A[grep("acyc", rownames(A)), grep("deij", colnames(A))] <-
+        Matrix::sparseMatrix(i = clist$i, j = clist$j, x = clist$v,
+          dims = c(length(rn), length(cn)), dimnames = list(rn, cn))
+
+      ### Redundant constraint
+      rn <- grep("redundant", rownames(A), value = TRUE)
+      cn <- grep("dxij", colnames(A), value = TRUE)
+      clist <- list()[rep(1, length(rn))]
+      cntr <- 1
+      for (i in seq_len(d)) {
+        for (j in seq_len(i - 1)) {
+          ij <- xij$idx[xij$i == i & xij$j == j]
+          ji <- xij$idx[xij$i == j & xij$j == i]
+          clist[[cntr]] <- data.frame(
+            i = c(cntr, cntr),
+            j = c(ij, ji),
+            v = c(1, 1)
+          )
+          model$rhs[grep("redundant", names(model$rhs))[cntr]] <- 1
+          cntr <- cntr + 1
+        }
+      }
+      clist <- do.call("rbind", clist)
+      A[grep("redundant", rownames(A)), grep("dxij", colnames(A))] <-
         Matrix::sparseMatrix(i = clist$i, j = clist$j, x = clist$v,
           dims = c(length(rn), length(cn)), dimnames = list(rn, cn))
 

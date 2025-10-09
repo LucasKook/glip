@@ -73,6 +73,7 @@ inst/code/sanity-check.R
 .cache-dcon-lean/
 .cache-admg-lean/
 .cache-chain-lean/
+.cache-*
 
 .Rbuildignore
 
