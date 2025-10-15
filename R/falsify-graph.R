@@ -42,10 +42,14 @@ falsify_graph <- function(
           x <- sets[[iter]]$X
           y <- sets[[iter]]$Y
           z <- sets[[iter]]$Z
-          pv <- if (identical(z, character(0))) {
-            bnlearn::ci.test(x, y, data = data, test = test)$p.value
+          if (test == "gaussCItest") {
+            pv <- pcalg::gaussCItest(x, y, z, list(C = cor(data), n = NROW(data)))
           } else {
-            bnlearn::ci.test(x, y, z, data, test = test)$p.value
+            pv <- if (identical(z, character(0))) {
+              bnlearn::ci.test(x, y, data = data, test = test)$p.value
+            } else {
+              bnlearn::ci.test(x, y, z, data, test = test)$p.value
+            }
           }
           list(p.value = pv)
         },
