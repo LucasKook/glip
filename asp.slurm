@@ -37,13 +37,13 @@ export PATH=$PATH:/home/lkook/gurobi1202/linux64/bin
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/home/lkook/gurobi1202/linux64/lib
 
 nsim=20
-ms=-1
+ms=1
 uot=0
-simname=full-large-n-large-fx
+simname=weak-large-n-large-fx
 walltime=600
 wtype=const
 alpha=0.001
-for d in {3..9}; do
+for d in {3..12}; do
   for n in 10000; do
     for mode in dag admg; do
       echo "Running with d=$d, mode=$mode, nsim=$nsim, n=$n"
