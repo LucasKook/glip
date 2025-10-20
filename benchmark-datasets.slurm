@@ -41,7 +41,7 @@ uot=0
 wtype=const
 wt=300
 reg=lrm
-nsim=50
+nsim=30
 for mode in admg; do
   for ds in child hepar2 sachs; do
     for dmax in 6 8; do

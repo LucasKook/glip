@@ -41,14 +41,14 @@ deg=3
 admgadd=3
 alpha=0.001
 uot=0
-simname=more-confounding
+simname=simulation
 wtype=const
 nsim=50
 reg=lrm
 wt=300
 for d in {3..10}; do
   for mode in dag admg; do
-    for n in 400 3200; do
+    for n in 400 10000; do
       echo "Running with d=$d, mode=$mode, ms=$ms, deg=$deg, alpha=$alpha, wtype=$wtype, n=$n, reg=$reg"
       Rscript --vanilla ./inst/code/run-simulation.R $mode $d $ms $deg $n $nsim $alpha $uot $simname $wtype $reg $wt $admgadd
     done

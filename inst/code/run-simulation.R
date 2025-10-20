@@ -20,19 +20,19 @@ ms <- as.numeric(darg(args[3], -1))
 ms <- ifelse(ms == -1, d - 2, ms)
 ms <- ifelse(ms > d - 2, d - 2, ms)
 degree <- as.numeric(darg(args[4], 3))
-n <- as.numeric(darg(args[5], 3e2))
+n <- as.numeric(darg(args[5], 1e4))
 nsim <- as.numeric(darg(args[6], 1))
 alpha <- as.numeric(darg(args[7], 0.01))
 use_oracle_tests <- as.numeric(darg(args[8], 0))
 sim_name <- darg(args[9], "test-run")
-wtype <- darg(args[10], "log")
+wtype <- darg(args[10], "const")
 reg <- darg(args[11], "lrm")
 walltime <- as.numeric(darg(args[12], 10))
 admg_add <- as.numeric(darg(args[13], 3))
 save <- TRUE
 
 use_comets <- FALSE
-test <- ifelse(use_comets, "gcm", "zf")
+test <- ifelse(use_comets, "gcm", "gaussCItest")
 
 # Parameters for running the optimization
 ncores <- max(7, parallel::detectCores(logical = TRUE) - 2)
@@ -58,8 +58,10 @@ out <- lapply(seq_len(nsim), \(seed) {
   ### Generate random graph and data
   cat("\nGenerating random graph and data\n")
   set.seed(tseed <- 1e4 + 3e4 * (mode == "dag") + n + seed)
-  graph <- random_graph(d = d, prob = pr, mode = mode, 
-    admg_add = admg_add, degree = degree)
+  graph <- random_graph(
+    d = d, prob = pr, mode = mode,
+    admg_add = admg_add, degree = degree
+  )
   errMat <- mvtnorm::rmvnorm(n, sigma = (Sigma <- diag(0.5 + rchisq(ncol(graph$DAG), df = 2))))
   data <- data.frame(py_data <- scale(rgraph(graph, n = n, errMat = errMat)))
   py_data <- r_to_py(py_data)$copy()
