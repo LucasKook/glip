@@ -5,6 +5,7 @@ library("tidyverse")
 library("scales")
 save <- TRUE
 max_time <- 600
+tn <- 400 # 400 or 10000
 
 ### List files
 fin <- "./inst/results/benchmark/full"
@@ -49,21 +50,21 @@ lbs <- c(
   "dag" = "DAG", "admg" = "ADMG",
   "shd" = "SHD", "sep" = "SEP",
   # "input_sep" = "iSEP",
-  "tail_prec" = "1 - Precision (tail)",
-  "tail_rec" = "1 - Recall (tail)",
+  # "tail_prec" = "1 - Precision (tail)",
+  # "tail_rec" = "1 - Recall (tail)",
   "tail_f1" = "1 - F1 (tail)",
-  "head_prec" = "1 - Precision (head)",
-  "head_rec" = "1 - Recall (head)",
+  # "head_prec" = "1 - Precision (head)",
+  # "head_rec" = "1 - Recall (head)",
   "head_f1" = "1 - F1 (head)"
 )
 
 p2 <- ggplot(
   pdat |>
-    filter(metric != "input_sep") |>
+    filter(metric %in% names(lbs), n == tn) |>
     mutate(metric = factor(metric, levels = names(lbs))),
-  aes(x = ordered(d), y = value, color = method)
+  aes(x = ordered(d), y = value, color = method, shape = method)
 ) +
-  stat_summary(position = position_dodge(0.8), fun.data = "mean_se") +
+  stat_summary(position = position_dodge(0.8), fun.data = "mean_se", size = rel(0.3)) +
   facet_grid(mode ~ metric, labeller = as_labeller(lbs)) +
   theme_bw() +
   labs(y = "score", x = "number of nodes") +
@@ -84,7 +85,7 @@ p3 <- res |>
   theme(text = element_text(size = 13.5), legend.position = "top")
 
 if (save) {
-  ggsave(file.path(fout, "timings.pdf"), p1, height = 6.5, width = 8)
-  ggsave(file.path(fout, "performance.pdf"), p2, height = 6, width = 18)
-  ggsave(file.path(fout, "separation.pdf"), p3, height = 5.5, width = 8)
+  ggsave(file.path(fout, paste0("n-", tn, "_timings.pdf")), p1, height = 6.5, width = 8)
+  ggsave(file.path(fout, paste0("n-", tn, "_performance.pdf")), p2, height = 5.5, width = 9)
+  ggsave(file.path(fout, paste0("n-", tn, "_separation.pdf")), p3, height = 5.5, width = 8)
 }

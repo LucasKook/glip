@@ -246,7 +246,7 @@ out <- lapply(seq_len(nsim), \(iter) {
       d = d, ms = ms, mode = mode, wtype = wtype,
       use_oracle_tests = use_oracle_tests, iter = iter
     ) |>
-    dplyr::mutate_all(~ dplyr::case_when(is.nan(.x) ~ NA, !is.nan(.x) ~ .x))
+      dplyr::mutate_all(~ dplyr::case_when(is.nan(.x) ~ NA, !is.nan(.x) ~ .x))
   }) |> do.call("rbind", args = _)
 
   sumtab <- res |>

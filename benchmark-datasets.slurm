@@ -8,7 +8,7 @@
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=16
 #SBATCH --mem-per-cpu=8G
-#SBATCH --partition=short
+#SBATCH --partition=hicpu
 
 echo "Running job $SLURM_JOB_NAME with ID $SLURM_JOB_ID"
 echo "Allocated hosts: $SLURM_JOB_NODELIST"
@@ -43,9 +43,9 @@ wt=300
 reg=lrm
 nsim=30
 for mode in admg; do
-  for ds in child hepar2 sachs; do
+  for ds in alarm asia child hepar2 sachs; do
     for dmax in 6 8; do
-      for ms in {1..2}; do
+      for ms in 1 2 $((dmax - 2)); do
         echo "Running with ms=$ms, alpha=$alpha, wtype=$wtype, dataset=$ds, dmax=$dmax, nsim=$nsim, reg=$reg"
         Rscript --vanilla ./inst/code/run-benchmark-datasets.R $mode $ds $ms $alpha $uot $wtype $wt $dmax $reg $nsim
       done

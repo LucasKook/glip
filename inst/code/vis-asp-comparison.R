@@ -8,7 +8,7 @@ max_time <- 600
 walltime <- 600
 
 ### List files
-fin <- "./inst/results/asp-comparison/full"
+fin <- "./inst/results/asp-comparison/weak"
 fout <- str_replace(fin, "results", "figures")
 if (!dir.exists(fout)) {
   dir.create(fout, recursive = TRUE)
@@ -18,27 +18,45 @@ files <- list.files(fin, pattern = "*.rds", full.names = TRUE)
 ### Read files
 res <- tibble(file = files) |>
   mutate(data = map(file, ~ readRDS(.x))) |>
-  unnest(data)
+  unnest(data) |>
+  mutate(mode = toupper(mode))
 
 ### Timings
 timings <- res |>
   pivot_longer(c("glip", "asp"), names_to = "method", values_to = "time") |>
   mutate(time = as.numeric(time), time = ifelse(
     is.infinite(time), walltime, time
-  ))
+  ), method = toupper(method))
 
-p1 <- ggplot(timings, aes(x = time, color = method)) +
+p1 <- ggplot(timings, aes(x = time, linetype = method, color = ordered(d))) +
   stat_ecdf(pad = FALSE) +
   theme_bw() +
-  facet_wrap(mode ~ d, labeller = label_both) +
-  labs(x = "runtime in seconds", y = "relative rank") +
+  facet_wrap(~mode, labeller = label_both) +
+  labs(x = "runtime in seconds", y = "relative rank", color = "d") +
   scale_x_continuous(trans = "log10", labels = trans_format("log10", math_format(10^.x))) +
   theme(text = element_text(size = 13.5), legend.position = "top") +
-  scale_color_brewer(palette = "Dark2", labels = c("asp" = "ASP", "glip" = "GLIP")) +
+  guides(color = guide_legend(nrow = 1)) +
   coord_flip(xlim = c(min(timings$time) * 0.99, max_time)) +
-  geom_vline(xintercept = walltime, linetype = 3, color = "darkred")
+  geom_vline(xintercept = walltime, linetype = 3, color = "darkred", size = 1) +
+  scale_color_viridis_d()
 p1
 
+rel_time <- res |> mutate(rel = as.numeric(glip / ifelse(is.infinite(asp), walltime, asp)))
+p2 <- ggplot(rel_time, aes(x = rel, color = ordered(d))) +
+  geom_vline(xintercept = 1, linetype = 3, color = "darkred", size = 1) +
+  stat_ecdf(pad = FALSE) +
+  theme_bw() +
+  facet_wrap(~mode, labeller = label_both) +
+  labs(x = "relative runtime GLIP/ASP", y = "relative rank", color = "d") +
+  scale_x_continuous(trans = "log10", labels = trans_format("log10", math_format(10^.x))) +
+  theme(text = element_text(size = 13.5), legend.position = "top") +
+  guides(color = guide_legend(nrow = 1)) +
+  scale_color_brewer(palette = "Dark2", labels = c("asp" = "ASP", "glip" = "GLIP")) +
+  coord_flip() +
+  scale_color_viridis_d()
+p2
+
 if (save) {
-  ggsave(file.path(fout, "timings.pdf"), p1, height = 6.5, width = 9.5)
+  ggsave(file.path(fout, "timings.pdf"), p1, height = 4.5, width = 7.5)
+  ggsave(file.path(fout, "rel-timings.pdf"), p2, height = 4.5, width = 7.5)
 }

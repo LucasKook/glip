@@ -46,7 +46,7 @@ wtype=const
 nsim=50
 reg=lrm
 wt=300
-for d in {3..10}; do
+for d in {8..9}; do
   for mode in dag admg; do
     for n in 400 10000; do
       echo "Running with d=$d, mode=$mode, ms=$ms, deg=$deg, alpha=$alpha, wtype=$wtype, n=$n, reg=$reg"
