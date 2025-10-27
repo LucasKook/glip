@@ -7,7 +7,7 @@ library("knitr")
 save <- TRUE
 
 ### List files
-fin <- paste0("./inst/results/datasets/2025-09-30/d8ms", 1:2)
+fin <- paste0("./inst/results/datasets/weak/d6ms", c(1, 2, 4))
 
 to_table <- function(x, y, digits = 2) {
   del <- paste0("%.", digits, "f")
@@ -32,10 +32,16 @@ read_results <- function(dir) {
 }
 
 res1 <- read_results(fin[1]) |>
-  rename(`1-SEP` = SEP, SEP = FSEP, FDR = PREC, FNR = REC)
+  rename(`1-SEP` = SEP, SEP = FSEP, FDR = PREC, FNR = REC) |>
+  mutate(Method = ifelse(Method == "GLIP", "GLIP (k=1)", Method))
 res2 <- read_results(fin[2]) |>
-  rename(`2-SEP` = SEP, SEP = FSEP, FDR = PREC, FNR = REC)
+  rename(`2-SEP` = SEP, SEP = FSEP, FDR = PREC, FNR = REC) |>
+  mutate(Method = ifelse(Method == "GLIP", "GLIP (k=2)", Method))
+res3 <- read_results(fin[2]) |>
+  rename(`d-2-SEP` = SEP, SEP = FSEP, FDR = PREC, FNR = REC) |>
+  mutate(Method = ifelse(Method == "GLIP", "GLIP (k=d-2)", Method))
 res <- full_join(res1, res2) |>
+  full_join(res3) |>
   arrange(Dataset, Method) |>
   select(Dataset, Method, SHD, `1-SEP`, `2-SEP`, SEP, FDR, FNR)
 
