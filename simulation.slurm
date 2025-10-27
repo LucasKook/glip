@@ -1,14 +1,13 @@
 #!/bin/bash
-#SBATCH --job-name=glip # short name for your job
+#SBATCH --job-name=glip-sim # short name for your job
 #SBATCH --mail-user=lkook@wu.ac.at
-#SBATCH --mail-type=END
-#SBATCH --mail-type=FAIL
+#SBATCH --mail-type=END,FAIL
 #SBATCH -o %x_%j_%N.out
 #SBTACH -e %x_%j_%N.err
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=16
 #SBATCH --mem-per-cpu=8G
-#SBATCH --partition=short
+#SBATCH --partition=hicpu
 
 echo "Running job $SLURM_JOB_NAME with ID $SLURM_JOB_ID"
 echo "Allocated hosts: $SLURM_JOB_NODELIST"
@@ -36,18 +35,18 @@ export GUROBI_HOME=/home/lkook/gurobi1202/
 export PATH=$PATH:/home/lkook/gurobi1202/linux64/bin
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/home/lkook/gurobi1202/linux64/lib
 
-ms=-1
+ms=1
 deg=2
 admgadd=3
 alpha=0.001
 uot=0
-simname=simulation
+simname=weak
 wtype=const
 nsim=50
 reg=lrm
 wt=300
-for d in 9; do
-  for mode in admg; do
+for d in {3..14}; do
+  for mode in dag admg; do
     for n in 400 10000; do
       echo "Running with d=$d, mode=$mode, ms=$ms, deg=$deg, alpha=$alpha, wtype=$wtype, n=$n, reg=$reg"
       Rscript --vanilla ./inst/code/run-simulation.R $mode $d $ms $deg $n $nsim $alpha $uot $simname $wtype $reg $wt $admgadd
