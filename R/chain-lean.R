@@ -7,7 +7,7 @@ chain_lean_optim <- function(
     gurobi_args = list(),
     verbose = FALSE,
     cache = TRUE,
-    cache_dir = "./.cache-chain-lean",
+    cache_dir = "./.cache-chain-lean-redundant",
     ...) {
 
   if (!requireNamespace("gurobi")) {
