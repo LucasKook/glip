@@ -41,7 +41,7 @@ alpha=0.001
 uot=0
 simname=full
 wtype=const
-nsim=50
+nsim=30
 reg=lrm
 wt=300
 for d in {3..10}; do
