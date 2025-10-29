@@ -29,7 +29,7 @@ save <- TRUE
 mode <- "chain"
 
 use_comets <- FALSE # or TRUE and gcm/pcm test
-test <- "zf"
+test <- "gaussCItest"
 
 # Parameters for running the optimization
 ncores <- max(7, parallel::detectCores(logical = TRUE) - 2)
