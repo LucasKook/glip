@@ -8,7 +8,7 @@ max_time <- 600
 tn <- 10000 # 400 or 10000
 
 ### List files
-fin <- "./inst/results/benchmark/full"
+fin <- "./inst/results/benchmark/weak"
 fout <- str_replace(fin, "results", "figures")
 if (!dir.exists(fout)) {
   dir.create(fout, recursive = TRUE)
