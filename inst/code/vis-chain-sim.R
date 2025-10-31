@@ -1,14 +1,14 @@
-### Visualize results from simulation
+### Visualize results from chain graph simulation
 ### LK 2025
 
 library("tidyverse")
 library("scales")
 save <- TRUE
 max_time <- 600
-tn <- 400 # 400 or 10000
+tn <- 10000 # 400 or 10000
 
 ### List files
-fin <- "./inst/results/benchmark/weak"
+fin <- "./inst/results/chain-graph-simulation/full"
 fout <- str_replace(fin, "results", "figures")
 if (!dir.exists(fout)) {
   dir.create(fout, recursive = TRUE)
@@ -48,6 +48,7 @@ pdat <- res |>
 
 lbs <- c(
   "dag" = "DAG", "admg" = "ADMG",
+  "chain" = "CHAIN",
   "shd" = "SHD", "sep" = "SEP",
   # "input_sep" = "iSEP",
   # "tail_prec" = "1 - Precision (tail)",
