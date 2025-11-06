@@ -12,7 +12,7 @@ library("lcd")
 
 # Parse command line arguments
 args <- commandArgs(trailingOnly = TRUE)
-d <- as.numeric(darg(args[1], 4))
+d <- as.numeric(darg(args[1], 7))
 ms <- as.numeric(darg(args[2], -1))
 ms <- ifelse(ms == -1, d - 2, ms)
 ms <- ifelse(ms > d - 2, d - 2, ms)
@@ -90,7 +90,7 @@ out <- lapply(seq_len(nsim), \(seed) {
     V = V, cache = cache,
     trafo = \(x) as.numeric(x <= alpha),
     weight_type = wtype,
-    warmstart = .ess_to_dag(PC),
+    warmstart = PC,
     edgehints = 1 * (PC != 0),
     gurobi_args = list(
       Threads = ncores,

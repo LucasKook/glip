@@ -135,8 +135,8 @@ chain_lean_optim <- function(
   model <- list()
   model$obj <- c(
     w, # corresponds to t_{ij}^C
-    rep(0, n_z), # corresponds to z_{ij}^C
-    rep(0, n_d), # corresponds to x^{->}_{ij}
+    "zijc" = rep(0, n_z), # corresponds to z_{ij}^C
+    "xij" = rep(0, n_d), # corresponds to x^{->}_{ij}
     rep(0, n_z), # corresponds to l_{ij}^C
     rep(0, n_d), # corresponds to l_{ij}^{->}
     rep(0, sum(nN1 <- c(n_d, (d - 2) * n_d))), # For min-constraint N1
@@ -152,6 +152,36 @@ chain_lean_optim <- function(
     0, # aux const for min R1
     0 # aux const for min W1
   )
+  ### Br prio and warmstart
+  model$branchpriority <- rep(0, length(model$obj))
+  model$branchpriority[grep("xij", names(model$obj))] <- 1
+  guess <- rep(0, n_d)
+  ws <- rep(0, n_d)
+  for (i in seq_len(d)) {
+    for (j in setdiff(seq_len(d), i)) {
+      xidx <- xij$idx[xij$i == i & xij$j == j]
+      zidx <- c(zijc$idx[zijc$i == i & zijc$j == j], zijc$idx[zijc$i == j & zijc$j == i])
+      if (is.null(edgehints)) {
+        guess[xidx] <- max(p[zidx])
+      } else {
+        guess[xidx] <- edgehints[i, j]
+      }
+      if (is.null(warmstart)) {
+        ws[xidx] <- 0
+      } else {
+        ws[xidx] <- warmstart[i, j]
+      }
+    }
+  }
+  model$varhintval <- rep(NA, length(model$obj))
+  model$varhintval[grep("zijc", names(model$obj))] <- p
+  model$varhintval[grep("xij", names(model$obj))] <- guess
+  model$varhintpri <- rep(0, length(model$obj))
+  model$varhintpri[grep("zijc", names(model$obj))] <- 2
+  model$varhintpri[grep("xij", names(model$obj))] <- 2 - guess
+  model$varhintpri <- as.integer(model$varhintpri)
+  model$start <- rep(NA, length(model$obj))
+  model$start[grep("xij", names(model$obj))] <- ws
   model$modelsense <- "min"
   model$vtype <- rep(
     c("C", "B", "I", "B", "I", "B", "I", "B", "I"),
