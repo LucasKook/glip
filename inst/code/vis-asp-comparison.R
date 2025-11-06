@@ -8,7 +8,7 @@ max_time <- 600
 walltime <- 600
 
 ### List files
-fin <- "./inst/results/asp-comparison/weak"
+fin <- "./inst/results/asp-comparison/full"
 fout <- str_replace(fin, "results", "figures")
 if (!dir.exists(fout)) {
   dir.create(fout, recursive = TRUE)
@@ -53,7 +53,9 @@ p2 <- ggplot(rel_time, aes(x = rel, color = ordered(d))) +
   guides(color = guide_legend(nrow = 1)) +
   scale_color_brewer(palette = "Dark2", labels = c("asp" = "ASP", "glip" = "GLIP")) +
   coord_flip() +
-  scale_color_viridis_d()
+  scale_color_viridis_d() +
+  geom_text(aes(x = 100, y = 0.5, label = "ASP faster"), inherit.aes = FALSE, size = 3, color = "gray") +
+  geom_text(aes(x = 1 / 100, y = 0.5, label = "GLIP faster"), inherit.aes = FALSE, size = 3, color = "gray")
 p2
 
 if (save) {
