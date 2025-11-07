@@ -1,3 +1,4 @@
+#' @export
 learn_graph <- function(
     data, max_size = NULL, mode = "dag", test = "gcm", naive = FALSE,
     parallel = FALSE, ncores = NULL, alpha = 0.05, trafo = \(x) as.numeric(x <= alpha),
