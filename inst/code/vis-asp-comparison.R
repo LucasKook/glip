@@ -9,6 +9,8 @@ walltime <- 600
 
 ### List files
 fin <- "./inst/results/asp-comparison/full"
+nrow <- c(1, 2)[1 + str_detect(fin, "weak")]
+nm <- c("full", "weak")[1 + str_detect(fin, "weak")]
 fout <- str_replace(fin, "results", "figures")
 if (!dir.exists(fout)) {
   dir.create(fout, recursive = TRUE)
@@ -35,7 +37,7 @@ p1 <- ggplot(timings, aes(x = time, linetype = method, color = ordered(d))) +
   labs(x = "runtime in seconds", y = "relative rank", color = "d") +
   scale_x_continuous(trans = "log10", labels = trans_format("log10", math_format(10^.x))) +
   theme(text = element_text(size = 13.5), legend.position = "top") +
-  guides(color = guide_legend(nrow = 1)) +
+  guides(color = guide_legend(nrow = nrow)) +
   coord_flip(xlim = c(min(timings$time) * 0.99, max_time)) +
   geom_vline(xintercept = walltime, linetype = 3, color = "darkred", size = 1) +
   scale_color_viridis_d()
@@ -54,11 +56,11 @@ p2 <- ggplot(rel_time, aes(x = rel, color = ordered(d))) +
   scale_color_brewer(palette = "Dark2", labels = c("asp" = "ASP", "glip" = "GLIP")) +
   coord_flip() +
   scale_color_viridis_d() +
-  geom_text(aes(x = 100, y = 0.5, label = "ASP faster"), inherit.aes = FALSE, size = 3, color = "gray") +
-  geom_text(aes(x = 1 / 100, y = 0.5, label = "GLIP faster"), inherit.aes = FALSE, size = 3, color = "gray")
+  annotate(x = 100, y = 0.5, label = "ASP faster", size = 4, color = "gray", geom = "text") +
+  annotate(x = 1 / 100, y = 0.5, label = "GLIP faster", size = 4, color = "gray", geom = "text")
 p2
 
 if (save) {
-  ggsave(file.path(fout, "timings.pdf"), p1, height = 4.5, width = 7.5)
-  ggsave(file.path(fout, "rel-timings.pdf"), p2, height = 4.5, width = 7.5)
+  ggsave(file.path(fout, paste0("timings-", nm, ".pdf")), p1, height = 4.5, width = 7.5)
+  ggsave(file.path(fout, paste0("rel-timings-", nm, ".pdf")), p2, height = 4.5, width = 7.5)
 }
