@@ -81,7 +81,7 @@ out <- lapply(seq_len(nsim), \(seed) {
   tstop <- Sys.time()
   runtime_PC <- tstop - tstart
   pcout <- as(pcres@graph, "matrix")
-  PC <- pcout
+  PC <- .compute_graphical_representation(pcout, d - 2, mode)
 
   ### GLIP
   cat("\nRunning GLIP\n")
