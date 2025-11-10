@@ -5,7 +5,7 @@ library("tidyverse")
 library("scales")
 save <- TRUE
 max_time <- 600
-tn <- 10000 # 400 or 10000
+tn <- 400 # 400 or 10000
 
 ### List files
 fin <- "./inst/results/chain-graph-simulation/full"
@@ -86,7 +86,7 @@ p3 <- res |>
   theme(text = element_text(size = 13.5), legend.position = "top")
 
 if (save) {
-  ggsave(file.path(fout, paste0("n-", tn, "_timings.pdf")), p1, height = 6.5, width = 8)
-  ggsave(file.path(fout, paste0("n-", tn, "_performance.pdf")), p2, height = 5.5, width = 9)
-  ggsave(file.path(fout, paste0("n-", tn, "_separation.pdf")), p3, height = 5.5, width = 8)
+  ggsave(file.path(fout, paste0("n-", tn, "_timings-chain.pdf")), p1, height = 6.5, width = 8)
+  ggsave(file.path(fout, paste0("n-", tn, "_performance-chain.pdf")), p2, height = 3.5, width = 9)
+  ggsave(file.path(fout, paste0("n-", tn, "_separation-chain.pdf")), p3, height = 3.5, width = 8)
 }
