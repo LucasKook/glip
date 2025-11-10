@@ -90,8 +90,8 @@ out <- lapply(seq_len(nsim), \(seed) {
     V = V, cache = cache,
     trafo = \(x) as.numeric(x <= alpha),
     weight_type = wtype,
-    warmstart = PC,
-    edgehints = 1 * (PC != 0),
+    warmstart = pcout, # PC,
+    edgehints = 1 * (pcout != 0), # 1 * (PC != 0),
     gurobi_args = list(
       Threads = ncores,
       TimeLimit = walltime
