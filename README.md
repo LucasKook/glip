@@ -1,9 +1,9 @@
-# Graph Learning via Integer Programming
+# Graph Learning via Integer Programming in R <img src='inst/glip-pkg.png' align="right" height="138.5" />
 
-**glip** [1] provides global optimization-based algorithms for learning
-(causal) graphical models from data, including Directed Acyclic Graphs (DAGs),
-Acyclic Directed Mixed Graphs (ADMGs), and chain graphs (CGs). The package
-relies on mixed-integer programming via GUROBI [2] for accurate,
+The **glip** package [1] provides global optimization-based algorithms for
+learning (causal) graphical models from data, including Directed Acyclic Graphs
+(DAGs), Acyclic Directed Mixed Graphs (ADMGs), and chain graphs (CGs). The
+package relies on mixed-integer programming via GUROBI [2] for accurate,
 constraint-based graph learning, with advanced support for latent variables and
 complex causal graphs.
 
