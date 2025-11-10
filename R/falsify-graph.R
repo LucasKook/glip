@@ -1,8 +1,38 @@
+#' Falsify a Graph by Testing Its Implied Conditional Independencies
+#'
+#' Performs conditional independence tests on all d-separations implied by a
+#' (causal) graph, allowing users to empirically falsify a proposed model
+#' using given data. Returns a data frame of each tested d-separation and test
+#' result.
+#'
+#' @param G An adjacency matrix or graph object (e.g., representing a DAG,
+#'     ADMG, etc.) whose implied d-separations will be tested.
+#' @param data A data.frame or matrix; each column should correspond to a
+#'     variable in \code{G}.
+#' @param max_size Integer. Maximum size of conditioning set to consider
+#'     (defaults to `d - 2`).
+#' @param mode Character. Graph mode (e.g., "dag", "admg", etc.).
+#' @param test Character. Conditional independence test to use.
+#' @param test_args Optional list. Additional arguments for the chosen test.
+#' @param parallel Logical. If \code{TRUE}, tests are run in parallel.
+#' @param ncores Integer. Number of cores to use if running in parallel.
+#' @param comets Logical. If \code{TRUE} (default), uses the "comets" test implementation.
+#' @param ... Additional arguments passed to test functions.
+#'
+#' @return A data.frame of tested (X, Y | Z) triples, size of conditioning set,
+#'     test p-value, selected weight, and formula.
+#'
+#' @details
+#' Only d-separations present in the graph (and testable at the given max_size)
+#' are tested. If no such testable d-separations exist, only a message is
+#' returned.
+#'
+#' @export
 falsify_graph <- function(
     G, data, max_size = NULL, mode = "dag", test = "gcm", test_args = NULL,
     parallel = FALSE, ncores = NULL, comets = TRUE, ...) {
-  V <- colnames(G)
-  max_size <- min(max(1, length(V) - 2), max_size)
+  d <- .get_size(G)
+  max_size <- min(max(1, d - 2), max_size)
 
   ### List all d separations with tests
   to_test <- list_separations(G, max_size = max_size, mode)

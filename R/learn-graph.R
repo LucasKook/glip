@@ -1,3 +1,32 @@
+#' Learning Graphs from Data
+#'
+#' Learns a graphical model (DAG/ADMG/CG/etc.) from data using conditional
+#' independence tests, multiple modes, and supports parallelization and
+#' warmstart hints.
+#'
+#' @param data A `data.frame` with variables as columns.
+#' @param max_size Maximum subset size for conditioning.
+#' @param mode Type of graph to learn ("dag", "admg", "dmg", "dg", or "chain").
+#' @param test Conditional independence test ("gcm", "gaussCItest").
+#' @param naive Logical. If TRUE, assumes causal sufficiency.
+#' @param parallel Logical. Whether to parallelize conditional independence tests.
+#' @param ncores Number of cores for parallelization.
+#' @param alpha Significance level for conditional independence tests.
+#' @param trafo Transformation function for p-values. Default is hard
+#'     thresholding at `alpha`
+#' @param weight_type Type of edge weights (default: "const", or "log", "inv").
+#' @param warmstart Optional warm-start graph matrix (or list for ADMGs). Default: `NULL`.
+#' @param edgehints Optional edge hints for optimization.
+#' @param gurobi_args List of arguments passed to gurobi solver.
+#' @param test_args Additional arguments for the conditional independence test.
+#' @param return_tests_only If `TRUE`, only returns test results.
+#' @param verbose Logical. Print extra output.
+#' @param cache Logical. Cache constraints for optimization.
+#' @param comets Logical. Use `comets` for the conditional independence tests.
+#' @param ... Further arguments passed to internals.
+#'
+#' @return An object of class \code{learned_graph} including tests, graph, and
+#' graphical representation.
 #' @export
 learn_graph <- function(
     data, max_size = NULL, mode = "dag", test = "gcm", naive = FALSE,
@@ -68,6 +97,17 @@ learn_graph <- function(
   )
 }
 
+#' List Conditional Independence Tests for a Graph
+#'
+#' Generates combinations of variable pairs and conditioning sets for
+#' conditional independence tests.
+#'
+#' @param vars Character vector of variable names.
+#' @param max_size Maximum conditioning set size.
+#' @param naive Logical. If TRUE, uses maximal conditioning sets.
+#' @param ... Additional arguments (unused).
+#'
+#' @return List with sets and formulas for CI tests.
 .list_tests_graph <- function(vars, max_size, naive = FALSE, ...) {
   pairs <- utils::combn(vars, 2)
   if (naive) {
@@ -104,11 +144,20 @@ learn_graph <- function(
   )
 }
 
+#' Print Method for `'graphopt'` Objects
+#'
+#' @param x Object of class `'graphopt'`.
+#' @param ... Further arguments passed to `print()`.
 #' @exportS3Method print graphopt
 print.graphopt <- function(x, ...) {
   print(x$graph)
 }
 
+#' Print Method for `'learned_graph'` Objects
+#'
+#' @param x Object of class `'learned_graph'`.
+#' @param print_tests If `TRUE`, print test results.
+#' @param ... Further arguments.
 #' @exportS3Method print learned_graph
 print.learned_graph <- function(x, print_tests = FALSE, ...) {
   if (print_tests) {

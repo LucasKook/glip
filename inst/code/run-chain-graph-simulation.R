@@ -12,7 +12,7 @@ library("lcd")
 
 # Parse command line arguments
 args <- commandArgs(trailingOnly = TRUE)
-d <- as.numeric(darg(args[1], 7))
+d <- as.numeric(darg(args[1], 9))
 ms <- as.numeric(darg(args[2], -1))
 ms <- ifelse(ms == -1, d - 2, ms)
 ms <- ifelse(ms > d - 2, d - 2, ms)
@@ -81,7 +81,7 @@ out <- lapply(seq_len(nsim), \(seed) {
   tstop <- Sys.time()
   runtime_PC <- tstop - tstart
   pcout <- as(pcres@graph, "matrix")
-  PC <- .compute_graphical_representation(pcout, d - 2, mode)
+  PC <<- .compute_graphical_representation(pcout, d - 2, mode)
 
   ### GLIP
   cat("\nRunning GLIP\n")
@@ -98,7 +98,7 @@ out <- lapply(seq_len(nsim), \(seed) {
     ), mode = mode
   )
 
-  GLIP <- .compute_graphical_representation(lG$graph, d - 2, mode)
+  GLIP <<- .compute_graphical_representation(lG$graph, d - 2, mode)
   runtime_GLIP <- as.difftime(lG$optim$runtime, units = "secs")
 
   outputs <- list(GLIP = GLIP, PC = PC)

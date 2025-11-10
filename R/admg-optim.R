@@ -1,3 +1,23 @@
+#' Optimal Learning of ADMGs via Mixed Integer Programming
+#'
+#' Solves a global mixed integer optimization problem to learn an Acyclic
+#' Directed Mixed Graph (ADMG) or DMG from supplied conditional independence
+#' test results, using the `gurobi` solver. Supports warm-start, different
+#' weight types, and optional caching for efficiency. 
+#'
+#' @inheritParams admg_lean_optim
+#'
+#' @return An object of class \code{graphopt} with components:
+#'   \describe{
+#'     \item{graph}{Adjacency or edge matrices of the learned graph.}
+#'     \item{tests}{Test results with optimization variables.}
+#'     \item{optim}{Solver output.}
+#'   }
+#'
+#' @details
+#' Requires the `gurobi` package. Will warn if unavailable.
+#'
+#' @export
 admg_optim <- function(
     tests, d = 3, max_size = d - 2, V = letters[1:d],
 trafo = \(x) as.numeric(x <= 0.05),
