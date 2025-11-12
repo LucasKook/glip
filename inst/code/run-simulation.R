@@ -97,7 +97,7 @@ out <- lapply(seq_len(nsim), \(seed) {
   runtime_PC <- tstop - tstart
   pcout <- as(pcres@graph, "matrix")
   PC <- pcout
-  HPC <- .compute_graphical_representation(.ess_to_dag(PC), d - 2, mode)
+  HPC <- .compute_graphical_representation(.ess_to_dag(PC), d - 2, "dag")
 
   ### FCI ALG
   cat("\nRunning FCI\n")
@@ -109,7 +109,7 @@ out <- lapply(seq_len(nsim), \(seed) {
   runtime_FCI <- tstop - tstart
   fciout <- as(fcires@amat, "matrix")
   FCI <- fciout
-  HFCI <- .compute_graphical_representation(.pag_to_admg(FCI), d - 2, mode)
+  HFCI <- .compute_graphical_representation(.pag_to_admg(FCI), d - 2, "admg")
 
   if (FALSE) {
     ### R2sortability
