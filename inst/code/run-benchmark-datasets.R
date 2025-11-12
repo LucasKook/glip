@@ -134,6 +134,7 @@ out <- lapply(seq_len(nsim), \(iter) {
   runtime_PC <- tstop - tstart
   pcout <- as(pcres@graph, "matrix")
   PC <- pcout
+  HPC <- .compute_graphical_representation(.ess_to_dag(PC), d - 2, "dag")
 
   ### FCI ALG
   cat("\nRunning FCI\n")
@@ -145,61 +146,72 @@ out <- lapply(seq_len(nsim), \(iter) {
   runtime_FCI <- tstop - tstart
   fciout <- as(fcires@amat, "matrix")
   FCI <- fciout
+  HFCI <- .compute_graphical_representation(.pag_to_admg(FCI), d - 2, "admg")
 
-  ### R2sortability
-  cat("\nRunning R2SORT\n")
-  tstart <- Sys.time()
-  r2s <- 1 * (cd$r2_sort_regress(py_data) != 0)
-  tstop <- Sys.time()
-  runtime_R2SORT <- tstop - tstart
-  dimnames(r2s) <- list(newV, newV)
-  R2SORT <- .compute_graphical_representation(r2s, d - 2, mode)
+  if (FALSE) {
+    ### R2sortability
+    cat("\nRunning R2SORT\n")
+    tstart <- Sys.time()
+    r2s <- 1 * (cd$r2_sort_regress(py_data) != 0)
+    tstop <- Sys.time()
+    runtime_R2SORT <- tstop - tstart
+    dimnames(r2s) <- list(newV, newV)
+    R2SORT <- .compute_graphical_representation(r2s, d - 2, mode)
 
-  ### GLIP
-  cat("\nRunning GLIP\n")
-  lG <- .get_opt(mode)(tests_ms,
-    d = d, max_size = ms,
-    V = newV, cache = cache,
-    trafo = \(x) as.numeric(x <= alpha),
-    weight_type = wtype,
-    warmstart = if (mode == "dag") .ess_to_dag(PC) else .pag_to_admg(FCI),
-    edgehints = if (mode == "dag") 1 * (PC != 0) else 1 * (FCI != 0),
-    gurobi_args = list(
-      Threads = ncores,
-      TimeLimit = walltime
-    ), mode = mode
-  )
+    ### GLIP
+    cat("\nRunning GLIP\n")
+    lG <- .get_opt(mode)(tests_ms,
+      d = d, max_size = ms,
+      V = newV, cache = cache,
+      trafo = \(x) as.numeric(x <= alpha),
+      weight_type = wtype,
+      warmstart = if (mode == "dag") .ess_to_dag(PC) else .pag_to_admg(FCI),
+      edgehints = if (mode == "dag") 1 * (PC != 0) else 1 * (FCI != 0),
+      gurobi_args = list(
+        Threads = ncores,
+        TimeLimit = walltime
+      ), mode = mode
+    )
 
-  GLIP <- .compute_graphical_representation(lG$graph, d - 2, mode)
-  runtime_GLIP <- as.difftime(lG$optim$runtime, units = "secs")
+    GLIP <- .compute_graphical_representation(lG$graph, d - 2, mode)
+    runtime_GLIP <- as.difftime(lG$optim$runtime, units = "secs")
 
-  ### NOTEARS
-  cat("\nRunning NOTEARS\n")
-  model <- dagma$DagmaLinear(loss_type = "l2")
-  tstart <- Sys.time()
-  nto <- 1 * (model$fit(py_data, lambda1 = 0.02) != 0)
-  tstop <- Sys.time()
-  runtime_NOTEARS <- tstop - tstart
-  dimnames(nto) <- list(newV, newV)
-  NOTEARS <- .compute_graphical_representation(nto, d - 2, mode)
+    ### NOTEARS
+    cat("\nRunning NOTEARS\n")
+    model <- dagma$DagmaLinear(loss_type = "l2")
+    tstart <- Sys.time()
+    nto <- 1 * (model$fit(py_data, lambda1 = 0.02) != 0)
+    tstop <- Sys.time()
+    runtime_NOTEARS <- tstop - tstart
+    dimnames(nto) <- list(newV, newV)
+    NOTEARS <- .compute_graphical_representation(nto, d - 2, mode)
+  }
 
   ### Evaluate and summarize results
-  class(PC) <- class(GLIP)
-  class(FCI) <- class(GLIP)
+  GLIP <- NOTEARS <- R2SORT <- NULL
+  runtime_GLIP <- runtime_NOTEARS <- runtime_R2SORT <- NULL
+  class(PC) <- class(HPC)
+  class(FCI) <- class(HFCI)
   outputs <- list(
     GLIP = GLIP,
     PC = PC,
+    HPC = HPC,
     FCI = FCI,
+    HFCI = HFCI,
     NOTEARS = NOTEARS,
     R2SORT = R2SORT
   )
   timings <- list(
     GLIP = runtime_GLIP,
     PC = runtime_PC,
+    HPC = runtime_PC,
     FCI = runtime_FCI,
+    HFCI = runtime_FCI,
     NOTEARS = runtime_NOTEARS,
     R2SORT = runtime_R2SORT
   )
+  outputs <- outputs[!sapply(outputs, is.null)]
+  timings <- timings[!sapply(timings, is.null)]
 
   if (mode == "admg") { # remove PC in case of ADMGs
     outputs <- outputs[-grep("PC", names(outputs))]
