@@ -67,16 +67,11 @@ compute_largest_cg <- function(G) {
   notLarge <- TRUE
   while (notLarge) {
     gm <- compute_insub_metaarrow(G)
-
-    if (gm$large) {
-      return(G)
-      notLarge <- FALSE
-    } else {
-      A <- gm$A
-      B <- gm$B
-      G[A, B][t(G[B, A]) == 1] <- 1
-      G[B, A][t(G[A, B]) == 1] <- 1
-    }
+    notLarge <- !gm$large
+    A <- gm$A
+    B <- gm$B
+    G[A, B][t(G[B, A]) == 1] <- 1
+    G[B, A][t(G[A, B]) == 1] <- 1
   }
 
   G
@@ -168,7 +163,7 @@ create_cg_ma <- function(n, d) {
   prob <- d / (n - 1)
   for (i in 2:n) {
     for (j in 1:(i - 1)) {
-      amat[i, j] <- Rlab::rbern(1, prob = prob)
+      amat[i, j] <- rbinom(1, 1, prob = prob)
     }
   }
   amat <- amat + t(amat)

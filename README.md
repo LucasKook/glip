@@ -70,7 +70,7 @@ result$computed
 - `"dg"`: Directed Graph (allows for cycles, used d-separation and hence assumes normal distribution)
 - `"admg"`: Acyclic Directed Mixed Graph (allows for hidden confounding)
 - `"dmg"`: Directed Mixed Graph (possibly cyclic)
-- `"chain"`: LCG-chain graphs
+- `"chain"`: LWF-chain graphs
 - Additional experimental modes 
 
 ## References

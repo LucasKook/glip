@@ -1,6 +1,6 @@
-#' Optimal Learning of LCG-Chain Graphs via Mixed Integer Programming (Lean Encoding)
+#' Optimal Learning of LWF-Chain Graphs via Mixed Integer Programming (Lean Encoding)
 #'
-#' Solves a global mixed integer optimization problem to learn an LCG-Chain
+#' Solves a global mixed integer optimization problem to learn an LWF-Chain
 #' graph from supplied conditional independence test results, using the
 #' `gurobi` solver. Supports warm-start, different weight types, and optional
 #' caching for efficiency. 

@@ -12,19 +12,19 @@ library("lcd")
 
 # Parse command line arguments
 args <- commandArgs(trailingOnly = TRUE)
-d <- as.numeric(darg(args[1], 9))
+d <- as.numeric(darg(args[1], 7))
 ms <- as.numeric(darg(args[2], -1))
 ms <- ifelse(ms == -1, d - 2, ms)
 ms <- ifelse(ms > d - 2, d - 2, ms)
-degree <- as.numeric(darg(args[3], 3))
-n <- as.numeric(darg(args[4], 1e2))
+degree <- as.numeric(darg(args[3], 2))
+n <- as.numeric(darg(args[4], 1e4))
 nsim <- as.numeric(darg(args[5], 1))
-alpha <- as.numeric(darg(args[6], 0.01))
+alpha <- as.numeric(darg(args[6], 0.001))
 use_oracle_tests <- as.numeric(darg(args[7], 0))
 sim_name <- darg(args[8], "test-run")
 wtype <- darg(args[9], "const")
 reg <- darg(args[10], "lrm")
-walltime <- as.numeric(darg(args[11], 30))
+walltime <- as.numeric(darg(args[11], 10))
 save <- TRUE
 mode <- "chain"
 
@@ -54,7 +54,7 @@ out <- lapply(seq_len(nsim), \(seed) {
 
   ### Generate random graph and data
   cat("\nGenerating random graph and data\n")
-  set.seed(tseed <- 1e4 + 3e4 * (mode == "dag") + n + seed)
+  set.seed(tseed <- 1e4 + n + seed + 1)
   graph <- create_cg_ma(n = d, d = degree)
   data <- data.frame(rnorm.cg(n, graph, get.normal.dist(graph)))
   colnames(data) <- V <- letters[1:d]
@@ -77,10 +77,11 @@ out <- lapply(seq_len(nsim), \(seed) {
   ### PC ALG (only under causal sufficiency/DAG case)
   cat("\nRunning PC\n")
   tstart <- Sys.time()
-  pcres <- pcalg::pc(list(tests = tests, V = V), lookup_ci, labels = V, alpha = alpha)
+  pcres <- pcalg::pc(list(tests = tests, V = V), lookup_ci, labels = V, alpha = alpha, skel.method = "stable")
   tstop <- Sys.time()
   runtime_PC <- tstop - tstart
-  pcout <- as(pcres@graph, "matrix")
+  pcout <<- as(pcres@graph, "matrix")
+  pcout <- .ess_to_dag(pcout)
   PC <<- .compute_graphical_representation(pcout, d - 2, mode)
 
   ### GLIP
@@ -90,8 +91,8 @@ out <- lapply(seq_len(nsim), \(seed) {
     V = V, cache = cache,
     trafo = \(x) as.numeric(x <= alpha),
     weight_type = wtype,
-    warmstart = pcout, # PC,
-    edgehints = 1 * (pcout != 0), # 1 * (PC != 0),
+    warmstart = PC,
+    edgehints = 1 * (PC != 0),
     gurobi_args = list(
       Threads = ncores,
       TimeLimit = walltime
