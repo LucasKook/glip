@@ -14,15 +14,15 @@ cd <- import("CausalDisco.baselines", convert = TRUE)
 
 # Parse command line arguments
 args <- commandArgs(trailingOnly = TRUE)
-mode <- darg(args[1], "admg")
-d <- as.numeric(darg(args[2], 5))
+mode <- darg(args[1], "dag")
+d <- as.numeric(darg(args[2], 4))
 ms <- as.numeric(darg(args[3], -1))
 ms <- ifelse(ms == -1, d - 2, ms)
 ms <- ifelse(ms > d - 2, d - 2, ms)
-degree <- as.numeric(darg(args[4], 3))
-n <- as.numeric(darg(args[5], 1e4))
+degree <- as.numeric(darg(args[4], 2))
+n <- as.numeric(darg(args[5], 400))
 nsim <- as.numeric(darg(args[6], 1))
-alpha <- as.numeric(darg(args[7], 0.01))
+alpha <- as.numeric(darg(args[7], 0.001))
 use_oracle_tests <- as.numeric(darg(args[8], 0))
 sim_name <- darg(args[9], "test-run")
 wtype <- darg(args[10], "const")
@@ -33,6 +33,8 @@ save <- TRUE
 
 use_comets <- FALSE
 test <- ifelse(use_comets, "gcm", "gaussCItest")
+
+run_which <- c("PC")
 
 # Parameters for running the optimization
 ncores <- max(7, parallel::detectCores(logical = TRUE) - 2)
@@ -90,65 +92,85 @@ out <- lapply(seq_len(nsim), \(seed) {
   input_sep <- mean(otests$p.value != 1 * (tests$p.value > alpha))
 
   ### PC ALG (only under causal sufficiency/DAG case)
-  cat("\nRunning PC\n")
-  tstart <- Sys.time()
-  pcres <- pcalg::pc(list(tests = tests, V = V), lookup_ci, labels = V, alpha = alpha)
-  tstop <- Sys.time()
-  runtime_PC <- tstop - tstart
-  pcout <- as(pcres@graph, "matrix")
-  PC <- pcout
-  HPC <- .compute_graphical_representation(.ess_to_dag(PC), d - 2, "dag")
+  if ("PC" %in% run_which) {
+    cat("\nRunning PC\n")
+    tstart <- Sys.time()
+    pcres <- pcalg::pc(list(tests = tests, V = V), lookup_ci, labels = V, alpha = alpha)
+    tstop <- Sys.time()
+    runtime_PC <- tstop - tstart
+    pcout <- as(pcres@graph, "matrix")
+    PC <<- pcout
+    HPC <<- .compute_graphical_representation(.ess_to_dag(PC), d - 2, "dag")
+    class(PC) <- class(HPC)
+  } else {
+    PC <- HPC <- runtime_PC <- NULL
+  }
 
   ### FCI ALG
-  cat("\nRunning FCI\n")
-  tstart <- Sys.time()
-  fcires <- pcalg::fciPlus(list(tests = tests, V = V), lookup_ci,
-    labels = V, alpha = alpha, selectionBias = FALSE, verbose = FALSE
-  )
-  tstop <- Sys.time()
-  runtime_FCI <- tstop - tstart
-  fciout <- as(fcires@amat, "matrix")
-  FCI <<- .compute_graphical_representation(.pag_to_admg(fciout), d - 2, "admg")
+  if ("FCI" %in% run_which) {
+    cat("\nRunning FCI\n")
+    tstart <- Sys.time()
+    fcires <- pcalg::fciPlus(list(tests = tests, V = V), lookup_ci,
+      labels = V, alpha = alpha, selectionBias = FALSE, verbose = FALSE
+    )
+    tstop <- Sys.time()
+    runtime_FCI <- tstop - tstart
+    fciout <- as(fcires@amat, "matrix")
+    FCI <<- .compute_graphical_representation(.pag_to_admg(fciout), d - 2, "admg")
+  } else {
+    FCI <- runtime_FCI <- NULL
+  }
 
   ### R2sortability
-  cat("\nRunning R2SORT\n")
-  tstart <- Sys.time()
-  r2s <- 1 * (cd$r2_sort_regress(py_data) != 0)
-  tstop <- Sys.time()
-  runtime_R2SORT <- tstop - tstart
-  dimnames(r2s) <- list(V, V)
-  R2SORT <<- .compute_graphical_representation(r2s, d - 2, mode)
+  if ("R2SORT" %in% run_which) {
+    cat("\nRunning R2SORT\n")
+    tstart <- Sys.time()
+    r2s <- 1 * (cd$r2_sort_regress(py_data) != 0)
+    tstop <- Sys.time()
+    runtime_R2SORT <- tstop - tstart
+    dimnames(r2s) <- list(V, V)
+    R2SORT <<- .compute_graphical_representation(r2s, d - 2, mode)
+  } else {
+    R2SORT <- runtime_R2SORT <- NULL
+  }
 
   ### GLIP
-  cat("\nRunning GLIP\n")
-  lG <- .get_opt(mode)(tests_ms,
-    d = d, max_size = ms,
-    V = V, cache = cache,
-    trafo = \(x) as.numeric(x <= alpha),
-    weight_type = wtype,
-    warmstart = if (mode == "dag") .ess_to_dag(PC) else .pag_to_admg(FCI),
-    edgehints = if (mode == "dag") 1 * (PC != 0) else 1 * (FCI != 0),
-    gurobi_args = list(
-      Threads = ncores,
-      TimeLimit = walltime
-    ), mode = mode
-  )
+  if ("GLIP" %in% run_which) {
+    cat("\nRunning GLIP\n")
+    lG <- .get_opt(mode)(tests_ms,
+      d = d, max_size = ms,
+      V = V, cache = cache,
+      trafo = \(x) as.numeric(x <= alpha),
+      weight_type = wtype,
+      warmstart = if (mode == "dag") .ess_to_dag(PC) else .pag_to_admg(FCI),
+      edgehints = if (mode == "dag") 1 * (PC != 0) else 1 * (FCI != 0),
+      gurobi_args = list(
+        Threads = ncores,
+        TimeLimit = walltime
+      ), mode = mode
+    )
 
-  GLIP <<- .compute_graphical_representation(lG$graph, d - 2, mode)
-  runtime_GLIP <- as.difftime(lG$optim$runtime, units = "secs")
+    GLIP <<- .compute_graphical_representation(lG$graph, d - 2, mode)
+    runtime_GLIP <- as.difftime(lG$optim$runtime, units = "secs")
+  } else {
+    GLIP <- runtime_GLIP <- NULL
+  }
 
   ### NOTEARS
-  cat("\nRunning NOTEARS\n")
-  model <- dagma$DagmaLinear(loss_type = "l2")
-  tstart <- Sys.time()
-  nto <- 1 * (model$fit(py_data, lambda1 = 0.02) != 0)
-  tstop <- Sys.time()
-  runtime_NOTEARS <- tstop - tstart
-  dimnames(nto) <- list(V, V)
-  NOTEARS <- .compute_graphical_representation(nto, d - 2, mode)
+  if ("NOTEARS" %in% run_which) {
+    cat("\nRunning NOTEARS\n")
+    model <- dagma$DagmaLinear(loss_type = "l2")
+    tstart <- Sys.time()
+    nto <- 1 * (model$fit(py_data, lambda1 = 0.02) != 0)
+    tstop <- Sys.time()
+    runtime_NOTEARS <- tstop - tstart
+    dimnames(nto) <- list(V, V)
+    NOTEARS <- .compute_graphical_representation(nto, d - 2, mode)
+  } else {
+    NOTEARS <- runtime_NOTEARS <- NULL
+  }
 
   ### Evaluate and summarize results
-  class(PC) <- class(HPC)
   outputs <<- list(
     GLIP = GLIP,
     PC = PC,
@@ -174,6 +196,9 @@ out <- lapply(seq_len(nsim), \(seed) {
     outputs <- outputs[-grep("FCI", names(outputs))]
     timings <- timings[-grep("FCI", names(timings))]
   }
+
+  outputs <- outputs[!sapply(outputs, is.null)]
+  timings <- timings[!sapply(timings, is.null)]
 
   cat("\nEvaluating and summarizing results\n")
   res <- lapply(seq_along(outputs), \(idx) {
