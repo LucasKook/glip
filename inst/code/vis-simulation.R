@@ -6,7 +6,7 @@ library("scales")
 save <- TRUE
 max_time <- 600
 
-folders <- c("full", "weak", "k2", "test")[4]
+folders <- c("full", "weak", "k2", "test")[1]
 
 lapply(folders, \(which) {
   ### List files
@@ -67,7 +67,12 @@ lapply(folders, \(which) {
       facet_grid(mode ~ metric, labeller = as_labeller(lbs)) +
       theme_bw() +
       labs(y = "score", x = "number of nodes") +
-      theme(text = element_text(size = 13.5), legend.position = "top")
+      theme(
+        text = element_text(size = 13.5), legend.position = "top",
+        panel.background = element_rect(fill = "transparent", color = NA),
+        plot.background = element_rect(fill = "transparent", color = NA),
+        legend.background = element_rect(fill = "transparent", color = NA)
+      )
 
     p3 <<- res |>
       mutate(mode = toupper(mode)) |>
@@ -84,9 +89,9 @@ lapply(folders, \(which) {
       theme(text = element_text(size = 13.5), legend.position = "top")
 
     if (save) {
-      ggsave(file.path(fout, paste0("n-", tn, "_timings-", which, ".pdf")), p1, height = 6.5, width = 8)
-      ggsave(file.path(fout, paste0("n-", tn, "_performance-", which, ".pdf")), p2, height = 5.5, width = 9)
-      ggsave(file.path(fout, paste0("n-", tn, "_separation-", which, ".pdf")), p3, height = 5.5, width = 8)
+      ggsave(file.path(fout, paste0("n-", tn, "_timings-", which, ".pdf")), p1, height = 6.5, width = 8, bg = "transparent")
+      ggsave(file.path(fout, paste0("n-", tn, "_performance-", which, ".pdf")), p2, height = 5.5, width = 9, bg = "transparent")
+      ggsave(file.path(fout, paste0("n-", tn, "_separation-", which, ".pdf")), p3, height = 5.5, width = 8, bg = "transparent")
     }
   })
 })

@@ -57,7 +57,12 @@ p2 <- ggplot(rel_time, aes(x = rel, color = ordered(d))) +
   coord_flip() +
   scale_color_viridis_d() +
   annotate(x = 100, y = 0.5, label = "ASP faster", size = 4, color = "gray", geom = "text") +
-  annotate(x = 1 / 100, y = 0.5, label = "GLIP faster", size = 4, color = "gray", geom = "text")
+  annotate(x = 1 / 100, y = 0.5, label = "GLIP faster", size = 4, color = "gray", geom = "text") +
+  theme(
+    panel.background = element_rect(fill = "transparent", color = NA),
+    plot.background = element_rect(fill = "transparent", color = NA),
+    legend.background = element_rect(fill = "transparent", color = NA)
+  )
 p2
 
 if (save) {
