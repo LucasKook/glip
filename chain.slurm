@@ -36,7 +36,7 @@ export PATH=$PATH:/home/lkook/gurobi1202/linux64/bin
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/home/lkook/gurobi1202/linux64/lib
 
 ms=-1
-deg=2
+deg=3
 alpha=0.001
 uot=0
 simname=full
@@ -44,7 +44,7 @@ wtype=const
 nsim=30
 reg=lrm
 wt=300
-for d in {3..10}; do
+for d in {4..10}; do
   for n in 400 10000; do
     echo "Running with d=$d, ms=$ms, deg=$deg, alpha=$alpha, wtype=$wtype, n=$n"
     Rscript --vanilla ./inst/code/run-chain-graph-simulation.R $d $ms $deg $n $nsim $alpha $uot $simname $wtype $reg $wt

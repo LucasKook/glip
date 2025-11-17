@@ -12,11 +12,11 @@ library("lcd")
 
 # Parse command line arguments
 args <- commandArgs(trailingOnly = TRUE)
-d <- as.numeric(darg(args[1], 7))
+d <- as.numeric(darg(args[1], 4))
 ms <- as.numeric(darg(args[2], -1))
 ms <- ifelse(ms == -1, d - 2, ms)
 ms <- ifelse(ms > d - 2, d - 2, ms)
-degree <- as.numeric(darg(args[3], 2))
+degree <- as.numeric(darg(args[3], 3))
 n <- as.numeric(darg(args[4], 1e4))
 nsim <- as.numeric(darg(args[5], 1))
 alpha <- as.numeric(darg(args[6], 0.001))
