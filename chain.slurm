@@ -7,7 +7,7 @@
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=16
 #SBATCH --mem-per-cpu=8G
-#SBATCH --partition=highcpu
+#SBATCH --partition=hicpu
 
 echo "Running job $SLURM_JOB_NAME with ID $SLURM_JOB_ID"
 echo "Allocated hosts: $SLURM_JOB_NODELIST"
