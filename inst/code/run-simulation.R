@@ -15,12 +15,13 @@ cd <- import("CausalDisco.baselines", convert = TRUE)
 # Parse command line arguments
 args <- commandArgs(trailingOnly = TRUE)
 mode <- darg(args[1], "dag")
-d <- as.numeric(darg(args[2], 4))
+d <- as.numeric(darg(args[2], 3))
 ms <- as.numeric(darg(args[3], -1))
 ms <- ifelse(ms == -1, d - 2, ms)
 ms <- ifelse(ms > d - 2, d - 2, ms)
-degree <- as.numeric(darg(args[4], 2))
-n <- as.numeric(darg(args[5], 400))
+degree <- as.numeric(darg(args[4], 3))
+degree <- min(degree, d - 1)
+n <- as.numeric(darg(args[5], 10000))
 nsim <- as.numeric(darg(args[6], 1))
 alpha <- as.numeric(darg(args[7], 0.001))
 use_oracle_tests <- as.numeric(darg(args[8], 0))
@@ -34,7 +35,13 @@ save <- TRUE
 use_comets <- FALSE
 test <- ifelse(use_comets, "gcm", "gaussCItest")
 
-run_which <- c("PC")
+run_which <- c(
+  "PC",
+  "FCI",
+  "GLIP",
+  "R2SORT",
+  "NOTEARS"
+)
 
 # Parameters for running the optimization
 ncores <- max(7, parallel::detectCores(logical = TRUE) - 2)

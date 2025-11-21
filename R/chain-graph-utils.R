@@ -156,11 +156,10 @@ moralize_cg <- function(G) {
 ### Generate random chain graphs, Ma et al algorithm
 ### n:number of variables
 ### d:degree of nodes
-create_cg_ma <- function(n, d) {
+create_cg_ma <- function(n, d, prob = d / (n - 1), k = sample.int(n, 1)) {
   order <- sample(1:n, n, replace = FALSE)
 
   amat <- matrix(0, n, n)
-  prob <- d / (n - 1)
   for (i in 2:n) {
     for (j in 1:(i - 1)) {
       amat[i, j] <- rbinom(1, 1, prob = prob)
@@ -168,7 +167,6 @@ create_cg_ma <- function(n, d) {
   }
   amat <- amat + t(amat)
 
-  k <- sample(1:n, 1)
   if (k != 1) {
     chain_cut <- cut(1:n, k, 1:k)
   } else {

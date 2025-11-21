@@ -12,11 +12,12 @@ library("lcd")
 
 # Parse command line arguments
 args <- commandArgs(trailingOnly = TRUE)
-d <- as.numeric(darg(args[1], 4))
+d <- as.numeric(darg(args[1], 6))
 ms <- as.numeric(darg(args[2], -1))
 ms <- ifelse(ms == -1, d - 2, ms)
 ms <- ifelse(ms > d - 2, d - 2, ms)
 degree <- as.numeric(darg(args[3], 3))
+degree <- min(degree, d - 1)
 n <- as.numeric(darg(args[4], 1e4))
 nsim <- as.numeric(darg(args[5], 1))
 alpha <- as.numeric(darg(args[6], 0.001))
@@ -55,7 +56,7 @@ out <- lapply(seq_len(nsim), \(seed) {
   ### Generate random graph and data
   cat("\nGenerating random graph and data\n")
   set.seed(tseed <- 1e4 + n + seed + 1)
-  graph <- create_cg_ma(n = d, d = degree)
+  graph <- create_cg_ma(n = d, d = degree, k = floor(d / 2), prob = 0.8)
   data <- data.frame(rnorm.cg(n, graph, get.normal.dist(graph)))
   colnames(data) <- V <- letters[1:d]
 
