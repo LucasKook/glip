@@ -7,7 +7,7 @@
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=16
 #SBATCH --mem-per-cpu=8G
-#SBATCH --partition=hicpu
+#SBATCH --partition=short
 
 echo "Running job $SLURM_JOB_NAME with ID $SLURM_JOB_ID"
 echo "Allocated hosts: $SLURM_JOB_NODELIST"
@@ -36,7 +36,7 @@ export PATH=$PATH:/home/lkook/gurobi1202/linux64/bin
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/home/lkook/gurobi1202/linux64/lib
 
 ms=-1
-deg=3
+deg=4
 alpha=0.001
 uot=0
 simname=full
@@ -44,8 +44,8 @@ wtype=const
 nsim=30
 reg=lrm
 wt=300
-for d in {4..10}; do
-  for n in 400 10000; do
+for d in {3..10}; do
+  for n in 1000 100000; do
     echo "Running with d=$d, ms=$ms, deg=$deg, alpha=$alpha, wtype=$wtype, n=$n"
     Rscript --vanilla ./inst/code/run-chain-graph-simulation.R $d $ms $deg $n $nsim $alpha $uot $simname $wtype $reg $wt
   done

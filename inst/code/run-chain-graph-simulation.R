@@ -56,7 +56,7 @@ out <- lapply(seq_len(nsim), \(seed) {
   ### Generate random graph and data
   cat("\nGenerating random graph and data\n")
   set.seed(tseed <- 1e4 + n + seed + 1)
-  graph <- create_cg_ma(n = d, d = degree, k = floor(d / 2), prob = 0.8)
+  graph <- create_cg_ma(n = d, d = degree, k = 2, prob = 0.8)
   data <- data.frame(rnorm.cg(n, graph, get.normal.dist(graph)))
   colnames(data) <- V <- letters[1:d]
 
