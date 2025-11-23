@@ -6,7 +6,7 @@ library("scales")
 save <- TRUE
 max_time <- 600
 
-folders <- c("full", "weak", "k2", "test", "test-weak")[5]
+folders <- c("full", "weak", "k2", "full-hpc")[4]
 
 lapply(folders, \(which) {
   ### List files
