@@ -5,7 +5,7 @@ library("tidyverse")
 library("scales")
 save <- TRUE
 max_time <- 600
-tn <- 1e3 # 1e3 or 1e5
+tn <- 1e5 # 1e3 or 1e5
 
 ### List files
 fin <- "./inst/results/chain-graph-simulation/full"
