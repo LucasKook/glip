@@ -15,13 +15,13 @@ cd <- import("CausalDisco.baselines", convert = TRUE)
 # Parse command line arguments
 args <- commandArgs(trailingOnly = TRUE)
 mode <- darg(args[1], "dag")
-d <- as.numeric(darg(args[2], 3))
+d <- as.numeric(darg(args[2], 5))
 ms <- as.numeric(darg(args[3], -1))
 ms <- ifelse(ms == -1, d - 2, ms)
 ms <- ifelse(ms > d - 2, d - 2, ms)
 degree <- as.numeric(darg(args[4], 3))
 degree <- min(degree, d - 1)
-n <- as.numeric(darg(args[5], 10000))
+n <- as.numeric(darg(args[5], 1e4))
 nsim <- as.numeric(darg(args[6], 1))
 alpha <- as.numeric(darg(args[7], 0.001))
 use_oracle_tests <- as.numeric(darg(args[8], 0))
@@ -99,7 +99,7 @@ out <- lapply(seq_len(nsim), \(seed) {
   input_sep <- mean(otests$p.value != 1 * (tests$p.value > alpha))
 
   ### PC ALG (only under causal sufficiency/DAG case)
-  if ("PC" %in% run_which) {
+  if ("PC" %in% run_which || "FCI" %in% run_which) {
     cat("\nRunning PC\n")
     tstart <- Sys.time()
     pcres <- pcalg::pc(list(tests = tests, V = V), lookup_ci, labels = V, alpha = alpha)
@@ -109,12 +109,8 @@ out <- lapply(seq_len(nsim), \(seed) {
     PC <<- pcout
     HPC <<- .compute_graphical_representation(.ess_to_dag(PC), d - 2, "dag")
     class(PC) <- class(HPC)
-  } else {
-    PC <- HPC <- runtime_PC <- NULL
-  }
 
-  ### FCI ALG
-  if ("FCI" %in% run_which) {
+    ### FCI ALG
     cat("\nRunning FCI\n")
     tstart <- Sys.time()
     fcires <- pcalg::fciPlus(list(tests = tests, V = V), lookup_ci,
@@ -122,9 +118,18 @@ out <- lapply(seq_len(nsim), \(seed) {
     )
     tstop <- Sys.time()
     runtime_FCI <- tstop - tstart
-    fciout <- as(fcires@amat, "matrix")
-    FCI <<- .compute_graphical_representation(.pag_to_admg(fciout), d - 2, "admg")
+    fciout <<- as(fcires@amat, "matrix")
+    FCI <<- tryCatch(
+      {
+        .compute_graphical_representation(.pag_to_admg(fciout), d - 2, "admg")
+      },
+      error = \(e) {
+        warning("FCI yielded cycles, using PC output instead.")
+        .compute_graphical_representation(.ess_to_dag(PC), d - 2, "admg")
+      }
+    )
   } else {
+    PC <- HPC <- runtime_PC <- NULL
     FCI <- runtime_FCI <- NULL
   }
 
