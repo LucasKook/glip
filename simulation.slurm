@@ -36,8 +36,8 @@ export PATH=$PATH:/home/lkook/gurobi1202/linux64/bin
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/home/lkook/gurobi1202/linux64/lib
 
 ms=-1
-deg=4
-admgadd=4
+deg=2
+admgadd=3
 alpha=0.001
 uot=0
 simname=full
