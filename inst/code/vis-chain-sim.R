@@ -74,12 +74,12 @@ p2 <- ggplot(
 p3 <- res |>
   mutate(mode = toupper(mode)) |>
   pivot_longer(c("sep", "input_sep")) |>
-  filter(method %in% c("GLIP", "PC", "FCI")[1]) |>
-  ggplot(aes(x = d, y = value, color = name)) +
+  filter(method %in% c("GLIP", "PC")[1]) |>
+  ggplot(aes(x = d, y = value, color = name, linetype = method)) +
   stat_summary(geom = "line") +
   stat_summary() +
   geom_abline(slope = 1, intercept = 0) +
-  facet_grid(mode ~ method + n) +
+  facet_grid(mode ~ n) +
   theme_bw() +
   labs(x = "number of nodes", y = "SEP", color = element_blank()) +
   scale_color_brewer(palette = "Dark2", labels = c("input_sep" = "input", "sep" = "learned")) +
