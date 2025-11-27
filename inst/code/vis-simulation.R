@@ -5,6 +5,7 @@ library("tidyverse")
 library("scales")
 save <- TRUE
 max_time <- 600
+walltime <- 300
 
 folders <- c("full", "weak", "k2", "full-hpc")[4]
 
@@ -26,6 +27,11 @@ lapply(folders, \(which) {
   timings <- res |>
     group_by(method, n, d, ms, mode) |>
     mutate(time = as.numeric(time))
+
+  timings |>
+    filter(method == "GLIP") |>
+    summarize(frac_optimal = mean(time < walltime)) |>
+    print(n = Inf)
 
   p1 <- ggplot(timings, aes(x = time, color = method)) +
     stat_ecdf(pad = FALSE) +
