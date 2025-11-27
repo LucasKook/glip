@@ -3,6 +3,8 @@
 
 library("tidyverse")
 library("scales")
+library("knitr")
+library("kableExtra")
 save <- TRUE
 max_time <- 600
 walltime <- 300
@@ -26,9 +28,20 @@ timings <- res |>
   group_by(method, n, d, ms, mode) |>
   mutate(time = as.numeric(time))
 
-timings |>
+tt <- timings |>
   filter(method == "GLIP") |>
-  summarize(frac_optimal = mean(time < walltime))
+  summarize(frac_optimal = sprintf("%.3f", mean(time < walltime))) |>
+  ungroup() |>
+  select(n, d, frac_optimal) |>
+  pivot_wider(names_from = "d", values_from = "frac_optimal")
+print(tt)
+tex <- tt |>
+  kable(
+    format = "latex", booktabs = TRUE,
+    align = paste0("l", paste0(rep("r", ncol(tt) - 1), collapse = ""))
+  ) |>
+  add_header_above(c(" " = 1, "d" = ncol(tt) - 1))
+
 
 p1 <- ggplot(timings, aes(x = time, color = method)) +
   stat_ecdf(pad = FALSE) +
@@ -94,4 +107,5 @@ if (save) {
   ggsave(file.path(fout, paste0("n-", tn, "_timings-chain.pdf")), p1, height = 6.5, width = 8)
   ggsave(file.path(fout, paste0("n-", tn, "_performance-chain.pdf")), p2, height = 3.5, width = 9)
   ggsave(file.path(fout, paste0("n-", tn, "_separation-chain.pdf")), p3, height = 3.5, width = 8)
+  save_kable(tex, file.path(fout, "tab-completion.tex"))
 }

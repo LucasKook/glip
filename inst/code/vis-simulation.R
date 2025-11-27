@@ -3,6 +3,8 @@
 
 library("tidyverse")
 library("scales")
+library("knitr")
+library("kableExtra")
 save <- TRUE
 max_time <- 600
 walltime <- 300
@@ -28,10 +30,20 @@ lapply(folders, \(which) {
     group_by(method, n, d, ms, mode) |>
     mutate(time = as.numeric(time))
 
-  timings |>
+  tt <- timings |>
     filter(method == "GLIP") |>
-    summarize(frac_optimal = mean(time < walltime)) |>
-    print(n = Inf)
+    mutate(mode = toupper(mode)) |>
+    summarize(frac_optimal = sprintf("%.3f", mean(time < walltime))) |>
+    ungroup() |>
+    select(n, mode, d, frac_optimal) |>
+    pivot_wider(names_from = "d", values_from = "frac_optimal")
+  print(tt)
+  tex <<- tt |>
+    kable(
+      format = "latex", booktabs = TRUE,
+      align = paste0("l", paste0(rep("r", ncol(tt) - 1), collapse = ""))
+    ) |>
+    add_header_above(c(" " = 2, "d" = ncol(tt) - 2))
 
   p1 <- ggplot(timings, aes(x = time, color = method)) +
     stat_ecdf(pad = FALSE) +
@@ -98,6 +110,7 @@ lapply(folders, \(which) {
       ggsave(file.path(fout, paste0("n-", tn, "_timings-", which, ".pdf")), p1, height = 6.5, width = 8, bg = "transparent")
       ggsave(file.path(fout, paste0("n-", tn, "_performance-", which, ".pdf")), p2, height = 5.5, width = 9, bg = "transparent")
       ggsave(file.path(fout, paste0("n-", tn, "_separation-", which, ".pdf")), p3, height = 5.5, width = 8, bg = "transparent")
+      save_kable(tex, file.path(fout, "tab-completion.tex"))
     }
   })
 })

@@ -83,3 +83,5 @@ inst/asp/
 inst/tables/
 
 inst/demo
+*.tex
+
