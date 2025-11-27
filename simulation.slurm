@@ -35,21 +35,22 @@ export GUROBI_HOME=/home/lkook/gurobi1202/
 export PATH=$PATH:/home/lkook/gurobi1202/linux64/bin
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/home/lkook/gurobi1202/linux64/lib
 
-ms=-1
 deg=2
 admgadd=3
 alpha=0.001
 uot=0
-simname=full
+simname=weak
 wtype=const
 nsim=30
 reg=lrm
 wt=300
-for d in {3..9}; do
-  for mode in dag admg; do
-    for n in 400 10000; do
-      echo "Running with d=$d, mode=$mode, ms=$ms, deg=$deg, alpha=$alpha, wtype=$wtype, n=$n, reg=$reg"
-      Rscript --vanilla ./inst/code/run-simulation.R $mode $d $ms $deg $n $nsim $alpha $uot $simname $wtype $reg $wt $admgadd
+for d in {3..12}; do
+  for ms in {1..2}; do
+    for mode in dag admg; do
+      for n in 400 10000; do
+        echo "Running with d=$d, mode=$mode, ms=$ms, deg=$deg, alpha=$alpha, wtype=$wtype, n=$n, reg=$reg"
+        Rscript --vanilla ./inst/code/run-simulation.R $mode $d $ms $deg $n $nsim $alpha $uot $simname $wtype $reg $wt $admgadd
+      done
     done
   done
 done
