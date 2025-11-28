@@ -9,7 +9,7 @@ save <- TRUE
 max_time <- 600
 walltime <- 300
 
-folders <- c("full", "weak", "k2", "full-hpc")[4]
+folders <- c("full", "weak", "k2", "full-hpc", "weak-hpc")[5]
 
 lapply(folders, \(which) {
   ### List files
@@ -35,7 +35,7 @@ lapply(folders, \(which) {
     mutate(mode = toupper(mode)) |>
     summarize(frac_optimal = sprintf("%.3f", mean(time < walltime))) |>
     ungroup() |>
-    select(n, mode, d, frac_optimal) |>
+    select(n, mode, d, ms, frac_optimal) |>
     pivot_wider(names_from = "d", values_from = "frac_optimal")
   print(tt)
   tex <<- tt |>
@@ -75,42 +75,50 @@ lapply(folders, \(which) {
   )
 
   lapply(unique(pdat$n), \(tn) {
-    p2 <<- ggplot(
-      pdat |>
-        filter(metric %in% names(lbs), n == tn) |>
-        mutate(metric = factor(metric, levels = names(lbs))),
-      aes(x = ordered(d), y = value, color = method, shape = method)
-    ) +
-      stat_summary(position = position_dodge(0.8), fun.data = "mean_se", size = rel(0.3)) +
-      facet_grid(mode ~ metric, labeller = as_labeller(lbs)) +
-      theme_bw() +
-      labs(y = "score", x = "number of nodes") +
-      theme(
-        text = element_text(size = 13.5), legend.position = "top",
-        panel.background = element_rect(fill = "transparent", color = NA),
-        plot.background = element_rect(fill = "transparent", color = NA),
-        legend.background = element_rect(fill = "transparent", color = NA)
-      )
+    lapply(unique(pdat$ms), \(tms) {
+      p2 <<- ggplot(
+        pdat |>
+          filter(metric %in% names(lbs), n == tn, ms == tms) |>
+          mutate(metric = factor(metric, levels = names(lbs))),
+        aes(x = ordered(d), y = value, color = method, shape = method)
+      ) +
+        stat_summary(position = position_dodge(0.8), fun.data = "mean_se", size = rel(0.3)) +
+        facet_grid(mode ~ metric, labeller = as_labeller(lbs)) +
+        theme_bw() +
+        labs(y = "score", x = "number of nodes") +
+        theme(
+          text = element_text(size = 13.5), legend.position = "top",
+          panel.background = element_rect(fill = "transparent", color = NA),
+          plot.background = element_rect(fill = "transparent", color = NA),
+          legend.background = element_rect(fill = "transparent", color = NA)
+        )
 
-    p3 <<- res |>
-      mutate(mode = toupper(mode)) |>
-      pivot_longer(c("sep", "input_sep")) |>
-      filter(method %in% c("GLIP", "PC", "FCI")[1]) |>
-      ggplot(aes(x = d, y = value, color = name)) +
-      stat_summary(geom = "line") +
-      stat_summary() +
-      geom_abline(slope = 1, intercept = 0) +
-      facet_grid(mode ~ method + n) +
-      theme_bw() +
-      labs(x = "number of nodes", y = "SEP", color = element_blank()) +
-      scale_color_brewer(palette = "Dark2", labels = c("input_sep" = "input", "sep" = "learned")) +
-      theme(text = element_text(size = 13.5), legend.position = "top")
+      p3 <<- res |>
+        mutate(mode = toupper(mode)) |>
+        pivot_longer(c("sep", "input_sep")) |>
+        filter(method %in% c("GLIP", "PC", "FCI")[1]) |>
+        ggplot(aes(x = d, y = value, color = name)) +
+        stat_summary(geom = "line") +
+        stat_summary() +
+        geom_abline(slope = 1, intercept = 0) +
+        facet_grid(mode ~ method + n) +
+        theme_bw() +
+        labs(x = "number of nodes", y = "SEP", color = element_blank()) +
+        scale_color_brewer(palette = "Dark2", labels = c("input_sep" = "input", "sep" = "learned")) +
+        theme(text = element_text(size = 13.5), legend.position = "top")
 
-    if (save) {
-      ggsave(file.path(fout, paste0("n-", tn, "_timings-", which, ".pdf")), p1, height = 6.5, width = 8, bg = "transparent")
-      ggsave(file.path(fout, paste0("n-", tn, "_performance-", which, ".pdf")), p2, height = 5.5, width = 9, bg = "transparent")
-      ggsave(file.path(fout, paste0("n-", tn, "_separation-", which, ".pdf")), p3, height = 5.5, width = 8, bg = "transparent")
-      save_kable(tex, file.path(fout, "tab-completion.tex"))
-    }
+      if (save) {
+        ggsave(file.path(
+          fout, paste0("n-", tn, "_ms-", tms, "_timings-", which, ".pdf")
+        ), p1, height = 6.5, width = 8, bg = "transparent")
+        ggsave(file.path(
+          fout, paste0("n-", tn, "_ms-", tms, "_performance-", which, ".pdf")
+        ), p2, height = 5.5, width = 9, bg = "transparent")
+        ggsave(file.path(
+          fout, paste0("n-", tn, "_ms-", tms, "_separation-", which, ".pdf")
+        ), p3, height = 5.5, width = 8, bg = "transparent")
+        save_kable(tex, file.path(fout, "tab-completion.tex"))
+      }
+    })
   })
 })
