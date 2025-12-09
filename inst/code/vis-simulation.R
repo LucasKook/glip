@@ -9,7 +9,7 @@ save <- TRUE
 max_time <- 600
 walltime <- 300
 
-folders <- c("full", "weak", "k2", "full-hpc", "weak-hpc")[5]
+folders <- c("full-hpc", "weak-hpc")
 
 lapply(folders, \(which) {
   ### List files
@@ -24,6 +24,10 @@ lapply(folders, \(which) {
   res <<- tibble(file = files) |>
     mutate(data = map(file, ~ readRDS(.x))) |>
     unnest(data)
+
+  if (grepl("full", which)) {
+    res$ms <- -1
+  }
 
   ### Timings
   timings <- res |>
