@@ -78,20 +78,6 @@ lapply(folders, \(which) {
     "head_f1" = "1 - F1 (head)"
   )
 
-  p3 <<- res |>
-    mutate(mode = toupper(mode)) |>
-    pivot_longer(c("sep", "input_sep")) |>
-    filter(method %in% c("GLIP", "PC", "FCI")[1]) |>
-    ggplot(aes(x = d, y = value, color = name)) +
-    stat_summary(geom = "line") +
-    stat_summary() +
-    facet_grid(mode ~ n, labeller = label_both) +
-    theme_bw() +
-    labs(x = "number of nodes", y = "SEP", color = element_blank()) +
-    scale_color_brewer(palette = "Dark2", labels = c("input_sep" = "input", "sep" = "learned")) +
-    scale_x_continuous(labels = seq_len(max(res$d)), breaks = seq_len(max(res$d))) +
-    theme(text = element_text(size = 13.5), legend.position = "top")
-
   lapply(unique(pdat$n), \(tn) {
     lapply(unique(pdat$ms), \(tms) {
       p2 <<- ggplot(
@@ -110,6 +96,22 @@ lapply(folders, \(which) {
           plot.background = element_rect(fill = "transparent", color = NA),
           legend.background = element_rect(fill = "transparent", color = NA)
         )
+
+      p3 <<- res |>
+        mutate(mode = toupper(mode), method = factor(method, levels = c("GLIP", "PC", "FCI"))) |>
+        filter(ms == tms) |>
+        pivot_longer(c("sep", "input_sep")) |>
+        filter(method %in% c("GLIP", "PC", "FCI")[1:3]) |>
+        ggplot(aes(x = d, y = value, color = name, linetype = method)) +
+        stat_summary(geom = "line") +
+        stat_summary(show.legend = FALSE) +
+        facet_grid(mode ~ n, labeller = label_both) +
+        theme_bw() +
+        labs(x = "number of nodes", y = "SEP", color = element_blank()) +
+        scale_color_brewer(palette = "Dark2", labels = c("input_sep" = "input", "sep" = "learned")) +
+        scale_x_continuous(labels = seq_len(max(res$d)), breaks = seq_len(max(res$d))) +
+        theme(text = element_text(size = 13.5), legend.position = "top")
+
 
       if (save) {
         ggsave(file.path(
