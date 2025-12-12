@@ -89,18 +89,18 @@ p2 <- ggplot(
   labs(y = "score", x = "number of nodes") +
   theme(text = element_text(size = 13.5), legend.position = "top")
 
-p3 <- res |>
+p3 <<- res |>
   mutate(mode = toupper(mode)) |>
   pivot_longer(c("sep", "input_sep")) |>
-  filter(method %in% c("GLIP", "PC")[1]) |>
-  ggplot(aes(x = d, y = value, color = name, linetype = method)) +
+  filter(method %in% c("GLIP", "PC", "FCI")[1]) |>
+  ggplot(aes(x = d, y = value, color = name)) +
   stat_summary(geom = "line") +
   stat_summary() +
-  geom_abline(slope = 1, intercept = 0) +
-  facet_grid(mode ~ n) +
+  facet_grid(mode ~ n, labeller = label_both) +
   theme_bw() +
   labs(x = "number of nodes", y = "SEP", color = element_blank()) +
   scale_color_brewer(palette = "Dark2", labels = c("input_sep" = "input", "sep" = "learned")) +
+  scale_x_continuous(labels = seq_len(max(res$d)), breaks = seq_len(max(res$d))) +
   theme(text = element_text(size = 13.5), legend.position = "top")
 
 if (save) {
