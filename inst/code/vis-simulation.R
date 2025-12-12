@@ -101,7 +101,7 @@ lapply(folders, \(which) {
         mutate(mode = toupper(mode), method = factor(method, levels = c("GLIP", "PC", "FCI"))) |>
         filter(ms == tms) |>
         pivot_longer(c("sep", "input_sep")) |>
-        filter(method %in% c("GLIP", "PC", "FCI")[1:3]) |>
+        filter(method %in% c("GLIP", "PC", "FCI")) |>
         ggplot(aes(x = d, y = value, color = name, linetype = method)) +
         stat_summary(geom = "line") +
         stat_summary(show.legend = FALSE) +
