@@ -9,7 +9,7 @@ devtools::load_all()
 library("pcalg")
 
 ### Params
-d <- as.numeric(darg(args[1], 3))
+d <- as.numeric(darg(args[1], 10))
 pp <- as.numeric(darg(args[2], 0.5))
 mode <- darg(args[3], "admg")
 seeds <- eval(parse(text = darg(args[4], "1:100")))
@@ -33,7 +33,7 @@ tmp <- sapply(seeds, \(idx) {
   cat("\n", idx)
   set.seed(idx)
 
-  G <- .generate_random_graph(d, V, mode, prob = pp)
+  G <<- .generate_random_graph(d, V, mode, prob = pp)
 
   if (any(sapply(glog, \(x) isTRUE(all.equal(x, G))))) {
     return(NULL)
@@ -41,7 +41,7 @@ tmp <- sapply(seeds, \(idx) {
   glog <<- c(glog, list(G))
 
   tests <- .compute_oracle_tests(G, max_size, mode)
-  capt <- capture.output(
+  capt <<- capture.output(
     lG <<- .get_opt(mode)(tests,
       d = d, max_size = max_size,
       V = V, cache = cache,
