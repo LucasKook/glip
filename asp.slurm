@@ -37,9 +37,9 @@ export PATH=$PATH:/home/lkook/gurobi1202/linux64/bin
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/home/lkook/gurobi1202/linux64/lib
 
 nsim=20
-ms=1
+ms=-1
 uot=0
-simname=weak-large-n-large-fx-sparser
+simname=full-cubic
 walltime=600
 wtype=const
 alpha=0.001
