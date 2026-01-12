@@ -27,7 +27,7 @@ dcon_lean_optim <- function(
     gurobi_args = list(),
     verbose = FALSE,
     cache = TRUE,
-    cache_dir = "./.cache-dcon-lean-redundant",
+    cache_dir = "./.cache-dcon-lean-new",
     mode = c("dag", "dg"),
     ...) {
 
@@ -349,20 +349,20 @@ dcon_lean_optim <- function(
                 m1lup[[cntr]] <- data.frame(i = i, j = j, k = k,
                   l = NA, m = NA, C = C, idx = cntr, which = "L4")
                 cntr <- cntr + 1
+              } else {
+                ### L3
+                ik <- xij$idx[xij$i == i & xij$j == k]
+                jk <- xij$idx[xij$i == j & xij$j == k]
+                clist[[cntr]] <- data.frame(
+                  i = c(cntr, cntr, cntr),
+                  j = c(skip + cntr, ik, jk),
+                  v = c(1, d - 2, d - 2)
+                )
+                rm1[cntr] <- 2 * (d - 2) + 2
+                m1lup[[cntr]] <- data.frame(i = i, j = j, k = k,
+                  l = NA, m = NA, C = C, idx = cntr, which = "L3")
+                cntr <- cntr + 1
               }
-              ### L3
-              ik <- xij$idx[xij$i == i & xij$j == k]
-              jk <- xij$idx[xij$i == j & xij$j == k]
-              kC <- n_d + n_z + dic$idx[dic$i == k & dic$C == C]
-              clist[[cntr]] <- data.frame(
-                i = c(cntr, cntr, cntr, cntr),
-                j = c(skip + cntr, ik, jk, kC),
-                v = c(1, d - 2, d - 2, -(d - 2))
-              )
-              rm1[cntr] <- 2 * (d - 2) + 2
-              m1lup[[cntr]] <- data.frame(i = i, j = j, k = k,
-                l = NA, m = NA, C = C, idx = cntr, which = "L3")
-              cntr <- cntr + 1
             }
           }
         }
