@@ -9,7 +9,7 @@ save <- TRUE
 max_time <- 600
 walltime <- 300
 
-folders <- c("full-hpc", "weak-hpc")
+folders <- c("full", "weak")
 
 lapply(folders, \(which) {
   ### List files
@@ -86,6 +86,7 @@ lapply(folders, \(which) {
           mutate(metric = factor(metric, levels = names(lbs))),
         aes(x = ordered(d), y = value, color = method, shape = method)
       ) +
+        guides(color = guide_legend(nrow = 1)) +
         stat_summary(position = position_dodge(0.8), fun.data = "mean_se", size = rel(0.3)) +
         facet_grid(mode ~ metric, labeller = as_labeller(lbs)) +
         theme_bw() +
@@ -119,10 +120,10 @@ lapply(folders, \(which) {
         ), p1, height = 6.5, width = 8, bg = "transparent")
         ggsave(file.path(
           fout, paste0("n-", tn, "_ms-", tms, "_performance-", which, ".pdf")
-        ), p2, height = 5.5, width = 9, bg = "transparent")
+        ), p2, height = 4.5, width = 9, bg = "transparent")
         ggsave(file.path(
           fout, paste0("n-", tn, "_ms-", tms, "_separation-", which, ".pdf")
-        ), p3, height = 5.5, width = 8, bg = "transparent")
+        ), p3, height = 4, width = 6, bg = "transparent")
         save_kable(tex, file.path(fout, "tab-completion.tex"))
       }
     })

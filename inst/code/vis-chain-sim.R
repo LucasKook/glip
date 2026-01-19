@@ -105,7 +105,7 @@ p3 <<- res |>
 
 if (save) {
   ggsave(file.path(fout, paste0("n-", tn, "_timings-chain.pdf")), p1, height = 6.5, width = 8)
-  ggsave(file.path(fout, paste0("n-", tn, "_performance-chain.pdf")), p2, height = 3.5, width = 9)
-  ggsave(file.path(fout, paste0("n-", tn, "_separation-chain.pdf")), p3, height = 3.5, width = 8)
+  ggsave(file.path(fout, paste0("n-", tn, "_performance-chain.pdf")), p2, height = 2.5, width = 7)
+  ggsave(file.path(fout, paste0("n-", tn, "_separation-chain.pdf")), p3, height = 3, width = 7)
   save_kable(tex, file.path(fout, "tab-completion.tex"))
 }
