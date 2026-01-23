@@ -8,7 +8,7 @@ max_time <- 600
 walltime <- 600
 
 ### List files
-fin <- "./inst/results/asp-comparison/weak-cubic"
+fin <- "./inst/results/asp-comparison/full-cubic"
 nrow <- c(1, 2)[1 + str_detect(fin, "weak")]
 nm <- c("full", "weak")[1 + str_detect(fin, "weak")]
 fout <- str_replace(fin, "results", "figures")
@@ -100,8 +100,8 @@ p4 <- ggplot(rel_time |> filter(d >= 6), aes(x = rel, color = ordered(d))) +
 p4
 
 if (save) {
-  ggsave(file.path(fout, paste0("timings-", nm, ".pdf")), p1, height = 4.5, width = 7.5)
-  ggsave(file.path(fout, paste0("rel-timings-", nm, ".pdf")), p2, height = 4.5, width = 7.5)
-  ggsave(file.path(fout, paste0("timings-", nm, "-large-d.pdf")), p4, height = 4.5, width = 7.5)
-  ggsave(file.path(fout, paste0("rel-timings-", nm, "-large-d.pdf")), p4, height = 4.5, width = 7.5)
+  ggsave(file.path(fout, paste0("timings-", nm, ".pdf")), p1, height = 4, width = 7.5, scale = 0.93)
+  ggsave(file.path(fout, paste0("rel-timings-", nm, ".pdf")), p2, height = 4, width = 7.5, scale = 0.93)
+  ggsave(file.path(fout, paste0("timings-", nm, "-large-d.pdf")), p4, height = 4, width = 7.5, scale = 0.93)
+  ggsave(file.path(fout, paste0("rel-timings-", nm, "-large-d.pdf")), p4, height = 4, width = 7.5, scale = 0.93)
 }
