@@ -78,6 +78,38 @@ result$computed
 - `"chain"`: LWF-chain graphs
 - Additional experimental modes
 
+## Reproducibility
+
+To reproduce the results from the paper, please follow the following instructions:
+
+1. Clone this GitHub repository
+
+2. Download and install [clingo](https://github.com/potassco/clingo) to
+   `./inst/asp/`, which contains code the code from [4] to run the ASP solver.
+
+2. Install the [**dagma**](https://github.com/kevinsbello/dagma) and
+   [**CausalDisco**](https://github.com/CausalDisco/CausalDisco) Python
+   libraries in a conda environment called `"glip"``.
+
+3. Install the **glip** package and GUROBI following the instructions above.
+
+To reproduce the timing comparison against ASP, run `./inst/code/run-asp-comparison.R`.
+
+To reproduce the simulation study, run `./inst/code/run-simulation.R`.
+
+To reproduce the comparison on benchmark datasets, run
+`./inst/code/run-benchmark-datasets.R`
+
+To reproduce the chain graph simulation, run
+`./inst/code/run-chain-graph-simulation.R`
+
+The above experiments are time consuming (about 7 days CPU time on a high
+performance cluster), which is why the scripts above contain default values
+that make computation faster, but correspond only to a small fraction of
+experiments that were actually run. The shell scripts in `./inst/slurm/`
+reproduce all results. Code to produce the figures and tables follows the same
+naming conventions as above, replacing `run` with `vis`.
+
 ## References
 
 [1] Kook, L., Mogensen, S. W. (2025). Exact Graph Learning via Integer Programming. Preprint.
@@ -87,6 +119,10 @@ result$computed
 [3] Kook, L. & Lundborg A. R. (2024). Algorithm-agnostic significance testing
 in supervised learning with multimodal data. Briefings in Bioinformatics 25(6)
 2024. [doi:10.1093/bib/bbae475](https://doi.org/10.1093/bib/bbae475)
+
+[4] A. Hyttinen, F. Eberhardt, and M. Järvisalo. Constraint-based causal
+discovery: Conflict resolution with answer set programming. In Proceedings of
+the 30th Conference on Uncertainty in Artificial Intelligence (UAI), 2014.
 
 ## Troubleshooting
 

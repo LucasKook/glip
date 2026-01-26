@@ -79,10 +79,15 @@ inst/code/sanity-check.R
 
 results/
 
-inst/asp/
+inst/asp/clingo-5.4.0-linux-x86_64
 inst/tables/
 
 inst/demo
 *.tex
 *.slurm
 Makefile
+.DS_store
+
+inst/code/check-random-graphs.R
+inst/code/run-weak-arrows-data.R
+inst/code/sim-long-chains.R
