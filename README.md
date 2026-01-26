@@ -98,10 +98,10 @@ To reproduce the timing comparison against ASP, run `./inst/code/run-asp-compari
 To reproduce the simulation study, run `./inst/code/run-simulation.R`.
 
 To reproduce the comparison on benchmark datasets, run
-`./inst/code/run-benchmark-datasets.R`
+`./inst/code/run-benchmark-datasets.R`.
 
 To reproduce the chain graph simulation, run
-`./inst/code/run-chain-graph-simulation.R`
+`./inst/code/run-chain-graph-simulation.R`.
 
 The above experiments are time consuming (about 7 days CPU time on a high
 performance cluster), which is why the scripts above contain default values
