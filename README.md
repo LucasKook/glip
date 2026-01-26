@@ -32,14 +32,11 @@ This package uses [GUROBI Optimizer](https://www.gurobi.com/) (commercial, free
 for academic use) for solving mixed-integer problems crucial for global graph
 learning. You must [install
 ](https://www.gurobi.com/documentation/quickstart.html), obtain a valid
-license, and install the `gurobi` R package:
-```r
-install.packages("gurobi")
-```
+license, and install the `gurobi` R package by following the instructions in [2].
 
 ## Quick Start Example
 
-Learn a causal graph from toy continuous data (using default settings):
+Learn a causal graph from toy continuous data:
 
 ```r
 library("glip")
@@ -71,11 +68,11 @@ result$computed
 - `"admg"`: Acyclic Directed Mixed Graph (allows for hidden confounding)
 - `"dmg"`: Directed Mixed Graph (possibly cyclic)
 - `"chain"`: LWF-chain graphs
-- Additional experimental modes 
+- Additional experimental modes
 
 ## References
 
-[1] Kook, L., Mogensen, S. W. (2025). Graph Learning via Integer Programming. Preprint.
+[1] Kook, L., Mogensen, S. W. (2025). Exact Graph Learning via Integer Programming. Preprint.
 
 [2] [Gurobi Documentation](https://www.gurobi.com/documentation/)
 
@@ -85,11 +82,11 @@ in supervised learning with multimodal data. Briefings in Bioinformatics 25(6)
 
 ## Troubleshooting
 
-- **Error: “Solver gurobi not available.”**  
+- **Error: “Solver gurobi not available.”**
   → Ensure GUROBI and the `gurobi` R package are installed and licensed on your system.
 
-- **Parallel execution**  
-  Some functions accept `parallel = TRUE` and `ncores` parameters for faster computation.
+- **Parallel execution**
+  Some functions accept `parallel = TRUE` and `ncores` arguments for faster computation.
 
-- **Test issues or suggest features:**  
+- **Raise issues or suggest features:**
   Please use [GitHub Issues](https://github.com/LucasKook/glip/issues).
