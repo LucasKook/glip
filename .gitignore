@@ -85,3 +85,4 @@ inst/tables/
 inst/demo
 *.tex
 *.slurm
+Makefile
