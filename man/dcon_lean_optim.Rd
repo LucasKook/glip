@@ -16,7 +16,7 @@ dcon_lean_optim(
   gurobi_args = list(),
   verbose = FALSE,
   cache = TRUE,
-  cache_dir = "./.cache-dcon-lean-redundant",
+  cache_dir = "./.cache-dcon-lean-new",
   mode = c("dag", "dg"),
   ...
 )

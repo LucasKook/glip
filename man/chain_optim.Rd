@@ -2,7 +2,7 @@
 % Please edit documentation in R/chain-optim.R
 \name{chain_optim}
 \alias{chain_optim}
-\title{Optimal Learning of LCG-Chain Graphs via Mixed Integer Programming}
+\title{Optimal Learning of LWF-Chain Graphs via Mixed Integer Programming}
 \usage{
 chain_optim(
   tests,
@@ -57,7 +57,7 @@ An object of class \code{graphopt} with components:
 }
 }
 \description{
-Solves a global mixed integer optimization problem to learn an LCG-Chain
+Solves a global mixed integer optimization problem to learn an LWF-Chain
 graph from supplied conditional independence test results, using the
 \code{gurobi} solver. Supports warm-start, different weight types, and optional
 caching for efficiency.
