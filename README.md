@@ -84,8 +84,8 @@ To reproduce the results from the paper, please follow the following instruction
 
 1. Clone this GitHub repository
 
-2. Download and install [clingo](https://github.com/potassco/clingo) to
-   `./inst/asp/`, which contains code the code from [4] to run the ASP solver.
+2. Download Download and install [clingo](https://github.com/potassco/clingo)
+   to `./inst/asp/`, unzip the code from [4] to run the ASP solver there.
 
 2. Install the [**dagma**](https://github.com/kevinsbello/dagma) and
    [**CausalDisco**](https://github.com/CausalDisco/CausalDisco) Python
