@@ -8,7 +8,7 @@ max_time <- 600
 walltime <- 600
 
 ### List files
-fin <- "./inst/results/asp-comparison/full-cubic"
+fin <- "./inst/results/asp-comparison/full"
 nrow <- c(1, 2)[1 + str_detect(fin, "weak")]
 nm <- c("full", "weak")[1 + str_detect(fin, "weak")]
 fout <- str_replace(fin, "results", "figures")

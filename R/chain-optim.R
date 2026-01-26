@@ -3,7 +3,7 @@
 #' Solves a global mixed integer optimization problem to learn an LWF-Chain
 #' graph from supplied conditional independence test results, using the
 #' `gurobi` solver. Supports warm-start, different weight types, and optional
-#' caching for efficiency. 
+#' caching for efficiency.
 #'
 #' @inheritParams admg_lean_optim
 #'
@@ -16,8 +16,6 @@
 #'
 #' @details
 #' Requires the `gurobi` package. Will warn if unavailable.
-#'
-#' @export
 chain_optim <- function(
     tests, d = 3, max_size = d - 2, V = letters[1:d],
     trafo = \(x) as.numeric(x <= 0.05),

@@ -3,7 +3,7 @@
 #' Solves a global mixed integer optimization problem to learn an Acyclic
 #' Directed Mixed Graph (ADMG) or DMG from supplied conditional independence
 #' test results, using the `gurobi` solver. Supports warm-start, different
-#' weight types, and optional caching for efficiency. 
+#' weight types, and optional caching for efficiency.
 #'
 #' @inheritParams admg_lean_optim
 #'
@@ -16,8 +16,6 @@
 #'
 #' @details
 #' Requires the `gurobi` package. Will warn if unavailable.
-#'
-#' @export
 admg_optim <- function(
     tests, d = 3, max_size = d - 2, V = letters[1:d],
 trafo = \(x) as.numeric(x <= 0.05),
@@ -337,7 +335,7 @@ trafo = \(x) as.numeric(x <= 0.05),
       }
       clist <- do.call("rbind", clist)
       o1l <- do.call("rbind", o1l)
-      A[grep("f1f2min", rownames(A)), .multigrep(c("bxij", "lbijc", "fijc"), colnames(A))] <- 
+      A[grep("f1f2min", rownames(A)), .multigrep(c("bxij", "lbijc", "fijc"), colnames(A))] <-
         Matrix::sparseMatrix(i = clist$i, j = clist$j, x = clist$v,
           dims = c(length(rn), length(cn)), dimnames = list(rn, cn))
       model$rhs[grep("f1f2min", names(model$rhs))] <- rf1f2

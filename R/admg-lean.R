@@ -31,8 +31,6 @@
 #'
 #' @details
 #' Requires the `gurobi` package. Will warn if unavailable.
-#'
-#' @export
 admg_lean_optim <- function(
     tests, d = 3, max_size = d - 2, V = letters[1:d], trafo = \(x) as.numeric(x <= 0.05),
     weight_type = c("const", "inv", "log", "size"), warmstart = NULL, edgehints = NULL,
@@ -390,7 +388,7 @@ admg_lean_optim <- function(
       }
       clist <- do.call("rbind", clist)
       o1l <- do.call("rbind", o1l)
-      A[grep("f1f2min", rownames(A)), .multigrep(c("bxij", "lbijc", "fijc"), colnames(A))] <- 
+      A[grep("f1f2min", rownames(A)), .multigrep(c("bxij", "lbijc", "fijc"), colnames(A))] <-
         Matrix::sparseMatrix(i = clist$i, j = clist$j, x = clist$v,
           dims = c(length(rn), length(cn)), dimnames = list(rn, cn))
       model$rhs[grep("f1f2min", names(model$rhs))] <- rf1f2
@@ -513,9 +511,9 @@ admg_lean_optim <- function(
                 clist[[cntr]] <- data.frame(
                   i = c(cntr, cntr, cntr, cntr),
                   j = c(
-                    skip + cntr, 
-                    n_d + ikC, 
-                    n_d + kjC, 
+                    skip + cntr,
+                    n_d + ikC,
+                    n_d + kjC,
                     2 * n_d + n_z + 2 * n_lb + kC
                   ),
                   v = c(1, -1, -1, - d + 2)
@@ -784,9 +782,9 @@ admg_lean_optim <- function(
             keep <- c(keep, xij$idx[xij$i == i & xij$j == k])
           }
           R1 <- c(R1, list(list(
-              resvar = 3 * n_z + 4 * n_d + sum(nN1) + sum(nkc) + n_b + 
+              resvar = 3 * n_z + 4 * n_d + sum(nN1) + sum(nkc) + n_b +
                 3 * n_lb + n_lb * (d - 2) + ic,
-              vars = c(sort(3 * n_z + 2 * n_d + sum(nN1) + keep), 
+              vars = c(sort(3 * n_z + 2 * n_d + sum(nN1) + keep),
               length(model$obj))
             ))
           )
