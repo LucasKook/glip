@@ -26,6 +26,14 @@ complex causal graphs.
 remotes::install_github("LucasKook/glip")
 ```
 
+The **RBGL** package (a **pcalg** dependency) is available through Bioconductor:
+```r
+if (!require("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+
+BiocManager::install("RBGL")
+```
+
 ### GUROBI Dependency
 
 This package uses [GUROBI Optimizer](https://www.gurobi.com/) (commercial, free
