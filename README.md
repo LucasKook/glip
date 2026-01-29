@@ -112,13 +112,13 @@ naming conventions as above, replacing `run` with `vis`.
 
 ## References
 
-[1] Kook, L., Mogensen, S. W. (2025). Exact Graph Learning via Integer
-Programming. arXiv:2601.20589
+[1] Kook, L., Mogensen, S. W. Exact Graph Learning via Integer Programming.
+arXiv preprint arXiv:2601.20589, 2026.
 [doi:10.48550/arXiv.2601.20589](https://doi.org/10.48550/arXiv.2601.20589)
 
 [2] [Gurobi Documentation](https://www.gurobi.com/documentation/)
 
-[3] Kook, L. & Lundborg A. R. (2024). Algorithm-agnostic significance testing
+[3] Kook, L. & Lundborg A. R. Algorithm-agnostic significance testing
 in supervised learning with multimodal data. Briefings in Bioinformatics 25(6)
 2024. [doi:10.1093/bib/bbae475](https://doi.org/10.1093/bib/bbae475)
 
