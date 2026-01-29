@@ -112,7 +112,9 @@ naming conventions as above, replacing `run` with `vis`.
 
 ## References
 
-[1] Kook, L., Mogensen, S. W. (2025). Exact Graph Learning via Integer Programming. Preprint.
+[1] Kook, L., Mogensen, S. W. (2025). Exact Graph Learning via Integer
+Programming. arXiv:2601.20589
+[doi:10.48550/arXiv.2601.20589](https://doi.org/10.48550/arXiv.2601.20589)
 
 [2] [Gurobi Documentation](https://www.gurobi.com/documentation/)
 
