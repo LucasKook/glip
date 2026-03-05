@@ -3,7 +3,7 @@
 #' Solves a global mixed integer optimization problem to learn an LWF-Chain
 #' graph from supplied conditional independence test results, using the
 #' `gurobi` solver. Supports warm-start, different weight types, and optional
-#' caching for efficiency. 
+#' caching for efficiency.
 #'
 #' @inheritParams admg_lean_optim
 #'
@@ -49,6 +49,9 @@ chain_lean_optim <- function(
     utils::combn(d, x, simplify = FALSE)),
     recursive = FALSE
   )
+  if (max_size == 0) {
+    CC <- list(integer(0))
+  }
   n_C <- length(CC)
 
   ### Number of directed edges, excluding diagonal
@@ -218,6 +221,11 @@ chain_lean_optim <- function(
     c(n_z, n_z + n_d, n_z, n_d, sum(nN1), n_d, sum(nlc),
       n_d + n_ul, n_ul, nW1, nZ1, d * n_C, 1, 1, 1)
   )
+  if (max_size > 0) {
+    nr1b <- d * sum(sapply(seq_len(max_size) - 1, \(x) { choose(d, x) }))
+  } else {
+    nr1b <- 1
+  }
   model$rhs <- c(
     "labs" = -p, # linearize objective
     "labs" = p, # linearize objective
@@ -231,9 +239,7 @@ chain_lean_optim <- function(
     "z1max" = rep(0, nZ1),
     "unZL" = rep(d, n_ul), # C12-13
     "unZL" = rep(-d, n_ul), # C12-13
-    "r1b" = rep(0, nr1b <- d * sum(sapply(seq_len(max_size) - 1, \(x) {
-      choose(d, x)
-    })))
+    "r1b" = rep(0, nr1b)
   )
   model$sense <- c(
     rep(">=", 2 * n_z), # linearize objective
@@ -285,28 +291,30 @@ chain_lean_optim <- function(
       rep("r1b", nr1b)
     ))
 
-    ### R1b
-    if (verbose) {
-      cat("\nWorking on constraint R1b")
-    }
+    if (max_size > 0) {
+      ### R1b
+      if (verbose) {
+        cat("\nWorking on constraint R1b")
+      }
 
-    rn <- grep("r1b", rownames(A), value = TRUE)
-    cn <- grep("diC", colnames(A), value = TRUE)
-    clist <- list()[rep(1, length(rn))]
-    cntr <- 1
-    for (i in seq_len(d)) {
-      for (C in seq_len(n_C)) {
-        if (i %in% CC[[C]]) {
-          iC <- dic$idx[dic$i == i & dic$C == C]
-          clist[[cntr]] <- data.frame(i = cntr, j = iC, v = 1)
-          cntr <- cntr + 1
+      rn <- grep("r1b", rownames(A), value = TRUE)
+      cn <- grep("diC", colnames(A), value = TRUE)
+      clist <- list()[rep(1, length(rn))]
+      cntr <- 1
+      for (i in seq_len(d)) {
+        for (C in seq_len(n_C)) {
+          if (i %in% CC[[C]]) {
+            iC <- dic$idx[dic$i == i & dic$C == C]
+            clist[[cntr]] <- data.frame(i = cntr, j = iC, v = 1)
+            cntr <- cntr + 1
+          }
         }
       }
+      clist <- do.call("rbind", clist)
+      A[grep("r1b", rownames(A)), grep("diC", colnames(A))] <-
+        Matrix::sparseMatrix(i = clist$i, j = clist$j, x = clist$v,
+          dims = c(length(rn), length(cn)), dimnames = list(rn, cn))
     }
-    clist <- do.call("rbind", clist)
-    A[grep("r1b", rownames(A)), grep("diC", colnames(A))] <-
-      Matrix::sparseMatrix(i = clist$i, j = clist$j, x = clist$v,
-        dims = c(length(rn), length(cn)), dimnames = list(rn, cn))
 
     ### Auxiliary Y1 and Y2 for Z1
     if (verbose) {

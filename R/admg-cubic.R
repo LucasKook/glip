@@ -64,6 +64,9 @@ admg_cubic_optim <- function(
     utils::combn(d, x, simplify = FALSE)),
     recursive = FALSE
   )
+  if (max_size == 0) {
+    CC <- list(integer(0))
+  }
   n_C <- length(CC)
 
   ### Number of directed edges, excluding diagonal
@@ -112,7 +115,7 @@ admg_cubic_optim <- function(
     }
   }
 
-  # Array indices for bidirected length variables 
+  # Array indices for bidirected length variables
   lbijc <- data.frame()
   counter <- 1
   for (i in seq_len(d)) {
@@ -127,7 +130,7 @@ admg_cubic_optim <- function(
     }
   }
 
-  # Array indices for bidirected length variables 
+  # Array indices for bidirected length variables
   ldijc <- data.frame()
   counter <- 1
   for (i in seq_len(d)) {
@@ -278,6 +281,11 @@ admg_cubic_optim <- function(
   model$ub <- rep(c(Inf, 1, Inf, d, 2 * d, 1, 4 * d, 1, d, 1, 2 * (d - 1) + 1, 1, d, 2 * d - 1, d, 1),
     c(n_z, n_z + n_d, n_z, n_d, sum(nN1), n_d, sum(nkc), n_b + n_d,
       n_lb, n_lb, n_lb + n_lb * (d - 2), ndic, nrow(ldijc), (d - 1) * nrow(ldijc), 1, 1))
+  if (max_size > 0) {
+    nr1b <- d * sum(sapply(seq_len(max_size) - 1, \(x) { choose(d, x) }))
+  } else {
+    nr1b <- 1
+  }
   model$rhs <- c(
     "labs" = -p, # linearize objective
     "labs" = p, # linearize objective
@@ -290,9 +298,7 @@ admg_cubic_optim <- function(
     "C6to9" = rep(0, 3 * d * (d - 1)), # C6to9
     "C10to11" = rep(c(d, -d), each = n_lb), # C10 to 11
     "f1f2min" = rep(0, n_lb + n_lb * (d - 2)), # Min O1 aux
-    "r1b" = rep(0, nr1b <- d * sum(sapply(seq_len(max_size) - 1, \(x) {
-      choose(d, x)
-    }))),
+    "r1b" = rep(0, nr1b),
     "redundant" = rep(0, d * (d - 1) / 2),
     "g1min" = rep(0, (d - 1) * nrow(ldijc)) # E1 + E2 u-variable constraints
   )
@@ -347,74 +353,78 @@ admg_cubic_optim <- function(
     ))
 
     ### Aux constraints for G1
-    rn <- grep("g1min", rownames(A), value = TRUE)
-    cn <- .multigrep(c("sxij", "lbijc", "uldijkC"), colnames(A), value = TRUE)
-    re1e2 <- model$rhs[grep("g1min", names(model$rhs))]
-    clist <- g1l <- list()[rep(1, length(rn))]
-    skip <- n_d + n_lb
-    cntr <- 1
-    for (i in seq_len(d)) {
-      for (j in setdiff(seq_len(d), i)) {
-        for (C in seq_len(n_C)) {
-          if (!(i %in% CC[[C]]) && (j %in% CC[[C]])) {
-            ij <- xij$idx[xij$i == i & xij$j == j]
-            clist[[cntr]] <- data.frame(
-              i = c(cntr, cntr),
-              j = c(skip + cntr, ij),
-              v = c(1, d - 1)
-            )
-            re1e2[cntr] <- d
-            g1l[[cntr]] <- data.frame(i = i, j = j, k = NA, C = C, which = "E1", idx = cntr)
-            cntr <- cntr + 1
-            for (k in setdiff(seq_len(d), c(i, j))) {
-              if (k %in% CC[[C]]) {
-                kjC <- max(lbijc$idx[lbijc$i == k & lbijc$j == j & lbijc$C == C],
-                          lbijc$idx[lbijc$i == j & lbijc$j == k & lbijc$C == C])
-                ik <- xij$idx[xij$i == i & xij$j == k]
-                clist[[cntr]] <- data.frame(
-                  i = c(cntr, cntr, cntr),
-                  j = c(skip + cntr, ik, n_d + kjC),
-                  v = c(1, d - 2, -1)
-                )
-                re1e2[cntr] <- d - 1
-                g1l[[cntr]] <- data.frame(i = i, j = j, k = k, C = C, which = "E2", idx = cntr)
-                cntr <- cntr + 1
+    if (max_size > 0) {
+      rn <- grep("g1min", rownames(A), value = TRUE)
+      cn <- .multigrep(c("sxij", "lbijc", "uldijkC"), colnames(A), value = TRUE)
+      re1e2 <- model$rhs[grep("g1min", names(model$rhs))]
+      clist <- g1l <- list()[rep(1, length(rn))]
+      skip <- n_d + n_lb
+      cntr <- 1
+      for (i in seq_len(d)) {
+        for (j in setdiff(seq_len(d), i)) {
+          for (C in seq_len(n_C)) {
+            if (!(i %in% CC[[C]]) && (j %in% CC[[C]])) {
+              ij <- xij$idx[xij$i == i & xij$j == j]
+              clist[[cntr]] <- data.frame(
+                i = c(cntr, cntr),
+                j = c(skip + cntr, ij),
+                v = c(1, d - 1)
+              )
+              re1e2[cntr] <- d
+              g1l[[cntr]] <- data.frame(i = i, j = j, k = NA, C = C, which = "E1", idx = cntr)
+              cntr <- cntr + 1
+              for (k in setdiff(seq_len(d), c(i, j))) {
+                if (k %in% CC[[C]]) {
+                  kjC <- max(lbijc$idx[lbijc$i == k & lbijc$j == j & lbijc$C == C],
+                            lbijc$idx[lbijc$i == j & lbijc$j == k & lbijc$C == C])
+                  ik <- xij$idx[xij$i == i & xij$j == k]
+                  clist[[cntr]] <- data.frame(
+                    i = c(cntr, cntr, cntr),
+                    j = c(skip + cntr, ik, n_d + kjC),
+                    v = c(1, d - 2, -1)
+                  )
+                  re1e2[cntr] <- d - 1
+                  g1l[[cntr]] <- data.frame(i = i, j = j, k = k, C = C, which = "E2", idx = cntr)
+                  cntr <- cntr + 1
+                }
               }
             }
           }
         }
       }
-    }
-    clist <- do.call("rbind", clist)
-    g1l <- do.call("rbind", g1l)
-    A[grep("g1min", rownames(A)), .multigrep(c("sxij", "lbijc", "uldijkC"), colnames(A))] <- 
-      Matrix::sparseMatrix(i = clist$i, j = clist$j, x = clist$v,
-        dims = c(length(rn), length(cn)), dimnames = list(rn, cn))
-    model$rhs[grep("g1min", names(model$rhs))] <- re1e2
-    ng1 <- cntr - 1
-
-    ### R1b
-    if (verbose) {
-      cat("\nWorking on constraint R1b")
+      clist <- do.call("rbind", clist)
+      g1l <- do.call("rbind", g1l)
+      A[grep("g1min", rownames(A)), .multigrep(c("sxij", "lbijc", "uldijkC"), colnames(A))] <-
+        Matrix::sparseMatrix(i = clist$i, j = clist$j, x = clist$v,
+          dims = c(length(rn), length(cn)), dimnames = list(rn, cn))
+      model$rhs[grep("g1min", names(model$rhs))] <- re1e2
+      ng1 <- cntr - 1
     }
 
-    rn <- grep("r1b", rownames(A), value = TRUE)
-    cn <- grep("diC", colnames(A), value = TRUE)
-    clist <- list()[rep(1, length(rn))]
-    cntr <- 1
-    for (i in seq_len(d)) {
-      for (C in seq_len(n_C)) {
-        if (i %in% CC[[C]]) {
-          iC <- dic$idx[dic$i == i & dic$C == C]
-          clist[[cntr]] <- data.frame(i = cntr, j = iC, v = 1)
-          cntr <- cntr + 1
+    if (max_size > 0) {
+      ### R1b
+      if (verbose) {
+        cat("\nWorking on constraint R1b")
+      }
+
+      rn <- grep("r1b", rownames(A), value = TRUE)
+      cn <- grep("diC", colnames(A), value = TRUE)
+      clist <- list()[rep(1, length(rn))]
+      cntr <- 1
+      for (i in seq_len(d)) {
+        for (C in seq_len(n_C)) {
+          if (i %in% CC[[C]]) {
+            iC <- dic$idx[dic$i == i & dic$C == C]
+            clist[[cntr]] <- data.frame(i = cntr, j = iC, v = 1)
+            cntr <- cntr + 1
+          }
         }
       }
+      clist <- do.call("rbind", clist)
+      A[grep("r1b", rownames(A)), grep("diC", colnames(A))] <-
+        Matrix::sparseMatrix(i = clist$i, j = clist$j, x = clist$v,
+          dims = c(length(rn), length(cn)), dimnames = list(rn, cn))
     }
-    clist <- do.call("rbind", clist)
-    A[grep("r1b", rownames(A)), grep("diC", colnames(A))] <-
-      Matrix::sparseMatrix(i = clist$i, j = clist$j, x = clist$v,
-        dims = c(length(rn), length(cn)), dimnames = list(rn, cn))
 
     ### RHS F1 F2
     if (max_size > 1) {
@@ -460,7 +470,7 @@ admg_cubic_optim <- function(
       }
       clist <- do.call("rbind", clist)
       o1l <- do.call("rbind", o1l)
-      A[grep("f1f2min", rownames(A)), .multigrep(c("bxij", "lbijc", "fijc"), colnames(A))] <- 
+      A[grep("f1f2min", rownames(A)), .multigrep(c("bxij", "lbijc", "fijc"), colnames(A))] <-
         Matrix::sparseMatrix(i = clist$i, j = clist$j, x = clist$v,
           dims = c(length(rn), length(cn)), dimnames = list(rn, cn))
       model$rhs[grep("f1f2min", names(model$rhs))] <- rf1f2
@@ -583,9 +593,9 @@ admg_cubic_optim <- function(
                 clist[[cntr]] <- data.frame(
                   i = c(cntr, cntr, cntr, cntr),
                   j = c(
-                    skip + cntr, 
-                    n_d + ikC, 
-                    n_d + kjC, 
+                    skip + cntr,
+                    n_d + ikC,
+                    n_d + kjC,
                     2 * n_d + n_z + 2 * n_lb + kC
                   ),
                   v = c(1, -1, -1, - d + 2)
@@ -852,9 +862,9 @@ admg_cubic_optim <- function(
             ijC <- ldijc$idx[ldijc$i == i & ldijc$j == j & ldijc$C == C]
             keep <- g1l$idx[g1l$i == i & g1l$j == j & g1l$C == C]
             G1 <- c(G1, list(list(
-                resvar = 3 * n_z + 4 * n_d + sum(nN1) + sum(nkc) + n_b + 
+                resvar = 3 * n_z + 4 * n_d + sum(nN1) + sum(nkc) + n_b +
                 3 * n_lb + n_lb * (d - 2) + d * n_C + ijC,
-                vars = sort(3 * n_z + 4 * n_d + sum(nN1) + sum(nkc) + n_b + 
+                vars = sort(3 * n_z + 4 * n_d + sum(nN1) + sum(nkc) + n_b +
                 3 * n_lb + n_lb * (d - 2) + d * n_C + nrow(ldijc) + keep)
               ))
             )
@@ -879,9 +889,9 @@ admg_cubic_optim <- function(
             keep <- c(keep, xij$idx[xij$i == i & xij$j == k])
           }
           R1 <- c(R1, list(list(
-              resvar = 3 * n_z + 4 * n_d + sum(nN1) + sum(nkc) + n_b + 
+              resvar = 3 * n_z + 4 * n_d + sum(nN1) + sum(nkc) + n_b +
                 3 * n_lb + n_lb * (d - 2) + ic,
-              vars = c(sort(3 * n_z + 2 * n_d + sum(nN1) + keep), 
+              vars = c(sort(3 * n_z + 2 * n_d + sum(nN1) + keep),
               length(model$obj))
             ))
           )
@@ -932,8 +942,8 @@ admg_cubic_optim <- function(
     bminlen <- x[3 * n_z + 4 * n_d + sum(nN1) + sum(nkc) + n_b + 1:n_lb]
     bminleni <- x[3 * n_z + 4 * n_d + sum(nN1) + sum(nkc) + n_b + n_lb + 1:n_lb]
     dic$dic <- x[3 * n_z + 4 * n_d + sum(nN1) + sum(nkc) + n_b + 3 * n_lb + n_lb * (d - 2) + 1:nrow(dic)]
-    ldijc$ldijc <- x[3 * n_z + 4 * n_d + sum(nN1) + sum(nkc) + n_b + 3 * n_lb + n_lb * (d - 2) + nrow(dic) + 1:nrow(ldijc)]
-    ue1e2 <- x[3 * n_z + 4 * n_d + sum(nN1) + sum(nkc) + n_b + 3 * n_lb + n_lb * (d - 2) + nrow(dic) + nrow(ldijc) + 1:((d - 1) * nrow(ldijc))]
+    # ldijc$ldijc <- x[3 * n_z + 4 * n_d + sum(nN1) + sum(nkc) + n_b + 3 * n_lb + n_lb * (d - 2) + nrow(dic) + 1:nrow(ldijc)]
+    # ue1e2 <- x[3 * n_z + 4 * n_d + sum(nN1) + sum(nkc) + n_b + 3 * n_lb + n_lb * (d - 2) + nrow(dic) + nrow(ldijc) + 1:((d - 1) * nrow(ldijc))]
     M1 <- M2 <- matrix(0, nrow = d, ncol = d)
     dimnames(M1) <- dimnames(M2) <- list(V, V)
     for (i in seq_len(d)) {
@@ -948,7 +958,7 @@ admg_cubic_optim <- function(
       list(M1 = M1, M2 = M2), edge = edge, bedge = bedge,
       dcon = zijC, antlen = leij, minlen = lijC,
       pind = deij, sedge = sedge, bminlen = bminlen,
-      bminleni = bminleni, dic = dic, ldijc = ldijc
+      bminleni = bminleni, dic = dic # , ldijc = ldijc
     )
   }
 

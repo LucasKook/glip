@@ -3,7 +3,7 @@
 #' Solves a global mixed integer optimization problem to learn an Directed
 #' Acyclic Graph (DAG) or DG from supplied conditional independence
 #' test results, using the `gurobi` solver. Supports warm-start, different
-#' weight types, and optional caching for efficiency. 
+#' weight types, and optional caching for efficiency.
 #'
 #' @inheritParams admg_lean_optim
 #'
@@ -50,6 +50,9 @@ dcon_lean_optim <- function(
     utils::combn(d, x, simplify = FALSE)),
     recursive = FALSE
   )
+  if (max_size == 0) {
+    CC <- list(integer(0))
+  }
   n_C <- length(CC)
 
   ### Number of directed edges, excluding diagonal
@@ -198,6 +201,11 @@ dcon_lean_optim <- function(
     c(Inf, 1, Inf, d, 2 * d, 1, 3 * d, 1, 1),
     c(n_z, n_z + n_d, n_z, n_d, sum(nN1), n_d, sum(nlc), d * n_C, 1)
   )
+  if (max_size > 0) {
+    nr1b <- d * sum(sapply(seq_len(max_size) - 1, \(x) { choose(d, x) }))
+  } else {
+    nr1b <- 1
+  }
   model$rhs <- c(
     "labs" = -p, # linearize objective
     "labs" = p, # linearize objective
@@ -207,9 +215,7 @@ dcon_lean_optim <- function(
     "m1min" = rep(0, sum(nlc)), # aux M1
     "ZLcons" = rep(d, n_z), # (C4*) in the writeup
     "ZLcons" = rep(- d, n_z), # (C5*) in the writeup
-    "r1b" = rep(0, nr1b <- d * sum(sapply(seq_len(max_size) - 1, \(x) {
-      choose(d, x)
-    }))),
+    "r1b" = rep(0, nr1b),
     "redundant" = rep(0, d * (d - 1) / 2)
   )
   model$sense <- c(
@@ -252,28 +258,30 @@ dcon_lean_optim <- function(
       rep("redundant", d * (d - 1) / 2)
     ))
 
-    ### R1b
-    if (verbose) {
-      cat("\nWorking on constraint R1b")
-    }
+    if (max_size > 0) {
+      ### R1b
+      if (verbose) {
+        cat("\nWorking on constraint R1b")
+      }
 
-    rn <- grep("r1b", rownames(A), value = TRUE)
-    cn <- grep("diC", colnames(A), value = TRUE)
-    clist <- list()[rep(1, length(rn))]
-    cntr <- 1
-    for (i in seq_len(d)) {
-      for (C in seq_len(n_C)) {
-        if (i %in% CC[[C]]) {
-          iC <- dic$idx[dic$i == i & dic$C == C]
-          clist[[cntr]] <- data.frame(i = cntr, j = iC, v = 1)
-          cntr <- cntr + 1
+      rn <- grep("r1b", rownames(A), value = TRUE)
+      cn <- grep("diC", colnames(A), value = TRUE)
+      clist <- list()[rep(1, length(rn))]
+      cntr <- 1
+      for (i in seq_len(d)) {
+        for (C in seq_len(n_C)) {
+          if (i %in% CC[[C]]) {
+            iC <- dic$idx[dic$i == i & dic$C == C]
+            clist[[cntr]] <- data.frame(i = cntr, j = iC, v = 1)
+            cntr <- cntr + 1
+          }
         }
       }
+      clist <- do.call("rbind", clist)
+      A[grep("r1b", rownames(A)), grep("diC", colnames(A))] <-
+        Matrix::sparseMatrix(i = clist$i, j = clist$j, x = clist$v,
+          dims = c(length(rn), length(cn)), dimnames = list(rn, cn))
     }
-    clist <- do.call("rbind", clist)
-    A[grep("r1b", rownames(A)), grep("diC", colnames(A))] <-
-      Matrix::sparseMatrix(i = clist$i, j = clist$j, x = clist$v,
-        dims = c(length(rn), length(cn)), dimnames = list(rn, cn))
 
     ### CONSTRAINTS FOR Z and L consistency (C4*) + (C5*)
 
