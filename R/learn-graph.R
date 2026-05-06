@@ -29,11 +29,12 @@
 #' graphical representation.
 #' @export
 learn_graph <- function(
-    data, max_size = NULL, mode = "dag", test = "gcm", naive = FALSE,
-    parallel = FALSE, ncores = NULL, alpha = 0.05, trafo = \(x) as.numeric(x <= alpha),
-    weight_type = "const", warmstart = NULL, edgehints = NULL,
-    gurobi_args = list(), test_args = NULL, return_tests_only = FALSE,
-    verbose = FALSE, cache = TRUE, comets = TRUE, ...) {
+  data, max_size = NULL, mode = "dag", test = "gcm", naive = FALSE,
+  parallel = FALSE, ncores = NULL, alpha = 0.05, trafo = \(x) as.numeric(x <= alpha),
+  weight_type = "const", warmstart = NULL, edgehints = NULL,
+  gurobi_args = list(), test_args = NULL, return_tests_only = FALSE,
+  verbose = FALSE, cache = TRUE, comets = TRUE, ...
+) {
   if (mode %in% c("dmg", "dg")) {
     warning("Using `mode = 'dmg'` or `mode = 'dg'` relies on d-separation
       and thus implicitly assumes a linear Gaussian SCM.")
@@ -41,7 +42,10 @@ learn_graph <- function(
 
   ### Pre-process
   vars <- colnames(data)
-  max_size <- min(max(1, length(vars) - 2), max_size)
+  d <- length(vars)
+  if (is.null(max_size)) max_size <- d - 2L
+  stopifnot(max_size >= 0L)
+  if (max_size >= d - 2L) max_size <- d - 2L
 
   if (parallel) {
     nc <- min(parallel::detectCores() - 1, 15, ncores)
@@ -64,8 +68,19 @@ learn_graph <- function(
   }
 
   if (is.null(warmstart) & mode != "chain") {
-    suff <- list(tests = res, V = vars)
-    cit <- lookup_ci
+    if (max_size == d - 2L) {
+      if (verbose) {
+        message(paste0("\nWarmstart using PC/FCI with ", test, "..."))
+      }
+      suff <- list(tests = res, V = vars)
+      cit <- lookup_ci
+    } else {
+      if (verbose) {
+        message("\nWarmstart using PC/FCI with partial correlation test...")
+      }
+      suff <- list(C = cor(data), n = nrow(data))
+      cit <- pcalg::gaussCItest
+    }
     if (mode %in% c("dag", "dg")) {
       pcres <- pcalg::pc(suff, cit, labels = vars, alpha = alpha)
       PC <- as(pcres@graph, "matrix")

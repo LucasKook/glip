@@ -1,8 +1,9 @@
 ### Generate random graph
 random_graph <- function(
-    d = 3, prob = 0.5, lb = 0, ub = 1, admg_add = 2, degree = 2, method = "er",
-    par1 = NULL, par2 = NULL, mode = c("dag", "admg"), V = letters[1:d],
-    V2 = letters[(d + 1):(d + admg_add)], dag_gen = c("randDAG", "randomDAG")) {
+  d = 3, prob = 0.5, lb = 0, ub = 1, admg_add = 2, degree = 2, method = "er",
+  par1 = NULL, par2 = NULL, mode = c("dag", "admg"), V = letters[1:d],
+  V2 = letters[(d + 1):(d + admg_add)], dag_gen = c("randDAG", "randomDAG")
+) {
   mode <- match.arg(mode)
   dag_gen <- match.arg(dag_gen)
   O <- V
@@ -126,8 +127,9 @@ prf1.pag <- function(predicted, groundtruth, summarize = TRUE) {
 
 ### Separation agreement
 sep <- function(
-    predicted, groundtruth, mode, max_size = NULL,
-    precomputed_predicted = NULL, precomputed_groundtruth = NULL, ...) {
+  predicted, groundtruth, mode, max_size = NULL,
+  precomputed_predicted = NULL, precomputed_groundtruth = NULL, ...
+) {
   G1 <- predicted
   G2 <- groundtruth
   .check_graphs(G1, G2)
