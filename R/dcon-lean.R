@@ -19,18 +19,18 @@
 #'
 #' @export
 dcon_lean_optim <- function(
-    tests, d = 3, max_size = d - 2, V = letters[1:d],
-    trafo = \(x) as.numeric(x <= 0.05),
-    weight_type = c("const", "inv", "log", "size"),
-    warmstart = NULL,
-    edgehints = NULL,
-    gurobi_args = list(),
-    verbose = FALSE,
-    cache = TRUE,
-    cache_dir = "./.cache-dcon-lean-new",
-    mode = c("dag", "dg"),
-    ...) {
-
+  tests, d = 3, max_size = d - 2, V = letters[1:d],
+  trafo = \(x) as.numeric(x <= 0.05),
+  weight_type = c("const", "inv", "log", "size"),
+  warmstart = NULL,
+  edgehints = NULL,
+  gurobi_args = list(),
+  verbose = FALSE,
+  cache = TRUE,
+  cache_dir = "./.cache-dcon-lean-new",
+  mode = c("dag", "dg"),
+  ...
+) {
   if (!requireNamespace("gurobi")) {
     warning("Solver `gurobi` not available.")
   }
@@ -39,14 +39,17 @@ dcon_lean_optim <- function(
 
   fn <- file.path(
     cache_dir,
-    paste0(c("lhs", "rhs", "M1", "N1", "R1"), "dim", d, "max",
-      max_size, c(".mtx", ".rds", ".rds", ".rds", ".rds"))
+    paste0(
+      c("lhs", "rhs", "M1", "N1", "R1"), "dim", d, "max",
+      max_size, c(".mtx", ".rds", ".rds", ".rds", ".rds")
+    )
   )
 
   ### COMPUTE DIMENSIONS
 
   # List of all conditioning sets of size at most max_size
-  CC <- unlist(sapply(0:max_size, \(x)
+  CC <- unlist(
+    sapply(0:max_size, \(x)
     utils::combn(d, x, simplify = FALSE)),
     recursive = FALSE
   )
@@ -202,7 +205,9 @@ dcon_lean_optim <- function(
     c(n_z, n_z + n_d, n_z, n_d, sum(nN1), n_d, sum(nlc), d * n_C, 1)
   )
   if (max_size > 0) {
-    nr1b <- d * sum(sapply(seq_len(max_size) - 1, \(x) { choose(d, x) }))
+    nr1b <- d * sum(sapply(seq_len(max_size) - 1, \(x) {
+      choose(d, x)
+    }))
   } else {
     nr1b <- 1
   }
@@ -214,7 +219,7 @@ dcon_lean_optim <- function(
     "indic" = rep(c(d - 1, -1), each = n_d), # dij->
     "m1min" = rep(0, sum(nlc)), # aux M1
     "ZLcons" = rep(d, n_z), # (C4*) in the writeup
-    "ZLcons" = rep(- d, n_z), # (C5*) in the writeup
+    "ZLcons" = rep(-d, n_z), # (C5*) in the writeup
     "r1b" = rep(0, nr1b),
     "redundant" = rep(0, d * (d - 1) / 2)
   )
@@ -233,7 +238,7 @@ dcon_lean_optim <- function(
     cat("\nUsing cached constraint matrix and RHS...")
     A <- Matrix::readMM(fn[1])
     rhs <- readRDS(fn[2])
-    rhs[1:(2*n_z)] <- c(-p, p)
+    rhs[1:(2 * n_z)] <- c(-p, p)
     M1 <- readRDS(fn[3])
     N1 <- readRDS(fn[4])
     R1 <- readRDS(fn[5])
@@ -279,8 +284,10 @@ dcon_lean_optim <- function(
       }
       clist <- do.call("rbind", clist)
       A[grep("r1b", rownames(A)), grep("diC", colnames(A))] <-
-        Matrix::sparseMatrix(i = clist$i, j = clist$j, x = clist$v,
-          dims = c(length(rn), length(cn)), dimnames = list(rn, cn))
+        Matrix::sparseMatrix(
+          i = clist$i, j = clist$j, x = clist$v,
+          dims = c(length(rn), length(cn)), dimnames = list(rn, cn)
+        )
     }
 
     ### CONSTRAINTS FOR Z and L consistency (C4*) + (C5*)
@@ -320,8 +327,10 @@ dcon_lean_optim <- function(
               v = c(1, d - 1)
             )
             rm1[cntr] <- d
-            m1lup[[cntr]] <- data.frame(i = i, j = j, k = NA,
-              l = NA, m = NA, C = C, idx = cntr, which = "L1")
+            m1lup[[cntr]] <- data.frame(
+              i = i, j = j, k = NA,
+              l = NA, m = NA, C = C, idx = cntr, which = "L1"
+            )
             cntr <- cntr + 1
           }
         }
@@ -331,22 +340,30 @@ dcon_lean_optim <- function(
             if (all(!c(i, j) %in% CC[[C]])) {
               if (!(k %in% CC[[C]])) {
                 kj <- xij$idx[xij$i == k & xij$j == j]
-                ikC <- max(zijc$idx[zijc$i == i & zijc$j == k & zijc$C == C],
-                          zijc$idx[zijc$i == k & zijc$j == i & zijc$C == C])
+                ikC <- max(
+                  zijc$idx[zijc$i == i & zijc$j == k & zijc$C == C],
+                  zijc$idx[zijc$i == k & zijc$j == i & zijc$C == C]
+                )
                 clist[[cntr]] <- data.frame(
                   i = c(cntr, cntr, cntr),
                   j = c(skip + cntr, kj, n_d + ikC),
                   v = c(1, d - 2, -1)
                 )
                 rm1[cntr] <- d - 1
-                m1lup[[cntr]] <- data.frame(i = i, j = j, k = k,
-                  l = NA, m = NA, C = C, idx = cntr, which = "L2")
+                m1lup[[cntr]] <- data.frame(
+                  i = i, j = j, k = k,
+                  l = NA, m = NA, C = C, idx = cntr, which = "L2"
+                )
                 cntr <- cntr + 1
                 ### L4
-                ikC <- max(zijc$idx[zijc$i == i & zijc$j == k & zijc$C == C],
-                          zijc$idx[zijc$i == k & zijc$j == i & zijc$C == C])
-                kjC <- max(zijc$idx[zijc$i == k & zijc$j == j & zijc$C == C],
-                          zijc$idx[zijc$i == j & zijc$j == k & zijc$C == C])
+                ikC <- max(
+                  zijc$idx[zijc$i == i & zijc$j == k & zijc$C == C],
+                  zijc$idx[zijc$i == k & zijc$j == i & zijc$C == C]
+                )
+                kjC <- max(
+                  zijc$idx[zijc$i == k & zijc$j == j & zijc$C == C],
+                  zijc$idx[zijc$i == j & zijc$j == k & zijc$C == C]
+                )
                 kC <- n_d + n_z + dic$idx[dic$i == k & dic$C == C]
                 clist[[cntr]] <- data.frame(
                   i = c(cntr, cntr, cntr, cntr),
@@ -354,8 +371,10 @@ dcon_lean_optim <- function(
                   v = c(1, -1, -1, -(d - 2))
                 )
                 rm1[cntr] <- 0
-                m1lup[[cntr]] <- data.frame(i = i, j = j, k = k,
-                  l = NA, m = NA, C = C, idx = cntr, which = "L4")
+                m1lup[[cntr]] <- data.frame(
+                  i = i, j = j, k = k,
+                  l = NA, m = NA, C = C, idx = cntr, which = "L4"
+                )
                 cntr <- cntr + 1
               } else {
                 ### L3
@@ -367,8 +386,10 @@ dcon_lean_optim <- function(
                   v = c(1, d - 2, d - 2)
                 )
                 rm1[cntr] <- 2 * (d - 2) + 2
-                m1lup[[cntr]] <- data.frame(i = i, j = j, k = k,
-                  l = NA, m = NA, C = C, idx = cntr, which = "L3")
+                m1lup[[cntr]] <- data.frame(
+                  i = i, j = j, k = k,
+                  l = NA, m = NA, C = C, idx = cntr, which = "L3"
+                )
                 cntr <- cntr + 1
               }
             }
@@ -381,17 +402,19 @@ dcon_lean_optim <- function(
     clist <- do.call("rbind", clist)
     m1lup <- do.call("rbind", m1lup)
     A[grep("m1min", rownames(A)), .multigrep(c("dxij", "lijc", "diC", "uijklm"), colnames(A))] <-
-      Matrix::sparseMatrix(i = clist$i, j = clist$j, x = clist$v,
-        dims = c(length(rn), length(cn)), dimnames = list(rn, cn))
+      Matrix::sparseMatrix(
+        i = clist$i, j = clist$j, x = clist$v,
+        dims = c(length(rn), length(cn)), dimnames = list(rn, cn)
+      )
     model$rhs[grep("m1min", names(model$rhs))] <- rm1
 
     ### Indicators dij-> (C2) + (C3)
 
     A[grep("indic", rownames(A)), .multigrep(c("leij", "deij"), colnames(A))] <-
-    rbind(
-      cbind(diag(n_d), -diag(n_d)), # (C2)
-      cbind(-diag(n_d), (d - 1) * diag(n_d)) # (C3)
-    )
+      rbind(
+        cbind(diag(n_d), -diag(n_d)), # (C2)
+        cbind(-diag(n_d), (d - 1) * diag(n_d)) # (C3)
+      )
 
 
     if (mode == "dag") {
@@ -419,8 +442,10 @@ dcon_lean_optim <- function(
       }
       clist <- do.call("rbind", clist)
       A[grep("acyc", rownames(A)), grep("deij", colnames(A))] <-
-        Matrix::sparseMatrix(i = clist$i, j = clist$j, x = clist$v,
-          dims = c(length(rn), length(cn)), dimnames = list(rn, cn))
+        Matrix::sparseMatrix(
+          i = clist$i, j = clist$j, x = clist$v,
+          dims = c(length(rn), length(cn)), dimnames = list(rn, cn)
+        )
 
       ### Redundant constraint
       rn <- grep("redundant", rownames(A), value = TRUE)
@@ -442,8 +467,10 @@ dcon_lean_optim <- function(
       }
       clist <- do.call("rbind", clist)
       A[grep("redundant", rownames(A)), grep("dxij", colnames(A))] <-
-        Matrix::sparseMatrix(i = clist$i, j = clist$j, x = clist$v,
-          dims = c(length(rn), length(cn)), dimnames = list(rn, cn))
+        Matrix::sparseMatrix(
+          i = clist$i, j = clist$j, x = clist$v,
+          dims = c(length(rn), length(cn)), dimnames = list(rn, cn)
+        )
     }
 
     ### Auxiliary variables for min constraint N1 (D1), (D2)
@@ -488,8 +515,10 @@ dcon_lean_optim <- function(
     tab_N1 <- do.call("rbind", tab_N1)
     model$rhs[grep("d1d2min", names(model$rhs))] <- rN1
     A[grep("minN1", rownames(A)), .multigrep(c("dxij", "leij", "nijk"), colnames(A))] <-
-      Matrix::sparseMatrix(i = clist$i, j = clist$j, x = clist$v,
-        dims = c(length(rn), length(cn)), dimnames = list(rn, cn))
+      Matrix::sparseMatrix(
+        i = clist$i, j = clist$j, x = clist$v,
+        dims = c(length(rn), length(cn)), dimnames = list(rn, cn)
+      )
 
     ### CONSTRAINTS FOR LINEARIZING THE OBJECTIVE
 
@@ -521,10 +550,9 @@ dcon_lean_optim <- function(
             }
           }
           R1 <- c(R1, list(list(
-              resvar = 3 * n_z + 3 * n_d + sum(nN1) + sum(nlc) + ic,
-              vars = c(sort(3 * n_z + 2 * n_d + sum(nN1) + keep), length(model$obj))
-            ))
-          )
+            resvar = 3 * n_z + 3 * n_d + sum(nN1) + sum(nlc) + ic,
+            vars = c(sort(3 * n_z + 2 * n_d + sum(nN1) + keep), length(model$obj))
+          )))
         }
       }
     }
@@ -541,10 +569,9 @@ dcon_lean_optim <- function(
         ij <- xij$idx[xij$i == i & xij$j == j]
         keep <- tab_N1$idx[tab_N1$i == i & tab_N1$j == j]
         N1 <- c(N1, list(list(
-            resvar = 3 * n_z + n_d + ij,
-            vars = sort(3 * n_z + 2 * n_d + keep)
-          ))
-        )
+          resvar = 3 * n_z + n_d + ij,
+          vars = sort(3 * n_z + 2 * n_d + keep)
+        )))
       }
     }
 
@@ -559,17 +586,18 @@ dcon_lean_optim <- function(
       for (j in seq_len(i - 1)) {
         for (C in seq_len(n_C)) {
           if (all(!c(i, j) %in% CC[[C]])) {
-            ijC <- max(zijc$idx[zijc$i == i & zijc$j == j & zijc$C == C],
-                      zijc$idx[zijc$i == j & zijc$j == i & zijc$C == C])
+            ijC <- max(
+              zijc$idx[zijc$i == i & zijc$j == j & zijc$C == C],
+              zijc$idx[zijc$i == j & zijc$j == i & zijc$C == C]
+            )
             keep <- c(
               m1lup$idx[m1lup$i == i & m1lup$j == j & m1lup$C == C],
               m1lup$idx[m1lup$i == j & m1lup$j == i & m1lup$C == C]
             )
             M1 <- c(M1, list(list(
-                resvar = 2 * n_z + n_d + ijC,
-                vars = sort(3 * n_z + 3 * n_d + sum(nN1) + keep)
-              ))
-            )
+              resvar = 2 * n_z + n_d + ijC,
+              vars = sort(3 * n_z + 3 * n_d + sum(nN1) + keep)
+            )))
           }
         }
       }
@@ -620,7 +648,8 @@ dcon_lean_optim <- function(
       }
     }
     structure(
-      dag, class = class(dag), edge = edge, dcon = zijC,
+      dag,
+      class = class(dag), edge = edge, dcon = zijC,
       antlen = leij, minlen = lijC, pind = deij, diC = diC
     )
   }
@@ -634,4 +663,3 @@ dcon_lean_optim <- function(
     class = "graphopt"
   )
 }
-
