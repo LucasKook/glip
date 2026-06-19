@@ -27,7 +27,7 @@ dcon_lean_optim <- function(
   gurobi_args = list(),
   verbose = FALSE,
   cache = TRUE,
-  cache_dir = "./.cache-dcon-lean-new",
+  cache_dir = "./.cache-dcon-lean-new-loss",
   mode = c("dag", "dg"),
   ...
 ) {
@@ -142,16 +142,10 @@ dcon_lean_optim <- function(
   merged$weight <- w[merged$idx]
   p <- trafo(praw)
 
-  # Linearize absolute value:
-  # min w |z - b|
-  # t >= z - b
-  # t >= -(z - b)
-  # min wt
-
   ### SETUP GUROBI MODEL
   model <- list()
   model$obj <- c(
-    w, # corresponds to t_{ij}^C
+    "oijc" = w, # corresponds to o_{ij}^C
     "zijc" = rep(0, n_z), # corresponds to z_{ij}^C
     "xij" = rep(0, n_d), # corresponds to x^{->}_{ij}
     rep(0, n_z), # corresponds to l_{ij}^C
@@ -160,6 +154,7 @@ dcon_lean_optim <- function(
     rep(0, n_d), # corresponds to d_ij^->
     rep(0, sum(nlc)), # aux M1
     rep(0, d * n_C), # diC
+    "eijC" = rep(0, 4 * n_z), # eijc
     0 # aux const for min R1
   )
   model$branchpriority <- rep(0, length(model$obj))
@@ -194,15 +189,15 @@ dcon_lean_optim <- function(
   model$modelsense <- "min"
   model$vtype <- rep(
     c("C", "B", "I", "B", "I", "B", "B"),
-    c(n_z, n_z + n_d, n_z + n_d + sum(nN1), n_d, sum(nlc), d * n_C, 1)
+    c(n_z, n_z + n_d, n_z + n_d + sum(nN1), n_d, sum(nlc), d * n_C, 4 * n_z + 1)
   )
   model$lb <- rep(
-    c(0, 1, 0, 1, 0, 1),
-    c(2 * n_z + n_d, n_z + n_d + sum(nN1), n_d, sum(nlc), d * n_C, 1)
+    c(0, 1, 0, 1, 0, 0, 1),
+    c(2 * n_z + n_d, n_z + n_d + sum(nN1), n_d, sum(nlc), d * n_C, 4 * n_z, 1)
   )
   model$ub <- rep(
     c(Inf, 1, Inf, d, 2 * d, 1, 3 * d, 1, 1),
-    c(n_z, n_z + n_d, n_z, n_d, sum(nN1), n_d, sum(nlc), d * n_C, 1)
+    c(n_z, n_z + n_d, n_z, n_d, sum(nN1), n_d, sum(nlc), d * n_C, 4 * n_z + 1)
   )
   if (max_size > 0) {
     nr1b <- d * sum(sapply(seq_len(max_size) - 1, \(x) {
@@ -212,8 +207,6 @@ dcon_lean_optim <- function(
     nr1b <- 1
   }
   model$rhs <- c(
-    "labs" = -p, # linearize objective
-    "labs" = p, # linearize objective
     "d1d2min" = rep(0, sum(nN1)), # D1, D2 auxiliary N1
     "acyc" = rep(0, 2 * n_d), # CH1ab
     "indic" = rep(c(d - 1, -1), each = n_d), # dij->
@@ -221,24 +214,30 @@ dcon_lean_optim <- function(
     "ZLcons" = rep(d, n_z), # (C4*) in the writeup
     "ZLcons" = rep(-d, n_z), # (C5*) in the writeup
     "r1b" = rep(0, nr1b),
-    "redundant" = rep(0, d * (d - 1) / 2)
+    "redundant" = rep(0, d * (d - 1) / 2),
+    "evars" = rep(1, n_z),
+    "ezcons" = rep(0, n_z),
+    "epcons" = p,
+    "oijcloss" = d * rep(rep(c(1, -1), 4), each = n_z) +
+      rep(rep(c(0, d, d, 0), each = 2), each = n_z)
   )
   model$sense <- c(
-    rep(">=", 2 * n_z), # linearize objective
     rep("=", sum(nN1)), # For min-constraint N1
     rep(">=", 2 * n_d), # For acyclicity E1
     rep("<=", 2 * n_d), # dij->
     rep("=", sum(nlc)), # aux M1
     rep("<=", 2 * n_z), # Z, L consistency
     rep("=", nr1b),
-    rep("<=", d * (d - 1) / 2)
+    rep("<=", d * (d - 1) / 2),
+    rep("=", 3 * n_z),
+    rep(rep(c("<=", ">="), 4), each = n_z)
   )
 
   if (cache && all(file.exists(fn))) {
     cat("\nUsing cached constraint matrix and RHS...")
     A <- Matrix::readMM(fn[1])
     rhs <- readRDS(fn[2])
-    rhs[1:(2 * n_z)] <- c(-p, p)
+    rhs[grep("epcons", names(rhs))] <- p
     M1 <- readRDS(fn[3])
     N1 <- readRDS(fn[4])
     R1 <- readRDS(fn[5])
@@ -249,19 +248,45 @@ dcon_lean_optim <- function(
     )
 
     colnames(A) <- make.unique(rep(
-      c("tijC", "zijC", "dxij", "lijc", "leij", "nijk", "deij", "uijklm", "diC", "const1"),
-      c(n_z, n_z, n_d, n_z, n_d, sum(nN1), n_d, sum(nlc), d * n_C, 1)
+      c("oijC", "zijC", "dxij", "lijc", "leij", "nijk", "deij", "uijklm", "diC", "eijC", "const1"),
+      c(n_z, n_z, n_d, n_z, n_d, sum(nN1), n_d, sum(nlc), d * n_C, 4 * n_z, 1)
     ))
     rownames(A) <- make.unique(c(
-      rep("labs", 2 * n_z),
       rep("minN1", sum(nN1)),
       rep("acyc", 2 * n_d),
       rep("indic", 2 * n_d),
       rep("m1min", sum(nlc)),
       rep("ZLcons", 2 * n_z),
       rep("r1b", nr1b),
-      rep("redundant", d * (d - 1) / 2)
+      rep("redundant", d * (d - 1) / 2),
+      rep("evars", n_z),
+      rep("ezcons", n_z),
+      rep("epcons", n_z),
+      rep("oijcloss", 8 * n_z)
     ))
+
+    ### New loss
+    if (verbose) {
+      cat("\nWorking on constraint e-vars and o-vars")
+    }
+
+    A[grep("evars", rownames(A)), grep("eijC", colnames(A))] <-
+      cbind(diag(n_z), diag(n_z), diag(n_z), diag(n_z))
+    A[grep("ezcons", rownames(A)), .multigrep(c("eijC", "zijC"), colnames(A))] <-
+      cbind(0 * diag(n_z), 0 * diag(n_z), diag(n_z), diag(n_z), - diag(n_z))
+    A[grep("epcons", rownames(A)), grep("eijC", colnames(A))] <-
+      cbind(0 * diag(n_z), diag(n_z), 0 * diag(n_z), diag(n_z))
+    A[grep("oijcloss", rownames(A)), .multigrep(c("oijC", "eijC", "lijc"), colnames(A))] <-
+      rbind(
+        cbind(diag(n_z), d * diag(n_z), 0 * diag(n_z), 0 * diag(n_z), 0 * diag(n_z), 0 * diag(n_z)),
+        cbind(diag(n_z), -d * diag(n_z), 0 * diag(n_z), 0 * diag(n_z), 0 * diag(n_z), 0 * diag(n_z)),
+        cbind(diag(n_z), 0 * diag(n_z), d * diag(n_z), 0 * diag(n_z), 0 * diag(n_z), 0 * diag(n_z)),
+        cbind(diag(n_z), 0 * diag(n_z), -d * diag(n_z), 0 * diag(n_z), 0 * diag(n_z), 0 * diag(n_z)),
+        cbind(diag(n_z), 0 * diag(n_z), 0 * diag(n_z), d * diag(n_z), 0 * diag(n_z), diag(n_z)),
+        cbind(diag(n_z), 0 * diag(n_z), 0 * diag(n_z), -d * diag(n_z), 0 * diag(n_z), diag(n_z)),
+        cbind(diag(n_z), 0 * diag(n_z), 0 * diag(n_z), 0 * diag(n_z), d * diag(n_z), 0 * diag(n_z)),
+        cbind(diag(n_z), 0 * diag(n_z), 0 * diag(n_z), 0 * diag(n_z), -d * diag(n_z), 0 * diag(n_z))
+      )
 
     if (max_size > 0) {
       ### R1b
@@ -519,18 +544,6 @@ dcon_lean_optim <- function(
         i = clist$i, j = clist$j, x = clist$v,
         dims = c(length(rn), length(cn)), dimnames = list(rn, cn)
       )
-
-    ### CONSTRAINTS FOR LINEARIZING THE OBJECTIVE
-
-    cmat_t <- rbind(
-      cbind(diag(n_z), -diag(n_z)),
-      cbind(diag(n_z), diag(n_z))
-    )
-
-    A[
-      grep("labs", rownames(A)),
-      .multigrep(c("tijC", "zijC"), colnames(A))
-    ] <- cmat_t
 
     ### Min constraint R1
 
