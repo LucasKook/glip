@@ -29,7 +29,7 @@ dcon_lean_optim <- function(
   cache = TRUE,
   cache_dir = "./.cache-dcon-lean-new-loss",
   mode = c("dag", "dg"),
-  loss_const = d,
+  loss_const = 3,
   ...
 ) {
   if (!requireNamespace("gurobi")) {
