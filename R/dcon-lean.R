@@ -29,6 +29,7 @@ dcon_lean_optim <- function(
   cache = TRUE,
   cache_dir = "./.cache-dcon-lean-new-loss",
   mode = c("dag", "dg"),
+  loss_const = d,
   ...
 ) {
   if (!requireNamespace("gurobi")) {
@@ -155,6 +156,7 @@ dcon_lean_optim <- function(
     rep(0, sum(nlc)), # aux M1
     rep(0, d * n_C), # diC
     "eijC" = rep(0, 4 * n_z), # eijc
+    "bijC" = rep(0, n_z), # bijc
     0 # aux const for min R1
   )
   model$branchpriority <- rep(0, length(model$obj))
@@ -189,15 +191,15 @@ dcon_lean_optim <- function(
   model$modelsense <- "min"
   model$vtype <- rep(
     c("C", "B", "I", "B", "I", "B", "B"),
-    c(n_z, n_z + n_d, n_z + n_d + sum(nN1), n_d, sum(nlc), d * n_C, 4 * n_z + 1)
+    c(n_z, n_z + n_d, n_z + n_d + sum(nN1), n_d, sum(nlc), d * n_C, 5 * n_z + 1)
   )
   model$lb <- rep(
     c(0, 1, 0, 1, 0, 0, 1),
-    c(2 * n_z + n_d, n_z + n_d + sum(nN1), n_d, sum(nlc), d * n_C, 4 * n_z, 1)
+    c(2 * n_z + n_d, n_z + n_d + sum(nN1), n_d, sum(nlc), d * n_C, 5 * n_z, 1)
   )
   model$ub <- rep(
     c(Inf, 1, Inf, d, 2 * d, 1, 3 * d, 1, 1),
-    c(n_z, n_z + n_d, n_z, n_d, sum(nN1), n_d, sum(nlc), d * n_C, 4 * n_z + 1)
+    c(n_z, n_z + n_d, n_z, n_d, sum(nN1), n_d, sum(nlc), d * n_C, 5 * n_z + 1)
   )
   if (max_size > 0) {
     nr1b <- d * sum(sapply(seq_len(max_size) - 1, \(x) {
@@ -218,8 +220,9 @@ dcon_lean_optim <- function(
     "evars" = rep(1, n_z),
     "ezcons" = rep(0, n_z),
     "epcons" = p,
-    "oijcloss" = d * rep(rep(c(1, -1), 4), each = n_z) +
-      rep(rep(c(0, d, d, 0), each = 2), each = n_z)
+    "oijcloss" = rep(c(rep(c(1, -1), 4), 1), each = n_z) +
+      rep(c(0, 0, 1, 1, 1 + loss_const / (loss_const - 1), loss_const / (loss_const - 1),
+        0, 0, 0), each = n_z)
   )
   model$sense <- c(
     rep("=", sum(nN1)), # For min-constraint N1
@@ -230,7 +233,7 @@ dcon_lean_optim <- function(
     rep("=", nr1b),
     rep("<=", d * (d - 1) / 2),
     rep("=", 3 * n_z),
-    rep(rep(c("<=", ">="), 4), each = n_z)
+    rep(c(rep(c("<=", ">="), 4), "<="), each = n_z)
   )
 
   if (cache && all(file.exists(fn))) {
@@ -248,8 +251,8 @@ dcon_lean_optim <- function(
     )
 
     colnames(A) <- make.unique(rep(
-      c("oijC", "zijC", "dxij", "lijc", "leij", "nijk", "deij", "uijklm", "diC", "eijC", "const1"),
-      c(n_z, n_z, n_d, n_z, n_d, sum(nN1), n_d, sum(nlc), d * n_C, 4 * n_z, 1)
+      c("oijC", "zijC", "dxij", "lijc", "leij", "nijk", "deij", "uijklm", "diC", "eijC", "bijC", "const1"),
+      c(n_z, n_z, n_d, n_z, n_d, sum(nN1), n_d, sum(nlc), d * n_C, 4 * n_z, n_z, 1)
     ))
     rownames(A) <- make.unique(c(
       rep("minN1", sum(nN1)),
@@ -262,7 +265,7 @@ dcon_lean_optim <- function(
       rep("evars", n_z),
       rep("ezcons", n_z),
       rep("epcons", n_z),
-      rep("oijcloss", 8 * n_z)
+      rep("oijcloss", 9 * n_z)
     ))
 
     ### New loss
@@ -276,16 +279,17 @@ dcon_lean_optim <- function(
       cbind(0 * diag(n_z), 0 * diag(n_z), diag(n_z), diag(n_z), - diag(n_z))
     A[grep("epcons", rownames(A)), grep("eijC", colnames(A))] <-
       cbind(0 * diag(n_z), diag(n_z), 0 * diag(n_z), diag(n_z))
-    A[grep("oijcloss", rownames(A)), .multigrep(c("oijC", "eijC", "lijc"), colnames(A))] <-
+    A[grep("oijcloss", rownames(A)), .multigrep(c("oijC", "eijC", "lijc", "bijC"), colnames(A))] <-
       rbind(
-        cbind(diag(n_z), d * diag(n_z), 0 * diag(n_z), 0 * diag(n_z), 0 * diag(n_z), 0 * diag(n_z)),
-        cbind(diag(n_z), -d * diag(n_z), 0 * diag(n_z), 0 * diag(n_z), 0 * diag(n_z), 0 * diag(n_z)),
-        cbind(diag(n_z), 0 * diag(n_z), d * diag(n_z), 0 * diag(n_z), 0 * diag(n_z), 0 * diag(n_z)),
-        cbind(diag(n_z), 0 * diag(n_z), -d * diag(n_z), 0 * diag(n_z), 0 * diag(n_z), 0 * diag(n_z)),
-        cbind(diag(n_z), 0 * diag(n_z), 0 * diag(n_z), d * diag(n_z), 0 * diag(n_z), diag(n_z)),
-        cbind(diag(n_z), 0 * diag(n_z), 0 * diag(n_z), -d * diag(n_z), 0 * diag(n_z), diag(n_z)),
-        cbind(diag(n_z), 0 * diag(n_z), 0 * diag(n_z), 0 * diag(n_z), d * diag(n_z), 0 * diag(n_z)),
-        cbind(diag(n_z), 0 * diag(n_z), 0 * diag(n_z), 0 * diag(n_z), -d * diag(n_z), 0 * diag(n_z))
+        cbind(diag(n_z), diag(n_z), 0 * diag(n_z), 0 * diag(n_z), 0 * diag(n_z), 0 * diag(n_z), 0 * diag(n_z)),
+        cbind(diag(n_z), -diag(n_z), 0 * diag(n_z), 0 * diag(n_z), 0 * diag(n_z), 0 * diag(n_z), 0 * diag(n_z)),
+        cbind(diag(n_z), 0 * diag(n_z), diag(n_z), 0 * diag(n_z), 0 * diag(n_z), 0 * diag(n_z), 0 * diag(n_z)),
+        cbind(diag(n_z), 0 * diag(n_z), -diag(n_z), 0 * diag(n_z), 0 * diag(n_z), 0 * diag(n_z), 0 * diag(n_z)),
+        cbind(diag(n_z), 0 * diag(n_z), 0 * diag(n_z), diag(n_z), 0 * diag(n_z), 1 / (loss_const - 1) * diag(n_z), diag(n_z)), # (16)
+        cbind(diag(n_z), 0 * diag(n_z), 0 * diag(n_z), -diag(n_z), 0 * diag(n_z), 1 / (loss_const - 1) * diag(n_z), 0 * diag(n_z)), # (17)
+        cbind(diag(n_z), 0 * diag(n_z), 0 * diag(n_z), 0 * diag(n_z), diag(n_z), 0 * diag(n_z), 0 * diag(n_z)),
+        cbind(diag(n_z), 0 * diag(n_z), 0 * diag(n_z), 0 * diag(n_z), -diag(n_z), 0 * diag(n_z), 0 * diag(n_z)),
+        cbind(diag(n_z), 0 * diag(n_z), 0 * diag(n_z), diag(n_z), 0 * diag(n_z), 0 * diag(n_z), -diag(n_z))
       )
 
     if (max_size > 0) {
