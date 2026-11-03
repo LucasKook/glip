@@ -47,9 +47,7 @@ dcon_lean_optim <- function(
   .bk_unsupported(list(...), .bk_args_dag, "dcon_lean_optim()",
     "DAGs and DGs have only directed edges")
   warmstart <- .bk_warmstart(warmstart, bk$forbidden, bk$required)
-  if (!requireNamespace("gurobi")) {
-    warning("Solver `gurobi` not available.")
-  }
+  .require_gurobi()
 
   weight_type <- match.arg(weight_type)
 

@@ -81,7 +81,7 @@ prf1 <- function(predicted, groundtruth, ...) {
 }
 
 #' @exportS3Method prf1 default
-prf1.default <- function(predicted, groundtruth, summarize = TRUE) {
+prf1.default <- function(predicted, groundtruth, summarize = TRUE, ...) {
   G1 <- predicted
   G2 <- groundtruth
   .check_graphs(G1, G2)
@@ -114,7 +114,7 @@ prf1.default <- function(predicted, groundtruth, summarize = TRUE) {
 }
 
 #' @exportS3Method prf1 pag
-prf1.pag <- function(predicted, groundtruth, summarize = TRUE) {
+prf1.pag <- function(predicted, groundtruth, summarize = TRUE, ...) {
   G1 <- predicted
   G2 <- groundtruth
   .check_graphs(G1, G2)

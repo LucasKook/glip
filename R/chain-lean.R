@@ -39,9 +39,7 @@ chain_lean_optim <- function(
     edge_penalty = 0,
     ...) {
 
-  if (!requireNamespace("gurobi")) {
-    warning("Solver `gurobi` not available.")
-  }
+  .require_gurobi()
 
   weight_type <- match.arg(weight_type)
   bk <- .bk_validate(V,

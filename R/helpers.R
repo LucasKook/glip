@@ -57,6 +57,29 @@
   nrow(G)
 }
 
+### Modes (classes of graphs and encodings) supported by learn_graph()
+.modes <- c(
+  "dag", "dg", "dag-dcon", "dg-dcon", "dag-dc", "dg-dc", "admg", "dmg",
+  "admg-lean", "dmg-lean", "admg-dc", "dmg-dc", "chain", "chain-dcon"
+)
+
+### Whether the solver package gurobi can be loaded (a function of its own so
+### that tests can mock it)
+.has_gurobi <- function() {
+  requireNamespace("gurobi", quietly = TRUE)
+}
+
+.require_gurobi <- function() {
+  if (!.has_gurobi()) {
+    stop(
+      "Package `gurobi` is required to solve the optimization problem. It is ",
+      "not on CRAN but distributed with the Gurobi Optimizer ",
+      "(https://www.gurobi.com), which also requires a license."
+    )
+  }
+  invisible(TRUE)
+}
+
 .get_opt <- function(mode) {
   switch(mode,
     "dag-dc" = dag_optim,
@@ -68,6 +91,7 @@
     "chain" = chain_lean_optim,
     "chain-dcon" = chain_optim,
     "dag-dcon" = dcon_optim,
+    "dg-dcon" = dcon_optim,
     "dag" = dcon_lean_optim,
     "dg" = dcon_lean_optim,
     "admg-lean" = admg_lean_optim,
@@ -88,6 +112,7 @@
     "chain" = .check_csep(A, B, C, G),
     "chain-dcon" = .check_csep(A, B, C, G),
     "dag-dcon" = .check_msep(A, B, C, G),
+    "dg-dcon" = .check_msep(A, B, C, G),
     "dag-dc" = .check_msep(A, B, C, G),
     "dg-dc" = .check_msep(A, B, C, G),
     "mag" = .check_dsepmag(A, B, C, G),
@@ -149,8 +174,9 @@
     "chain" = .random_cg(d, V, ...),
     "chain-dcon" = .random_cg(d, V, ...),
     "dag-dcon" = .random_dmg(d, V, acyclic = TRUE, ...)$M1,
+    "dg-dcon" = .random_dmg(d, V, acyclic = FALSE, ...)$M1,
     "dag-dc" = .random_dmg(d, V, acyclic = TRUE, ...)$M1,
-    "dg-dc" = .random_dmg(d, V, acyclic = TRUE, ...)$M1
+    "dg-dc" = .random_dmg(d, V, acyclic = FALSE, ...)$M1
   )
 }
 
@@ -183,6 +209,7 @@
     "chain" = .cg2lcg(G),
     "chain-dcon" = .cg2lcg(G),
     "dag-dcon" = .dag2ess(G),
+    "dg-dcon" = NULL,
     "dag-dc" = .dag2ess(G),
     "dg-dc" = NULL
   )

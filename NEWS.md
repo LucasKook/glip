@@ -42,6 +42,29 @@
   matrices (which include the acyclicity constraints for DAGs only).
   Existing caches for these functions are rebuilt on first use.
 * `tests/testthat.R` loads and checks glip.
+* `learn_graph()`, `falsify_graph()` and the oracle tests failed with
+  `parallel = TRUE` unless future.apply was attached, because the package
+  imported nothing in its NAMESPACE. Functions from methods, stats, utils,
+  future, future.apply, comets and pcalg are now imported explicitly.
+* With `comets = FALSE` and a test other than `"gaussCItest"`, a missing
+  bnlearn package now raises an error. Previously, every test failed
+  silently (with a warning) and returned a p-value close to one.
+* Dependencies: bnlearn is now suggested, graph, methods and utils are
+  imported, and the unused Formula, mvtnorm and stringr were removed.
+* The methods of `prf1()` now accept `...` like the generic.
+* `dcon_optim()`, `dag_optim()`, `admg_lean_optim()`, `admg_optim()` and
+  `chain_optim()` (modes `"dag-dcon"`, `"dag-dc"`, `"dg-dc"`,
+  `"admg-lean"`, `"dmg-lean"`, `"admg-dc"`, `"dmg-dc"`, `"chain-dcon"`)
+  failed for `max_size = 0`.
+* `mode = "dg-dcon"` is now supported by `learn_graph()` and the internal
+  helpers; `dcon_optim()` already supported it.
+* `learn_graph()` checks `mode` and lists the supported modes in the error
+  and the documentation. The warning that learning relies on d-separation
+  now applies to all modes for DGs and DMGs.
+* Without the gurobi package, the optimizers now stop immediately with an
+  informative error instead of warning, building the model, and failing
+  with "object 'sol' not found".
+* `R CMD check` passes without warnings or notes.
 * `learn_graph()` with `mode = "dag-dc"` or `"dg-dc"` failed because it
   passed an FCI (ADMG) warm start to a DAG optimizer; all DAG and DG modes
   now use a PC warm start. No warm start is computed for `"chain-dcon"`,
