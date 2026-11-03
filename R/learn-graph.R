@@ -6,7 +6,13 @@
 #'
 #' @param data A `data.frame` with variables as columns.
 #' @param max_size Maximum subset size for conditioning.
-#' @param mode Type of graph to learn ("dag", "admg", "dmg", "dg", or "chain").
+#' @param mode Class of graphs and encoding: \code{"dag"}, \code{"dg"},
+#'   \code{"dag-dcon"}, \code{"dg-dcon"}, \code{"dag-dc"}, \code{"dg-dc"}
+#'   (directed acyclic or directed graphs), \code{"admg"}, \code{"dmg"},
+#'   \code{"admg-lean"}, \code{"dmg-lean"}, \code{"admg-dc"},
+#'   \code{"dmg-dc"} (acyclic or general directed mixed graphs),
+#'   \code{"chain"}, \code{"chain-dcon"} (LWF chain graphs). Default:
+#'   \code{"dag"}.
 #' @param test Conditional independence test ("gcm", "gaussCItest").
 #' @param naive Logical. If TRUE, assumes causal sufficiency.
 #' @param parallel Logical. Whether to parallelize conditional independence tests.
@@ -133,8 +139,14 @@ learn_graph <- function(
   forbidden_anc = NULL, required_anc = NULL, edge_constraints = NULL,
   edge_penalty = 0, ...
 ) {
-  if (mode %in% c("dmg", "dg")) {
-    warning("Using `mode = 'dmg'` or `mode = 'dg'` relies on d-separation
+  if (length(mode) != 1 || !mode %in% .modes) {
+    stop(
+      "`mode` must be one of ",
+      paste0("\"", .modes, "\"", collapse = ", "), "."
+    )
+  }
+  if (mode %in% c("dg", "dmg", "dg-dcon", "dg-dc", "dmg-lean", "dmg-dc")) {
+    warning("Learning DGs or DMGs relies on d-separation
       and thus implicitly assumes a linear Gaussian SCM.")
   }
 
@@ -187,8 +199,8 @@ learn_graph <- function(
       suff <- list(C = cor(data), n = nrow(data))
       cit <- pcalg::gaussCItest
     }
-    if (mode %in% c("dag", "dg", "dag-dcon", "dag-dc", "dg-dc")) {
-      bkpc <- .bk_pcalg(bkv, d, acyclic = !mode %in% c("dg", "dg-dc"))
+    if (mode %in% c("dag", "dg", "dag-dcon", "dg-dcon", "dag-dc", "dg-dc")) {
+      bkpc <- .bk_pcalg(bkv, d, acyclic = !mode %in% c("dg", "dg-dcon", "dg-dc"))
       pcres <- pcalg::pc(suff, cit,
         labels = vars, alpha = alpha,
         fixedGaps = bkpc$fixedGaps, fixedEdges = bkpc$fixedEdges

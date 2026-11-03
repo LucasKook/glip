@@ -41,9 +41,7 @@ admg_lean_optim <- function(
     required_anc = NULL, edge_constraints = NULL, edge_penalty = 0,
     ...) {
 
-  if (!requireNamespace("gurobi")) {
-    warning("Solver `gurobi` not available.")
-  }
+  .require_gurobi()
 
   if (!is.null(warmstart) & !is.list(warmstart) & is.matrix(warmstart)) {
     warmstart <- .to_admg(warmstart)
@@ -77,6 +75,9 @@ admg_lean_optim <- function(
     utils::combn(d, x, simplify = FALSE)),
     recursive = FALSE
   )
+  if (max_size == 0) {
+    CC <- list(integer(0))
+  }
   n_C <- length(CC)
 
   ### Number of directed edges, excluding diagonal
@@ -295,6 +296,13 @@ admg_lean_optim <- function(
     coef = list(pairs = xij, offset = 2 * n_z),
     coef_bi = list(pairs = bxij, offset = bx_off, symmetric = TRUE)
   ), V, length(model$obj))
+  if (max_size > 0) {
+    nr1b <- d * sum(sapply(seq_len(max_size) - 1, \(x) {
+      choose(d, x)
+    }))
+  } else {
+    nr1b <- 1
+  }
   model$rhs <- c(
     "labs" = -p, # linearize objective
     "labs" = p, # linearize objective
@@ -307,9 +315,7 @@ admg_lean_optim <- function(
     "C6to9" = rep(0, 3 * d * (d - 1)), # C6to9
     "C10to11" = rep(c(d, -d), each = n_lb), # C10 to 11
     "f1f2min" = rep(0, n_lb + n_lb * (d - 2)), # Min O1 aux
-    "r1b" = rep(0, nr1b <- d * sum(sapply(seq_len(max_size) - 1, \(x) {
-      choose(d, x)
-    }))),
+    "r1b" = rep(0, nr1b),
     "redundant" = rep(0, d * (d - 1) / 2)
   )
   model$sense <- c(
@@ -359,28 +365,30 @@ admg_lean_optim <- function(
       rep("redundant", d * (d - 1) / 2)
     ))
 
-    ### R1b
-    if (verbose) {
-      cat("\nWorking on constraint R1b")
-    }
+    if (max_size > 0) {
+      ### R1b
+      if (verbose) {
+        cat("\nWorking on constraint R1b")
+      }
 
-    rn <- grep("r1b", rownames(A), value = TRUE)
-    cn <- grep("diC", colnames(A), value = TRUE)
-    clist <- list()[rep(1, length(rn))]
-    cntr <- 1
-    for (i in seq_len(d)) {
-      for (C in seq_len(n_C)) {
-        if (i %in% CC[[C]]) {
-          iC <- dic$idx[dic$i == i & dic$C == C]
-          clist[[cntr]] <- data.frame(i = cntr, j = iC, v = 1)
-          cntr <- cntr + 1
+      rn <- grep("r1b", rownames(A), value = TRUE)
+      cn <- grep("diC", colnames(A), value = TRUE)
+      clist <- list()[rep(1, length(rn))]
+      cntr <- 1
+      for (i in seq_len(d)) {
+        for (C in seq_len(n_C)) {
+          if (i %in% CC[[C]]) {
+            iC <- dic$idx[dic$i == i & dic$C == C]
+            clist[[cntr]] <- data.frame(i = cntr, j = iC, v = 1)
+            cntr <- cntr + 1
+          }
         }
       }
+      clist <- do.call("rbind", clist)
+      A[grep("r1b", rownames(A)), grep("diC", colnames(A))] <-
+        Matrix::sparseMatrix(i = clist$i, j = clist$j, x = clist$v,
+          dims = c(length(rn), length(cn)), dimnames = list(rn, cn))
     }
-    clist <- do.call("rbind", clist)
-    A[grep("r1b", rownames(A)), grep("diC", colnames(A))] <-
-      Matrix::sparseMatrix(i = clist$i, j = clist$j, x = clist$v,
-        dims = c(length(rn), length(cn)), dimnames = list(rn, cn))
 
     ### RHS F1 F2
     if (max_size > 1) {

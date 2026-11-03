@@ -41,7 +41,13 @@ learn_graph(
 
 \item{max_size}{Maximum subset size for conditioning.}
 
-\item{mode}{Type of graph to learn ("dag", "admg", "dmg", "dg", or "chain").}
+\item{mode}{Class of graphs and encoding: \code{"dag"}, \code{"dg"},
+\code{"dag-dcon"}, \code{"dg-dcon"}, \code{"dag-dc"}, \code{"dg-dc"}
+(directed acyclic or directed graphs), \code{"admg"}, \code{"dmg"},
+\code{"admg-lean"}, \code{"dmg-lean"}, \code{"admg-dc"},
+\code{"dmg-dc"} (acyclic or general directed mixed graphs),
+\code{"chain"}, \code{"chain-dcon"} (LWF chain graphs). Default:
+\code{"dag"}.}
 
 \item{test}{Conditional independence test ("gcm", "gaussCItest").}
 

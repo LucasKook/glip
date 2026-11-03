@@ -43,9 +43,7 @@ admg_cubic_optim <- function(
     required_anc = NULL, edge_constraints = NULL, edge_penalty = 0,
     ...) {
 
-  if (!requireNamespace("gurobi")) {
-    warning("Solver `gurobi` not available.")
-  }
+  .require_gurobi()
 
   if (!is.null(warmstart) & !is.list(warmstart) & is.matrix(warmstart)) {
     warmstart <- .to_admg(warmstart)

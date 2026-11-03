@@ -36,9 +36,7 @@ dag_optim <- function(
     edge_penalty = 0,
     ...) {
 
-  if (!requireNamespace("gurobi")) {
-    warning("Solver `gurobi` not available.")
-  }
+  .require_gurobi()
 
   mode <- match.arg(mode)
   weight_type <- match.arg(weight_type)
@@ -64,6 +62,9 @@ dag_optim <- function(
     utils::combn(d, x, simplify = FALSE)),
     recursive = FALSE
   )
+  if (max_size == 0) {
+    CC <- list(integer(0))
+  }
   n_C <- length(CC)
 
   ### Number of directed edges, excluding diagonal

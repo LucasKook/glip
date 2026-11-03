@@ -38,9 +38,7 @@ trafo = \(x) as.numeric(x <= 0.05),
     edge_penalty = 0,
     ...) {
 
-  if (!requireNamespace("gurobi")) {
-    warning("Solver `gurobi` not available.")
-  }
+  .require_gurobi()
 
   if (!is.null(warmstart) & !is.list(warmstart) & is.matrix(warmstart)) {
     warmstart <- .to_admg(warmstart)
@@ -74,6 +72,9 @@ trafo = \(x) as.numeric(x <= 0.05),
     utils::combn(d, x, simplify = FALSE)),
     recursive = FALSE
   )
+  if (max_size == 0) {
+    CC <- list(integer(0))
+  }
   n_C <- length(CC)
 
   ### Number of directed edges, excluding diagonal

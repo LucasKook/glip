@@ -62,6 +62,13 @@ falsify_graph <- function(
 .run_tests <- function(to_test, data, test, test_args, my_apply, comets, ...) {
   sets <- to_test$sets
   fml <- to_test$formulas
+  if (!comets && test != "gaussCItest" &&
+    !requireNamespace("bnlearn", quietly = TRUE)) {
+    stop(
+      "Package `bnlearn` is required for `test = \"", test,
+      "\"` with `comets = FALSE`."
+    )
+  }
 
   pb <- utils::txtProgressBar(min = 0, max = length(fml), style = 3, width = 60)
   my_apply(seq_along(fml), \(iter) {
@@ -89,7 +96,7 @@ falsify_graph <- function(
         }
       )
     } else {
-      res <- do.call("comets", c(list(
+      res <- do.call(comets::comets, c(list(
         formula = fml[[iter]], data = data, test = test
       ), test_args))
     }

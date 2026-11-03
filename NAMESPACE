@@ -10,3 +10,26 @@ export(chain_lean_optim)
 export(dcon_lean_optim)
 export(falsify_graph)
 export(learn_graph)
+importFrom(comets,comets)
+importFrom(future,
+  multisession,
+  plan,
+  sequential
+)
+importFrom(future.apply,future_lapply)
+importFrom(methods,
+  as,
+  new
+)
+importFrom(pcalg,gaussCItest)
+importFrom(stats,
+  as.formula,
+  cor,
+  rbinom,
+  runif
+)
+importFrom(utils,
+  combn,
+  setTxtProgressBar,
+  txtProgressBar
+)

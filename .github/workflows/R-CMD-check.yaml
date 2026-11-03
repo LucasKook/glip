@@ -81,6 +81,3 @@ jobs:
         with:
           upload-snapshots: true
           build_args: 'c("--no-manual","--compact-vignettes=gs+qpdf")'
-          # The package currently has check warnings (undeclared imports,
-          # S3 method consistency); fail on errors only
-          error-on: '"error"'
