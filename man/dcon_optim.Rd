@@ -18,6 +18,12 @@ dcon_optim(
   cache = TRUE,
   cache_dir = "./.cache-dcon",
   mode = c("dag-dcon", "dg-dcon"),
+  forbidden = NULL,
+  required = NULL,
+  forbidden_anc = NULL,
+  required_anc = NULL,
+  edge_constraints = NULL,
+  edge_penalty = 0,
   ...
 )
 }
@@ -48,6 +54,49 @@ dcon_optim(
 \item{cache_dir}{Character. Directory where cache files are saved.}
 
 \item{mode}{Character. Learning mode: "admg" (default) or "dmg".}
+
+\item{forbidden}{Optional \code{d} by \code{d} 0/1 (or logical) matrix;
+\code{forbidden[i, j] = 1} forbids the directed edge \code{V[i] -> V[j]}.
+Use, e.g., to declare a variable exogenous (forbid all edges into it).
+Default: \code{NULL} (no constraints).}
+
+\item{required}{Optional \code{d} by \code{d} 0/1 (or logical) matrix;
+\code{required[i, j] = 1} requires the directed edge
+\code{V[i] -> V[j]}. Default: \code{NULL}.}
+
+\item{forbidden_anc, required_anc}{Optional \code{d} by \code{d} 0/1 (or
+logical) matrices; \code{[i, j] = 1} enforces that \code{V[i]} is not
+or is an ancestor of \code{V[j]}, i.e., that there is no or there is a
+directed path from \code{V[i]} to \code{V[j]} (in the directed part of
+ADMGs and DMGs). For chain graphs, these refer to anterior paths, i.e.,
+paths of undirected edges and of directed edges pointing towards
+\code{V[j]}. Default: \code{NULL}.}
+
+\item{edge_constraints}{Optional list of linear constraints on the edge
+indicators. Each constraint is a list with \code{coef}, a \code{d} by
+\code{d} numeric matrix whose entry \code{[i, j]} is the coefficient of
+the indicator of \code{V[i] -> V[j]}, \code{sense} (\code{"<="},
+\code{">="} or \code{"="}) and \code{rhs} (a number). For ADMGs and
+DMGs, a constraint may contain \code{coef_bi}, a symmetric \code{d} by
+\code{d} matrix whose entry \code{[i, j]} is the coefficient of the
+indicator of \code{V[i] <-> V[j]}, in addition to or instead of
+\code{coef}. For chain graphs, the indicator of \code{V[i] -> V[j]} is
+one if \code{V[i] -> V[j]} or \code{V[i] - V[j]}, so an undirected edge
+sets the indicators of both directions to one. A single constraint may
+be passed without the enclosing list. E.g.,
+\code{list(coef = C, sense = "<=", rhs = 1)} with
+\code{C[a, c] = C[b, c] = 1} (and zero otherwise) forbids \code{c} to
+be a common child of \code{a} and \code{b}, and \code{sense = ">="}
+with \code{C[a, b] = C[b, a] = 1} requires \code{a} and \code{b} to be
+adjacent by a directed edge. Default: \code{NULL}.}
+
+\item{edge_penalty}{Non-negative number added to the objective for each
+edge indicator that is one (directed and bidirected edges; for chain
+graphs, an undirected edge counts twice), e.g., to break ties among
+optimal graphs in favour of sparse ones. To act as a pure tie breaker,
+choose it such that \code{edge_penalty} times the number of edge
+indicators (\code{d * (d - 1)}, plus \code{d * (d - 1) / 2} for ADMGs
+and DMGs) is smaller than the smallest test weight. Default: \code{0}.}
 
 \item{...}{Additional arguments passed to internals.}
 }

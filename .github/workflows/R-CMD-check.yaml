@@ -1,0 +1,86 @@
+# Workflow derived from https://github.com/r-lib/actions/tree/v2/examples
+# Need help debugging build failures? Start at https://github.com/r-lib/actions#where-to-find-help
+#
+# Gurobi is not on CRAN: the workflow downloads the Gurobi distribution and
+# installs its R package. Gurobi needs a license; set the repository secrets
+# GUROBI_WLSACCESSID, GUROBI_WLSSECRET and GUROBI_LICENSEID (the three
+# values of a Web License Service gurobi.lic file). Without them (e.g., for
+# pull requests from forks), tests that need the solver are skipped.
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+name: R-CMD-check.yaml
+
+permissions: read-all
+
+jobs:
+  R-CMD-check:
+    runs-on: ubuntu-latest
+
+    name: ubuntu-latest (release)
+
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+      R_KEEP_PKG_SOURCE: yes
+      GUROBI_VERSION: 13.0.3
+      # gurobi (in Suggests) is installed from the Gurobi distribution
+      _R_CHECK_FORCE_SUGGESTS_: false
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: r-lib/actions/setup-pandoc@v2
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: release
+          use-public-rspm: true
+
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          # Only hard dependencies: the Suggests field lists gurobi, which
+          # cannot be installed from CRAN
+          dependencies: '"hard"'
+          extra-packages: any::rcmdcheck, any::testthat, any::slam, any::bnlearn
+          needs: check
+
+      - name: Install Gurobi and its R package
+        run: |
+          short="${GUROBI_VERSION%.*}"
+          dir="$HOME/gurobi${GUROBI_VERSION//./}/linux64"
+          curl -sSfL "https://packages.gurobi.com/${short}/gurobi${GUROBI_VERSION}_linux64.tar.gz" | tar -xz -C "$HOME"
+          echo "GUROBI_HOME=$dir" >> "$GITHUB_ENV"
+          echo "LD_LIBRARY_PATH=$dir/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" >> "$GITHUB_ENV"
+          ls "$dir/R"
+          R CMD INSTALL "$dir"/R/gurobi_*.tar.gz
+
+      - name: Set up Gurobi license
+        env:
+          WLSACCESSID: ${{ secrets.GUROBI_WLSACCESSID }}
+          WLSSECRET: ${{ secrets.GUROBI_WLSSECRET }}
+          LICENSEID: ${{ secrets.GUROBI_LICENSEID }}
+        run: |
+          if [ -n "$WLSACCESSID" ] && [ -n "$WLSSECRET" ] && [ -n "$LICENSEID" ]; then
+            umask 077
+            printf 'WLSACCESSID=%s\nWLSSECRET=%s\nLICENSEID=%s\n' \
+              "$WLSACCESSID" "$WLSSECRET" "$LICENSEID" > "$RUNNER_TEMP/gurobi.lic"
+            echo "GRB_LICENSE_FILE=$RUNNER_TEMP/gurobi.lic" >> "$GITHUB_ENV"
+          else
+            echo "::warning::Gurobi license secrets not set: tests that need the solver are skipped."
+          fi
+
+      - name: Check Gurobi
+        run: |
+          Rscript -e 'm <- list(A = matrix(1, 1, 1), obj = 1, rhs = 1, sense = ">=", vtype = "B"); r <- try(gurobi::gurobi(m, list(OutputFlag = 0))); if (inherits(r, "try-error")) cat("::warning::Gurobi not usable, solver tests are skipped\n") else cat("Gurobi status:", r$status, "\n")'
+
+      - uses: r-lib/actions/check-r-package@v2
+        with:
+          upload-snapshots: true
+          build_args: 'c("--no-manual","--compact-vignettes=gs+qpdf")'
+          # The package currently has check warnings (undeclared imports,
+          # S3 method consistency); fail on errors only
+          error-on: '"error"'

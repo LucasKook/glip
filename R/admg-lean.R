@@ -21,6 +21,7 @@
 #' @param cache_dir Character. Directory where cache files are saved.
 #' @param mode Character. Learning mode: "admg" (default) or "dmg".
 #' @param ... Additional arguments passed to internals.
+#' @inheritParams learn_graph
 #'
 #' @return An object of class \code{graphopt} with components:
 #'   \describe{
@@ -35,7 +36,9 @@ admg_lean_optim <- function(
     tests, d = 3, max_size = d - 2, V = letters[1:d], trafo = \(x) as.numeric(x <= 0.05),
     weight_type = c("const", "inv", "log", "size"), warmstart = NULL, edgehints = NULL,
     gurobi_args = list(), verbose = FALSE, cache = TRUE, cache_dir = "./.cache-admg-lean-redundant",
-    mode = c("admg-lean", "dmg-lean"),
+    mode = c("admg-lean", "dmg-lean"), forbidden = NULL, required = NULL,
+    forbidden_bi = NULL, required_bi = NULL, forbidden_anc = NULL,
+    required_anc = NULL, edge_constraints = NULL, edge_penalty = 0,
     ...) {
 
   if (!requireNamespace("gurobi")) {
@@ -48,6 +51,18 @@ admg_lean_optim <- function(
 
   mode <- match.arg(mode)
   weight_type <- match.arg(weight_type)
+  bk <- .bk_validate(V,
+    forbidden = forbidden, required = required,
+    forbidden_bi = forbidden_bi, required_bi = required_bi,
+    forbidden_anc = forbidden_anc, required_anc = required_anc,
+    edge_penalty = edge_penalty
+  )
+  .bk_unsupported(list(...), .bk_args_admg, "admg_lean_optim()",
+    "ADMGs and DMGs have no undirected edges")
+  if (!is.null(warmstart)) {
+    warmstart$M1 <- .bk_warmstart(warmstart$M1, bk$forbidden, bk$required)
+    warmstart$M2 <- .bk_warmstart(warmstart$M2, bk$forbidden_bi, bk$required_bi)
+  }
 
   fn <- file.path(
     cache_dir,
@@ -257,6 +272,29 @@ admg_lean_optim <- function(
     1, 2 * (d - 1) + 1, 1, d, 1),
     c(n_z, n_z + n_d, n_z, n_d, sum(nN1), n_d, sum(nkc), n_b + n_d,
       n_lb, n_lb, n_lb + n_lb * (d - 2), ndic, 1, 1))
+  ### Background knowledge as hard bounds on the directed and bidirected edge
+  ### indicators and the path indicators d_ij^-> (= 1 iff there is no
+  ### directed path from i to j), edge penalty, and rows for linear edge
+  ### constraints
+  bx_off <- 3 * n_z + 3 * n_d + sum(nN1) + sum(nkc)
+  model <- .bk_bounds(model, list(
+    list(
+      pairs = xij, offset = 2 * n_z, zero = bk$forbidden, one = bk$required,
+      penalty = bk$edge_penalty
+    ),
+    list(
+      pairs = bxij, offset = bx_off, zero = bk$forbidden_bi,
+      one = bk$required_bi, penalty = bk$edge_penalty
+    ),
+    list(
+      pairs = xij, offset = 3 * n_z + 2 * n_d + sum(nN1),
+      zero = bk$required_anc, one = bk$forbidden_anc
+    )
+  ))
+  ec <- .edge_constraints(edge_constraints, list(
+    coef = list(pairs = xij, offset = 2 * n_z),
+    coef_bi = list(pairs = bxij, offset = bx_off, symmetric = TRUE)
+  ), V, length(model$obj))
   model$rhs <- c(
     "labs" = -p, # linearize objective
     "labs" = p, # linearize objective
@@ -810,6 +848,8 @@ admg_lean_optim <- function(
   ### INCLUDE CONSTRAINTS
   model$A <- A
   model$genconmin <- c(N1, P1, O1, R1)
+  ### Linear edge constraints, appended after the (cached) constraint matrix
+  model <- .bk_rows(model, ec)
 
   if (verbose) {
     cat("\nModel setup done. Solving now...\n")
@@ -818,6 +858,12 @@ admg_lean_optim <- function(
   ### SOLVE
   if (requireNamespace("gurobi")) {
     sol <- gurobi::gurobi(model, gurobi_args)
+  }
+
+  ### No incumbent (infeasible constraints or solver stopped before finding a
+  ### feasible solution): return the solver output only
+  if (is.null(sol$x)) {
+    return(.no_incumbent(sol))
   }
 
   ### Convert solution to DMG
