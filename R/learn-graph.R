@@ -15,7 +15,10 @@
 #' @param trafo Transformation function for p-values. Default is hard
 #'     thresholding at `alpha`
 #' @param weight_type Type of edge weights (default: "const", or "log", "inv").
-#' @param warmstart Optional warm-start graph matrix (or list for ADMGs). Default: `NULL`.
+#' @param warmstart Optional warm-start graph matrix (or list for ADMGs).
+#'   Default: `NULL`, in which case a warm start is computed by PC (DAG and DG
+#'   modes) or FCI (ADMG and DMG modes) using the background knowledge as far
+#'   as possible (see Details); no warm start is computed for chain graphs.
 #' @param edgehints Optional edge hints for optimization.
 #' @param gurobi_args List of arguments passed to gurobi solver.
 #' @param test_args Additional arguments for the conditional independence test.
@@ -23,7 +26,98 @@
 #' @param verbose Logical. Print extra output.
 #' @param cache Logical. Cache constraints for optimization.
 #' @param comets Logical. Use `comets` for the conditional independence tests.
+#' @param forbidden Optional \code{d} by \code{d} 0/1 (or logical) matrix;
+#'   \code{forbidden[i, j] = 1} forbids the directed edge \code{V[i] -> V[j]}.
+#'   Use, e.g., to declare a variable exogenous (forbid all edges into it).
+#'   Default: \code{NULL} (no constraints).
+#' @param required Optional \code{d} by \code{d} 0/1 (or logical) matrix;
+#'   \code{required[i, j] = 1} requires the directed edge
+#'   \code{V[i] -> V[j]}. Default: \code{NULL}.
+#' @param forbidden_bi,required_bi Optional \code{d} by \code{d} 0/1 (or
+#'   logical) matrices; \code{[i, j] = 1} or \code{[j, i] = 1} forbids or
+#'   requires the bidirected edge \code{V[i] <-> V[j]}. Only for ADMGs and
+#'   DMGs. Default: \code{NULL}.
+#' @param forbidden_undirected,required_undirected Optional \code{d} by
+#'   \code{d} 0/1 (or logical) matrices; \code{[i, j] = 1} or
+#'   \code{[j, i] = 1} forbids or requires the undirected edge
+#'   \code{V[i] - V[j]}. Only for chain graphs. Default: \code{NULL}.
+#' @param forbidden_anc,required_anc Optional \code{d} by \code{d} 0/1 (or
+#'   logical) matrices; \code{[i, j] = 1} enforces that \code{V[i]} is not
+#'   or is an ancestor of \code{V[j]}, i.e., that there is no or there is a
+#'   directed path from \code{V[i]} to \code{V[j]} (in the directed part of
+#'   ADMGs and DMGs). For chain graphs, these refer to anterior paths, i.e.,
+#'   paths of undirected edges and of directed edges pointing towards
+#'   \code{V[j]}. Default: \code{NULL}.
+#' @param edge_constraints Optional list of linear constraints on the edge
+#'   indicators. Each constraint is a list with \code{coef}, a \code{d} by
+#'   \code{d} numeric matrix whose entry \code{[i, j]} is the coefficient of
+#'   the indicator of \code{V[i] -> V[j]}, \code{sense} (\code{"<="},
+#'   \code{">="} or \code{"="}) and \code{rhs} (a number). For ADMGs and
+#'   DMGs, a constraint may contain \code{coef_bi}, a symmetric \code{d} by
+#'   \code{d} matrix whose entry \code{[i, j]} is the coefficient of the
+#'   indicator of \code{V[i] <-> V[j]}, in addition to or instead of
+#'   \code{coef}. For chain graphs, the indicator of \code{V[i] -> V[j]} is
+#'   one if \code{V[i] -> V[j]} or \code{V[i] - V[j]}, so an undirected edge
+#'   sets the indicators of both directions to one. A single constraint may
+#'   be passed without the enclosing list. E.g.,
+#'   \code{list(coef = C, sense = "<=", rhs = 1)} with
+#'   \code{C[a, c] = C[b, c] = 1} (and zero otherwise) forbids \code{c} to
+#'   be a common child of \code{a} and \code{b}, and \code{sense = ">="}
+#'   with \code{C[a, b] = C[b, a] = 1} requires \code{a} and \code{b} to be
+#'   adjacent by a directed edge. Default: \code{NULL}.
+#' @param edge_penalty Non-negative number added to the objective for each
+#'   edge indicator that is one (directed and bidirected edges; for chain
+#'   graphs, an undirected edge counts twice), e.g., to break ties among
+#'   optimal graphs in favour of sparse ones. To act as a pure tie breaker,
+#'   choose it such that \code{edge_penalty} times the number of edge
+#'   indicators (\code{d * (d - 1)}, plus \code{d * (d - 1) / 2} for ADMGs
+#'   and DMGs) is smaller than the smallest test weight. Default: \code{0}.
 #' @param ... Further arguments passed to internals.
+#'
+#' @details
+#' Background knowledge (\code{forbidden}, \code{required},
+#' \code{forbidden_bi}, \code{required_bi}, \code{forbidden_undirected},
+#' \code{required_undirected}, \code{forbidden_anc}, \code{required_anc},
+#' \code{edge_constraints}) is imposed as hard constraints, i.e., as bounds
+#' on the edge and path indicator variables or as additional linear
+#' constraints. It is supported by all modes (see, e.g.,
+#' \code{\link{dcon_lean_optim}}, \code{\link{admg_cubic_optim}},
+#' \code{\link{chain_lean_optim}}) for the types of edges the respective
+#' class of graphs contains; passing, e.g., \code{forbidden_bi} for a DAG
+#' raises an error. Matrices with dimnames are
+#' matched to the variable names; the diagonal is ignored. The constraints
+#' are not part of the cached constraint matrices, so caching remains valid.
+#'
+#' If no \code{warmstart} is given, the background knowledge is also passed
+#' to the PC or FCI algorithm that computes the warm start and the edge
+#' hints, as far as these algorithms support it:
+#' \itemize{
+#'   \item Pairs that cannot be adjacent (all types of edges between them
+#'     forbidden, where \code{forbidden_anc[i, j] = 1} forbids
+#'     \code{V[i] -> V[j]}) and pairs that must be adjacent (a required edge)
+#'     are passed as \code{fixedGaps} and \code{fixedEdges} to
+#'     \code{pcalg::pc()} or \code{pcalg::fci()}. FCI is run by
+#'     \code{pcalg::fciPlus()} as before if there are no such pairs, since
+#'     \code{fciPlus()} does not support background knowledge.
+#'   \item For DAGs and DGs, undirected edges of the PC result are oriented
+#'     by \code{pcalg::addBgKnowledge()} (with Meek's rules) according to
+#'     \code{required}, \code{forbidden} and \code{forbidden_anc} (an
+#'     adjacent pair with \code{V[j] -> V[i]} excluded is oriented as
+#'     \code{V[i] -> V[j]}), and for DAGs also \code{required_anc}.
+#'     Orientations that are inconsistent with the PC result are skipped.
+#' }
+#' The following cannot be passed to PC/FCI and is enforced only in the
+#' optimization: orientations in the PAG computed by FCI (there is no
+#' counterpart to \code{addBgKnowledge()} for PAGs), ancestral relations
+#' between non-adjacent pairs, and \code{edge_constraints}. The optimizers
+#' additionally set forbidden edges to zero and required edges to one in the
+#' warm start. Since the warm start is only a starting point, it may still
+#' violate some constraints, in which case the solver repairs or discards
+#' it; the learned graph satisfies all constraints in either case.
+#'
+#' If the constraints are infeasible or the solver stops before finding a
+#' feasible graph (e.g., because of \code{gurobi_args}), the learned graph
+#' is \code{NULL} and the solver output is returned in \code{graph$optim}.
 #'
 #' @return An object of class \code{learned_graph} including tests, graph, and
 #' graphical representation.
@@ -33,7 +127,11 @@ learn_graph <- function(
   parallel = FALSE, ncores = NULL, alpha = 0.05, trafo = \(x) as.numeric(x <= alpha),
   weight_type = "const", warmstart = NULL, edgehints = NULL,
   gurobi_args = list(), test_args = NULL, return_tests_only = FALSE,
-  verbose = FALSE, cache = TRUE, comets = TRUE, ...
+  verbose = FALSE, cache = TRUE, comets = TRUE, forbidden = NULL,
+  required = NULL, forbidden_bi = NULL, required_bi = NULL,
+  forbidden_undirected = NULL, required_undirected = NULL,
+  forbidden_anc = NULL, required_anc = NULL, edge_constraints = NULL,
+  edge_penalty = 0, ...
 ) {
   if (mode %in% c("dmg", "dg")) {
     warning("Using `mode = 'dmg'` or `mode = 'dg'` relies on d-separation
@@ -43,6 +141,14 @@ learn_graph <- function(
   ### Pre-process
   vars <- colnames(data)
   d <- length(vars)
+  bkv <- .bk_validate(vars,
+    forbidden = forbidden, required = required,
+    forbidden_bi = forbidden_bi, required_bi = required_bi,
+    forbidden_undirected = forbidden_undirected,
+    required_undirected = required_undirected,
+    forbidden_anc = forbidden_anc, required_anc = required_anc,
+    edge_penalty = edge_penalty
+  )
   if (is.null(max_size)) max_size <- d - 2L
   stopifnot(max_size >= 0L)
   if (max_size >= d - 2L) max_size <- d - 2L
@@ -67,7 +173,7 @@ learn_graph <- function(
     return(res)
   }
 
-  if (is.null(warmstart) & mode != "chain") {
+  if (is.null(warmstart) & !mode %in% c("chain", "chain-dcon")) {
     if (max_size == d - 2L) {
       if (verbose) {
         message(paste0("\nWarmstart using PC/FCI with ", test, "..."))
@@ -81,31 +187,56 @@ learn_graph <- function(
       suff <- list(C = cor(data), n = nrow(data))
       cit <- pcalg::gaussCItest
     }
-    if (mode %in% c("dag", "dg")) {
-      pcres <- pcalg::pc(suff, cit, labels = vars, alpha = alpha)
-      PC <- as(pcres@graph, "matrix")
+    if (mode %in% c("dag", "dg", "dag-dcon", "dag-dc", "dg-dc")) {
+      bkpc <- .bk_pcalg(bkv, d, acyclic = !mode %in% c("dg", "dg-dc"))
+      pcres <- pcalg::pc(suff, cit,
+        labels = vars, alpha = alpha,
+        fixedGaps = bkpc$fixedGaps, fixedEdges = bkpc$fixedEdges
+      )
+      PC <- .bk_orient_pdag(pcres@graph, bkpc$orient)
       warmstart <- .ess_to_dag(PC)
       edgehints <- 1 * (PC != 0)
     } else {
-      fcires <- pcalg::fciPlus(suff, cit,
-        labels = vars, alpha = alpha, selectionBias = FALSE, verbose = FALSE
-      )
+      bkpc <- .bk_pcalg(bkv, d, bidirected = TRUE)
+      if (is.null(bkpc$fixedGaps) && is.null(bkpc$fixedEdges)) {
+        fcires <- pcalg::fciPlus(suff, cit,
+          labels = vars, alpha = alpha, selectionBias = FALSE, verbose = FALSE
+        )
+      } else {
+        ### fciPlus() does not support background knowledge
+        fcires <- pcalg::fci(suff, cit,
+          labels = vars, alpha = alpha, fixedGaps = bkpc$fixedGaps,
+          fixedEdges = bkpc$fixedEdges, selectionBias = FALSE, verbose = FALSE
+        )
+      }
       FCI <- as(fcires@amat, "matrix")
       warmstart <- .pag_to_admg(FCI)
       edgehints <- 1 * (FCI != 0)
     }
   }
 
+  ### Background knowledge, passed on only if given such that optimizers
+  ### for graphs without the respective type of edge can raise an error
+  bk <- list(
+    forbidden = forbidden, required = required, forbidden_bi = forbidden_bi,
+    required_bi = required_bi, forbidden_undirected = forbidden_undirected,
+    required_undirected = required_undirected, forbidden_anc = forbidden_anc,
+    required_anc = required_anc, edge_constraints = edge_constraints
+  )
+  bk <- bk[!vapply(bk, is.null, logical(1))]
+
   opt <- .get_opt(mode)
-  graph <- opt(res,
+  graph <- do.call(opt, c(list(res,
     d = length(vars), max_size = max_size,
     V = vars, trafo = trafo, weight_type = weight_type,
     warmstart = warmstart, edgehints = edgehints,
     gurobi_args = gurobi_args, verbose = verbose,
-    cache = cache, mode = mode, ...
-  )
+    cache = cache, mode = mode, edge_penalty = edge_penalty
+  ), bk, list(...)))
 
-  out <- .compute_graphical_representation(graph$graph, max_size, mode)
+  out <- if (!is.null(graph$graph)) {
+    .compute_graphical_representation(graph$graph, max_size, mode)
+  }
 
   structure(list(tests = res, graph = graph, computed = out),
     class = "learned_graph", vars = vars, max_size = max_size, test = test

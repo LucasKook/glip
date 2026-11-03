@@ -6,6 +6,7 @@
 #' weight types, and optional caching for efficiency.
 #'
 #' @inheritParams admg_lean_optim
+#' @inheritParams learn_graph
 #'
 #' @return An object of class \code{graphopt} with components:
 #'   \describe{
@@ -27,6 +28,14 @@ trafo = \(x) as.numeric(x <= 0.05),
     cache = TRUE,
     cache_dir = "./.cache-admg",
     mode = c("admg-dc", "dmg-dc"),
+    forbidden = NULL,
+    required = NULL,
+    forbidden_bi = NULL,
+    required_bi = NULL,
+    forbidden_anc = NULL,
+    required_anc = NULL,
+    edge_constraints = NULL,
+    edge_penalty = 0,
     ...) {
 
   if (!requireNamespace("gurobi")) {
@@ -39,6 +48,18 @@ trafo = \(x) as.numeric(x <= 0.05),
 
   mode <- match.arg(mode)
   weight_type <- match.arg(weight_type)
+  bk <- .bk_validate(V,
+    forbidden = forbidden, required = required,
+    forbidden_bi = forbidden_bi, required_bi = required_bi,
+    forbidden_anc = forbidden_anc, required_anc = required_anc,
+    edge_penalty = edge_penalty
+  )
+  .bk_unsupported(list(...), .bk_args_admg, "admg_optim()",
+    "ADMGs and DMGs have no undirected edges")
+  if (!is.null(warmstart)) {
+    warmstart$M1 <- .bk_warmstart(warmstart$M1, bk$forbidden, bk$required)
+    warmstart$M2 <- .bk_warmstart(warmstart$M2, bk$forbidden_bi, bk$required_bi)
+  }
 
   fn <- file.path(
     cache_dir,
@@ -236,6 +257,29 @@ trafo = \(x) as.numeric(x <= 0.05),
     1, 2 * (d - 1) + 1, d),
     c(n_z, n_z + n_d, n_z, n_d, sum(nN1), n_d, sum(nkc), n_b + n_d,
       n_lb, n_lb, n_lb + n_lb * (d - 2), 1))
+  ### Background knowledge as hard bounds on the directed and bidirected edge
+  ### indicators and the path indicators d_ij^-> (= 1 iff there is no
+  ### directed path from i to j), edge penalty, and rows for linear edge
+  ### constraints
+  bx_off <- 3 * n_z + 3 * n_d + sum(nN1) + sum(nkc)
+  model <- .bk_bounds(model, list(
+    list(
+      pairs = xij, offset = 2 * n_z, zero = bk$forbidden, one = bk$required,
+      penalty = bk$edge_penalty
+    ),
+    list(
+      pairs = bxij, offset = bx_off, zero = bk$forbidden_bi,
+      one = bk$required_bi, penalty = bk$edge_penalty
+    ),
+    list(
+      pairs = xij, offset = 3 * n_z + 2 * n_d + sum(nN1),
+      zero = bk$required_anc, one = bk$forbidden_anc
+    )
+  ))
+  ec <- .edge_constraints(edge_constraints, list(
+    coef = list(pairs = xij, offset = 2 * n_z),
+    coef_bi = list(pairs = bxij, offset = bx_off, symmetric = TRUE)
+  ), V, length(model$obj))
   model$rhs <- c(
     "labs" = -p, # linearize objective
     "labs" = p, # linearize objective
@@ -767,6 +811,8 @@ trafo = \(x) as.numeric(x <= 0.05),
   ### INCLUDE CONSTRAINTS
   model$A <- A
   model$genconmin <- c(N1, P1, O1)
+  ### Linear edge constraints, appended after the (cached) constraint matrix
+  model <- .bk_rows(model, ec)
 
   if (verbose) {
     cat("\nModel setup done. Solving now...\n")
@@ -775,6 +821,12 @@ trafo = \(x) as.numeric(x <= 0.05),
   ### SOLVE
   if (requireNamespace("gurobi")) {
     sol <- gurobi::gurobi(model, gurobi_args)
+  }
+
+  ### No incumbent (infeasible constraints or solver stopped before finding a
+  ### feasible solution): return the solver output only
+  if (is.null(sol$x)) {
+    return(.no_incumbent(sol))
   }
 
   ### Convert solution to DMG

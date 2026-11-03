@@ -6,6 +6,7 @@
 #' types, and optional caching for efficiency.
 #'
 #' @inheritParams admg_lean_optim
+#' @inheritParams learn_graph
 #'
 #' @return An object of class \code{graphopt} with components:
 #'   \describe{
@@ -27,6 +28,12 @@ dag_optim <- function(
     cache = TRUE,
     cache_dir = "./.cache-dag",
     mode = c("dag-dc", "dg-dc"),
+    forbidden = NULL,
+    required = NULL,
+    forbidden_anc = NULL,
+    required_anc = NULL,
+    edge_constraints = NULL,
+    edge_penalty = 0,
     ...) {
 
   if (!requireNamespace("gurobi")) {
@@ -35,6 +42,14 @@ dag_optim <- function(
 
   mode <- match.arg(mode)
   weight_type <- match.arg(weight_type)
+  bk <- .bk_validate(V,
+    forbidden = forbidden, required = required,
+    forbidden_anc = forbidden_anc, required_anc = required_anc,
+    edge_penalty = edge_penalty
+  )
+  .bk_unsupported(list(...), .bk_args_dag, "dag_optim()",
+    "DAGs and DGs have only directed edges")
+  warmstart <- .bk_warmstart(warmstart, bk$forbidden, bk$required)
 
   fn <- file.path(
     cache_dir,
@@ -178,6 +193,21 @@ dag_optim <- function(
     c(2 * n_z + n_d, n_z + n_d + sum(nN1), n_d, sum(nlc)))
   model$ub <- rep(c(Inf, 1, Inf, d, 2 * d, 1, 4 * n_tilde - 2),
     c(n_z, n_z + n_d, n_z, n_d, sum(nN1), n_d, sum(nlc)))
+  ### Background knowledge as hard bounds on the edge indicators x_ij and
+  ### the path indicators d_ij^-> (= 1 iff there is no directed path from i
+  ### to j), edge penalty, and rows for linear edge constraints
+  model <- .bk_bounds(model, list(
+    list(
+      pairs = xij, offset = 2 * n_z, zero = bk$forbidden, one = bk$required,
+      penalty = bk$edge_penalty
+    ),
+    list(
+      pairs = xij, offset = 3 * n_z + 2 * n_d + sum(nN1),
+      zero = bk$required_anc, one = bk$forbidden_anc
+    )
+  ))
+  ec <- .edge_constraints(edge_constraints,
+    list(coef = list(pairs = xij, offset = 2 * n_z)), V, length(model$obj))
   model$rhs <- c(
     "labs" = -p, # linearize objective
     "labs" = p, # linearize objective
@@ -510,6 +540,8 @@ dag_optim <- function(
   model$A <- A
 
   model$genconmin <- c(N1, M1)
+  ### Linear edge constraints, appended after the (cached) constraint matrix
+  model <- .bk_rows(model, ec)
 
   if (verbose) {
     cat("\nModel setup done. Solving now...\n")
@@ -518,6 +550,12 @@ dag_optim <- function(
   ### SOLVE
   if (requireNamespace("gurobi")) {
     sol <- gurobi::gurobi(model, gurobi_args)
+  }
+
+  ### No incumbent (infeasible constraints or solver stopped before finding a
+  ### feasible solution): return the solver output only
+  if (is.null(sol$x)) {
+    return(.no_incumbent(sol))
   }
 
   ### Convert solution to DMG

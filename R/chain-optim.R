@@ -6,6 +6,7 @@
 #' caching for efficiency.
 #'
 #' @inheritParams admg_lean_optim
+#' @inheritParams learn_graph
 #'
 #' @return An object of class \code{graphopt} with components:
 #'   \describe{
@@ -26,6 +27,14 @@ chain_optim <- function(
     verbose = FALSE,
     cache = TRUE,
     cache_dir = "./.cache-chain",
+    forbidden = NULL,
+    required = NULL,
+    forbidden_undirected = NULL,
+    required_undirected = NULL,
+    forbidden_anc = NULL,
+    required_anc = NULL,
+    edge_constraints = NULL,
+    edge_penalty = 0,
     ...) {
 
   if (!requireNamespace("gurobi")) {
@@ -33,6 +42,18 @@ chain_optim <- function(
   }
 
   weight_type <- match.arg(weight_type)
+  bk <- .bk_validate(V,
+    forbidden = forbidden, required = required,
+    forbidden_undirected = forbidden_undirected,
+    required_undirected = required_undirected,
+    forbidden_anc = forbidden_anc, required_anc = required_anc,
+    edge_penalty = edge_penalty
+  )
+  .bk_unsupported(list(...), .bk_args_chain, "chain_optim()",
+    "chain graphs have no bidirected edges")
+  bkc <- .bk_chain(bk$forbidden, bk$required, bk$forbidden_undirected,
+    bk$required_undirected, d)
+  warmstart <- .bk_warmstart(warmstart, bkc$zero, bkc$one)
 
   fn <- file.path(
     cache_dir,
@@ -187,6 +208,22 @@ chain_optim <- function(
     c(n_z, n_z + n_d, n_z, n_d, sum(nN1), n_d, sum(nlc),
       n_d + n_ul, n_ul, nW1, nZ1, d * n_C, 1, 1, 1)
   )
+  ### Background knowledge as hard bounds on the edge indicators x_ij (one if
+  ### i -> j or i - j) and the path indicators d_ij^-> (= 1 iff there is no
+  ### anterior path from i to j), edge penalty, and rows for linear edge
+  ### constraints and forbidden directed and undirected edges
+  model <- .bk_bounds(model, list(
+    list(
+      pairs = xij, offset = 2 * n_z, zero = bkc$zero, one = bkc$one,
+      penalty = bk$edge_penalty
+    ),
+    list(
+      pairs = xij, offset = 3 * n_z + 2 * n_d + sum(nN1),
+      zero = bk$required_anc, one = bk$forbidden_anc
+    )
+  ))
+  ec <- .edge_constraints(c(.ec_list(edge_constraints), bkc$cons),
+    list(coef = list(pairs = xij, offset = 2 * n_z)), V, length(model$obj))
   model$rhs <- c(
     "labs" = -p, # linearize objective
     "labs" = p, # linearize objective
@@ -743,6 +780,8 @@ chain_optim <- function(
   model$A <- A
   model$genconmin <- c(N1, M1, W1, R1)
   model$genconmax <- Z1
+  ### Linear edge constraints, appended after the (cached) constraint matrix
+  model <- .bk_rows(model, ec)
 
   if (verbose) {
     cat("\nModel setup done. Solving now...\n")
@@ -752,6 +791,12 @@ chain_optim <- function(
   if (requireNamespace("gurobi")) {
     # return(gurobi::gurobi_iis(model))
     sol <- gurobi::gurobi(model, gurobi_args)
+  }
+
+  ### No incumbent (infeasible constraints or solver stopped before finding a
+  ### feasible solution): return the solver output only
+  if (is.null(sol$x)) {
+    return(.no_incumbent(sol))
   }
 
   ### Convert solution to DMG

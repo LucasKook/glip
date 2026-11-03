@@ -80,6 +80,7 @@ compute_largest_cg <- function(G) {
 ### auxiliary function to find non-empty meta-arrow (A \Rightarrow B) which is
 ### insubstantial, if it exists
 compute_insub_metaarrow <- function(G) {
+  d <- nrow(G)
   symG <- 1 * (G + t(G) > 1)
   mem <- igraph::components(
     igraph::graph_from_adjacency_matrix(symG)

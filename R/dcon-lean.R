@@ -6,6 +6,7 @@
 #' weight types, and optional caching for efficiency.
 #'
 #' @inheritParams admg_lean_optim
+#' @inheritParams learn_graph
 #'
 #' @return An object of class \code{graphopt} with components:
 #'   \describe{
@@ -29,8 +30,23 @@ dcon_lean_optim <- function(
   cache = TRUE,
   cache_dir = "./.cache-dcon-lean-new",
   mode = c("dag", "dg"),
+  forbidden = NULL,
+  required = NULL,
+  forbidden_anc = NULL,
+  required_anc = NULL,
+  edge_constraints = NULL,
+  edge_penalty = 0,
   ...
 ) {
+  mode <- match.arg(mode)
+  bk <- .bk_validate(V,
+    forbidden = forbidden, required = required,
+    forbidden_anc = forbidden_anc, required_anc = required_anc,
+    edge_penalty = edge_penalty
+  )
+  .bk_unsupported(list(...), .bk_args_dag, "dcon_lean_optim()",
+    "DAGs and DGs have only directed edges")
+  warmstart <- .bk_warmstart(warmstart, bk$forbidden, bk$required)
   if (!requireNamespace("gurobi")) {
     warning("Solver `gurobi` not available.")
   }
@@ -41,7 +57,7 @@ dcon_lean_optim <- function(
     cache_dir,
     paste0(
       c("lhs", "rhs", "M1", "N1", "R1"), "dim", d, "max",
-      max_size, c(".mtx", ".rds", ".rds", ".rds", ".rds")
+      max_size, mode, c(".mtx", ".rds", ".rds", ".rds", ".rds")
     )
   )
 
@@ -204,6 +220,21 @@ dcon_lean_optim <- function(
     c(Inf, 1, Inf, d, 2 * d, 1, 3 * d, 1, 1),
     c(n_z, n_z + n_d, n_z, n_d, sum(nN1), n_d, sum(nlc), d * n_C, 1)
   )
+  ### Background knowledge as hard bounds on the edge indicators x_ij and
+  ### the path indicators d_ij^-> (= 1 iff there is no directed path from i
+  ### to j), edge penalty, and rows for linear edge constraints
+  model <- .bk_bounds(model, list(
+    list(
+      pairs = xij, offset = 2 * n_z, zero = bk$forbidden, one = bk$required,
+      penalty = bk$edge_penalty
+    ),
+    list(
+      pairs = xij, offset = 3 * n_z + 2 * n_d + sum(nN1),
+      zero = bk$required_anc, one = bk$forbidden_anc
+    )
+  ))
+  ec <- .edge_constraints(edge_constraints,
+    list(coef = list(pairs = xij, offset = 2 * n_z)), V, length(model$obj))
   if (max_size > 0) {
     nr1b <- d * sum(sapply(seq_len(max_size) - 1, \(x) {
       choose(d, x)
@@ -618,6 +649,8 @@ dcon_lean_optim <- function(
   ### INCLUDE CONSTRAINTS
   model$A <- A
   model$genconmin <- c(N1, M1, R1)
+  ### Linear edge constraints, appended after the (cached) constraint matrix
+  model <- .bk_rows(model, ec)
 
   if (verbose) {
     cat("\nModel setup done. Solving now...\n")
@@ -627,6 +660,12 @@ dcon_lean_optim <- function(
   if (requireNamespace("gurobi")) {
     # return(gurobi::gurobi_iis(model))
     sol <- gurobi::gurobi(model, gurobi_args)
+  }
+
+  ### No incumbent (infeasible constraints or solver stopped before finding a
+  ### feasible solution): return the solver output only
+  if (is.null(sol$x)) {
+    return(.no_incumbent(sol))
   }
 
   ### Convert solution to DMG

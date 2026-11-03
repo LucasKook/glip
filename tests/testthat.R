@@ -7,5 +7,5 @@
 # * https://testthat.r-lib.org/articles/special-files.html
 
 library("testthat")
-library("cometsTS")
-test_check("cometsTS")
+library("glip")
+test_check("glip")
