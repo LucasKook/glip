@@ -75,7 +75,7 @@ inst/code/sanity-check.R
 .cache-chain-lean/
 .cache-*
 
-.Rbuildignore
+# Keep package-build exclusions available in source checkouts.
 
 results/
 
@@ -91,3 +91,16 @@ Makefile
 inst/code/check-random-graphs.R
 inst/code/run-weak-arrows-data.R
 inst/code/sim-long-chains.R
+
+# Local encoding benchmarks, timing figures, and diagnostic helpers.
+# The reference builders and automated tests remain part of the package.
+/AGENTS.md
+/inst/code/*benchmark*
+/inst/code/*timing*
+/inst/slurm/*benchmark*
+/inst/slurm/*timing*
+/inst/code/lean-scale*
+/inst/code/plot-lean-scaling.R
+/inst/code/README-lean-diagnostics.md
+/inst/code/asan.Makevars
+/inst/code/test-one-thread.R
