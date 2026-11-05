@@ -1,4 +1,4 @@
-# Original chain cache builder, retained as the reference for compiled encoding.
+# Original chain cache builder, retained as the reference for optimized encoding.
 .chain_lean_build_r <- function(d, max_size, CC, n_C, n_d, n_z, n_ul, n_tilde, nlc, nN1, nW1, nZ1, nr1b, ndic, dic, zijc, xij, luij, model, verbose) {
   A <- MatrixExtra::emptySparse(
     nrow = length(model$rhs), ncol = length(model$obj), format = "C"

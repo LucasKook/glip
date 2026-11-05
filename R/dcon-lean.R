@@ -83,7 +83,7 @@ dcon_lean_optim <- function(
     "L4" = d * (d - 1) * max(d - 2, 0) * n_C
   )
 
-  indices <- .dcon_lean_indices_c(d, CC)
+  indices <- .dcon_lean_indices_structured_r(d, CC)
   dic <- indices$dic
   zijc <- indices$zijc
   ndic <- NROW(dic)
@@ -247,7 +247,7 @@ dcon_lean_optim <- function(
     R1 <- readRDS(fn[5])
     model$rhs <- rhs
   } else {
-    built <- .dcon_lean_build_c(d, max_size, mode, CC, dic, zijc, xij,
+    built <- .dcon_lean_build_structured_r(d, max_size, mode, CC, dic, zijc, xij,
                                 n_z, n_d, nN1, nlc, nr1b, model, verbose)
     A <- built$A
     model$rhs <- built$rhs

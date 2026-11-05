@@ -85,7 +85,7 @@ chain_lean_optim <- function(
     "L4" = d * (d - 1) * max(d - 2, 0) * n_C
   )
 
-  indices <- .dcon_lean_indices_c(d, CC)
+  indices <- .dcon_lean_indices_structured_r(d, CC)
   dic <- indices$dic
   zijc <- indices$zijc
   ndic <- NROW(dic)
@@ -275,7 +275,7 @@ chain_lean_optim <- function(
     R1 <- readRDS(fn[7])
     model$rhs <- rhs
   } else {
-    built <- .chain_lean_build_c(d, max_size, CC, n_C, n_d, n_z, n_ul, n_tilde, nlc, nN1, nW1, nZ1, nr1b, ndic, dic, zijc, xij, luij, model, verbose)
+    built <- .chain_lean_build_structured_r(d, max_size, CC, n_C, n_d, n_z, n_ul, n_tilde, nlc, nN1, nW1, nZ1, nr1b, ndic, dic, zijc, xij, luij, model, verbose)
     A <- built$A
     model$rhs <- built$rhs
     M1 <- built$M1

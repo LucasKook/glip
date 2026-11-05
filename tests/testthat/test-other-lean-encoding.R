@@ -22,11 +22,11 @@ test_that("lean ADMG, DMG and chain caches match the R reference", {
       fast <- run(paths[1])
       if (kind == "chain") {
         reference <- testthat::with_mocked_bindings(
-          run(paths[2]), .chain_lean_build_c = get(".chain_lean_build_r", ns),
+          run(paths[2]), .chain_lean_build_structured_r = get(".chain_lean_build_r", ns),
           .package = "glip")
       } else {
         reference <- testthat::with_mocked_bindings(
-          run(paths[2]), .admg_lean_build_c = get(".admg_lean_build_r", ns),
+          run(paths[2]), .admg_lean_build_structured_r = get(".admg_lean_build_r", ns),
           .package = "glip")
       }
       files <- list.files(paths[1])
@@ -60,7 +60,7 @@ test_that("lean caches match the R reference without a solver", {
       args <- list(tests = tests, d = d, V = letters[seq_len(d)],
                    max_size = max_size, cache = TRUE)
       if (kind == "admg") args$mode <- mode
-      paths <- file.path(tempdir(), paste0("no-solver-", mode, "-", d, "-", max_size, c("-c", "-r")))
+      paths <- file.path(tempdir(), paste0("no-solver-", mode, "-", d, "-", max_size, c("-c", "-r", "-structured")))
       unlink(paths, recursive = TRUE)
       run <- function(path) {
         ok <- tryCatch({
@@ -73,11 +73,12 @@ test_that("lean caches match the R reference without a solver", {
         run(paths[1])
         if (kind == "chain") {
           testthat::with_mocked_bindings(run(paths[2]),
-            .chain_lean_build_c = get(".chain_lean_build_r", ns), .package = "glip")
+            .chain_lean_build_structured_r = get(".chain_lean_build_r", ns), .package = "glip")
         } else {
           testthat::with_mocked_bindings(run(paths[2]),
-            .admg_lean_build_c = get(".admg_lean_build_r", ns), .package = "glip")
+            .admg_lean_build_structured_r = get(".admg_lean_build_r", ns), .package = "glip")
         }
+        run(paths[3])
       }, .bk_rows = stop_after_cache, .require_gurobi = no_solver, .package = "glip")
       files <- list.files(paths[1])
       expect_identical(files, list.files(paths[2]))
@@ -85,6 +86,8 @@ test_that("lean caches match the R reference without a solver", {
         read <- if (grepl("[.]mtx$", file)) Matrix::readMM else readRDS
         expect_identical(read(file.path(paths[1], file)), read(file.path(paths[2], file)),
                      info = paste(mode, d, max_size, file))
+        expect_identical(read(file.path(paths[3], file)), read(file.path(paths[2], file)),
+                     info = paste("structured", mode, d, max_size, file))
       }
       unlink(paths, recursive = TRUE)
     }

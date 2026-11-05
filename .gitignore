@@ -104,3 +104,7 @@ inst/code/sim-long-chains.R
 /inst/code/README-lean-diagnostics.md
 /inst/code/asan.Makevars
 /inst/code/test-one-thread.R
+
+# Local comparison against the removed compiled encoders.
+/tests/testthat/fixtures/lean-c-encoding-d4-full.rds
+/tests/testthat/test-lean-c-fixture.R

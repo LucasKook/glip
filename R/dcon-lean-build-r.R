@@ -1,5 +1,5 @@
 # Reference implementation of the cache-miss encoding. Kept separate so the
-# compiled encoder can be checked against the original constraint construction.
+# optimized encoder can be checked against the original constraint construction.
 .dcon_lean_build_r <- function(d, max_size, mode, CC, dic, zijc, xij,
                                n_z, n_d, nN1, nlc, nr1b, model, verbose) {
   n_C <- length(CC)

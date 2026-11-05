@@ -1,4 +1,4 @@
-# Original admg cache builder, retained as the reference for compiled encoding.
+# Original admg cache builder, retained as the reference for optimized encoding.
 .admg_lean_build_r <- function(d, max_size, mode, CC, n_C, n_d, n_z, n_b, n_lb, n_tilde, nkc, nN1, nr1b, ndic, dic, zijc, xij, bxij, lbijc, model, verbose) {
   A <- MatrixExtra::emptySparse(
     nrow = length(model$rhs), ncol = length(model$obj), format = "C"

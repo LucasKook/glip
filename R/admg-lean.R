@@ -96,7 +96,7 @@ admg_lean_optim <- function(
     "K4" = n_d * max(d - 2, 0) * n_C
   )
 
-  indices <- .dcon_lean_indices_c(d, CC)
+  indices <- .dcon_lean_indices_structured_r(d, CC)
   dic <- indices$dic
   zijc <- indices$zijc
   ndic <- NROW(dic)
@@ -305,7 +305,7 @@ admg_lean_optim <- function(
     R1 <- readRDS(fn[6])
     model$rhs <- rhs
   } else {
-    built <- .admg_lean_build_c(d, max_size, mode, CC, n_C, n_d, n_z, n_b, n_lb, n_tilde, nkc, nN1, nr1b, ndic, dic, zijc, xij, bxij, lbijc, model, verbose)
+    built <- .admg_lean_build_structured_r(d, max_size, mode, CC, n_C, n_d, n_z, n_b, n_lb, n_tilde, nkc, nN1, nr1b, ndic, dic, zijc, xij, bxij, lbijc, model, verbose)
     A <- built$A
     model$rhs <- built$rhs
     P1 <- built$P1

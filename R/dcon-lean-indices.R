@@ -32,17 +32,6 @@
   list(dic = dic, zijc = zijc)
 }
 
-.dcon_lean_indices_c <- function(d, CC) {
-  tab <- .Call("glip_dcon_indices", as.integer(d), CC, PACKAGE = "glip")
-  nc <- length(CC)
-  dic <- data.frame(i = rep(seq_len(d), each = nc),
-                    C = rep(seq_len(nc), times = d),
-                    iinc = tab[[4]], idx = as.double(seq_len(d * nc)))
-  zijc <- data.frame(i = tab[[1]], j = tab[[2]], C = tab[[3]],
-                     idx = as.double(seq_along(tab[[1]])))
-  list(dic = dic, zijc = zijc)
-}
-
 # All unordered pairs and conditioning sets in the ADMG cache order.
 .lean_pair_conditioning_indices <- function(d, n_C) {
   i <- rep(seq_len(d), times = seq_len(d) - 1L)

@@ -17,23 +17,9 @@ complex causal graphs.
 
 ## Installation
 
-The package requires **R 4.2 or later** and a working C compiler: the lean
-constraint encoders are compiled when the package is installed from source.
-Use the build tools appropriate for your R installation:
-
-- **macOS:** install the Xcode Command Line Tools with `xcode-select --install`.
-- **Windows:** install the version of Rtools that matches your R release and
-  make sure R can find it.
-- **Linux:** install your distribution's R development headers and compiler
-  toolchain (for example, `r-base-dev` and `build-essential` on Debian/Ubuntu).
-
-Some dependencies may also need C++, Fortran, or system libraries. You can check
-whether R can find the build tools with:
-
-```r
-install.packages("pkgbuild")
-pkgbuild::has_build_tools(debug = TRUE)
-```
+The package requires **R 4.2 or later**. `glip` itself is written in R and
+has no compiler requirement, though some dependencies may need build tools or
+system libraries when installed from source.
 
 Install the Bioconductor graph dependencies, `pcalg`, and `comets`, followed by
 the development version of `glip`:
@@ -47,12 +33,12 @@ remotes::install_github("LucasKook/glip", upgrade = "never")
 ```
 
 To install a local checkout instead, first install the dependencies above, then
-run `R CMD INSTALL .` from the repository root. This compiles the C source and
-installs the package into your R library. For a source archive, use
+run `R CMD INSTALL .` from the repository root. This installs the package into
+your R library. For a source archive, use
 `R CMD build .` followed by `R CMD INSTALL glip_<version>.tar.gz`.
 
 A working Gurobi installation and license are needed to **learn graphs**, but
-are not needed merely to compile and install `glip`.
+are not needed merely to install `glip`.
 
 ### GUROBI Dependency
 

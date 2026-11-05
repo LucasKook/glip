@@ -1,6 +1,6 @@
 # Compare complete in-memory models, including bounds, objective, hints and
 # appended edge-constraint rows. No solver or Gurobi license is required.
-test_that("compiled and reference encodings produce equivalent complete models", {
+test_that("optimized and reference encodings produce equivalent complete models", {
   ns <- asNamespace("glip")
   original_rows <- get(".bk_rows", ns)
   original_pairs <- function(d, n_C) {
@@ -55,18 +55,44 @@ test_that("compiled and reference encodings produce equivalent complete models",
       .bk_rows = capture_rows, .require_gurobi = no_solver, .package = "glip")
     reference <- if (kind == "dcon") {
       testthat::with_mocked_bindings(run(), .bk_rows = capture_rows,
-        .require_gurobi = no_solver, .dcon_lean_indices_c = get(".dcon_lean_indices_r", ns),
-        .dcon_lean_build_c = get(".dcon_lean_build_r", ns), .package = "glip")
+        .require_gurobi = no_solver, .dcon_lean_indices_structured_r = get(".dcon_lean_indices_r", ns),
+        .dcon_lean_build_structured_r = get(".dcon_lean_build_r", ns), .package = "glip")
     } else if (kind == "admg") {
       testthat::with_mocked_bindings(run(), .bk_rows = capture_rows,
-        .require_gurobi = no_solver, .dcon_lean_indices_c = get(".dcon_lean_indices_r", ns),
+        .require_gurobi = no_solver, .dcon_lean_indices_structured_r = get(".dcon_lean_indices_r", ns),
         .lean_pair_conditioning_indices = original_pairs,
-        .admg_lean_build_c = get(".admg_lean_build_r", ns), .package = "glip")
+        .admg_lean_build_structured_r = get(".admg_lean_build_r", ns), .package = "glip")
     } else {
       testthat::with_mocked_bindings(run(), .bk_rows = capture_rows,
-        .require_gurobi = no_solver, .dcon_lean_indices_c = get(".dcon_lean_indices_r", ns),
-        .chain_lean_build_c = get(".chain_lean_build_r", ns), .package = "glip")
+        .require_gurobi = no_solver, .dcon_lean_indices_structured_r = get(".dcon_lean_indices_r", ns),
+        .chain_lean_build_structured_r = get(".chain_lean_build_r", ns), .package = "glip")
     }
+    structured <- testthat::with_mocked_bindings(run(), .bk_rows = capture_rows,
+      .require_gurobi = no_solver, .package = "glip")
     expect_equal(actual, reference, tolerance = 0, info = paste(mode, d))
+    expect_equal(structured, reference, tolerance = 0, info = paste("structured", mode, d))
+  }
+})
+
+test_that("structured R builders recover oracle separations", {
+  skip_if_no_gurobi()
+  ns <- asNamespace("glip")
+  d <- 4L; max_size <- d - 2L; V <- letters[seq_len(d)]
+  for (mode in c("dag", "dg", "admg-lean", "dmg-lean", "chain")) {
+    set.seed(2026 + match(mode, c("dag", "dg", "admg-lean", "dmg-lean", "chain")))
+    graph <- get(".generate_random_graph", ns)(d, V = V, mode = mode, prob = 0.4)
+    tests <- get(".compute_oracle_tests", ns)(graph, max_size = max_size, mode = mode)
+    kind <- if (mode %in% c("dag", "dg")) "dcon" else if (mode == "chain") "chain" else "admg"
+    fit <- get(paste0(kind, "_lean_optim"), ns)
+    args <- list(tests = tests, d = d, max_size = max_size, V = V, cache = FALSE,
+                 gurobi_args = list(OutputFlag = 0, Threads = 1))
+    if (kind != "chain") args$mode <- mode
+    run <- function() { capture.output(out <- do.call(fit, args)); out }
+    result <- run()
+    expect_equal(result$optim$objval, 0, tolerance = 1e-6, info = mode)
+    learned <- result$graph
+    learned <- if (is.list(learned)) list(M1 = learned$M1[, ], M2 = learned$M2[, ]) else learned[, ]
+    expect_identical(get(".compute_oracle_tests", ns)(learned, max_size = max_size, mode = mode)$p.value,
+                     tests$p.value, info = mode)
   }
 })
