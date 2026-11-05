@@ -17,22 +17,42 @@ complex causal graphs.
 
 ## Installation
 
-**CRAN release:** (Not yet available)
+The package requires **R 4.2 or later** and a working C compiler: the lean
+constraint encoders are compiled when the package is installed from source.
+Use the build tools appropriate for your R installation:
 
-**Development version** via GitHub (requires R >= 4.1):
+- **macOS:** install the Xcode Command Line Tools with `xcode-select --install`.
+- **Windows:** install the version of Rtools that matches your R release and
+  make sure R can find it.
+- **Linux:** install your distribution's R development headers and compiler
+  toolchain (for example, `r-base-dev` and `build-essential` on Debian/Ubuntu).
+
+Some dependencies may also need C++, Fortran, or system libraries. You can check
+whether R can find the build tools with:
+
 ```r
-# Install remotes if not present
-# install.packages("remotes")
-remotes::install_github("LucasKook/glip")
+install.packages("pkgbuild")
+pkgbuild::has_build_tools(debug = TRUE)
 ```
 
-The **RBGL** package (a **pcalg** dependency) is available through Bioconductor:
-```r
-if (!require("BiocManager", quietly = TRUE))
-    install.packages("BiocManager")
+Install the Bioconductor graph dependencies, `pcalg`, and `comets`, followed by
+the development version of `glip`:
 
-BiocManager::install("RBGL")
+```r
+install.packages(c("BiocManager", "remotes"))
+BiocManager::install(c("graph", "RBGL"), ask = FALSE, update = FALSE)
+install.packages("pcalg")
+remotes::install_github("LucasKook/comets", upgrade = "never")
+remotes::install_github("LucasKook/glip", upgrade = "never")
 ```
+
+To install a local checkout instead, first install the dependencies above, then
+run `R CMD INSTALL .` from the repository root. This compiles the C source and
+installs the package into your R library. For a source archive, use
+`R CMD build .` followed by `R CMD INSTALL glip_<version>.tar.gz`.
+
+A working Gurobi installation and license are needed to **learn graphs**, but
+are not needed merely to compile and install `glip`.
 
 ### GUROBI Dependency
 

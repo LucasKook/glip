@@ -33,3 +33,5 @@ importFrom(utils,
   setTxtProgressBar,
   txtProgressBar
 )
+
+useDynLib(glip, .registration = TRUE)

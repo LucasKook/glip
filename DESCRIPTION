@@ -1,5 +1,5 @@
 Package: glip
-Title: Graph Learning Via Integer Programming
+Title: Graph Learning via Integer Programming
 Version: 0.0-1
 Authors@R:
     c(
