@@ -160,7 +160,21 @@ admg_lean_optim <- function(
   # t >= -(z - b)
   # min wt
 
+  nN1 <- c(n_d, (d - 2) * n_d)
+  if (max_size > 0) {
+    nr1b <- d * sum(sapply(seq_len(max_size) - 1, \(x) {
+      choose(d, x)
+    }))
+  } else {
+    nr1b <- 1
+  }
+  bound <- c(P1 = sum(nkc), F12 = n_lb + n_lb * (d - 2), acyc = n_d, p1min = sum(nkc),
+             f1f2min = n_lb + n_lb * (d - 2), r1b = nr1b, redundant = d * (d - 1) / 2)
+
   ### SETUP GUROBI MODEL
+  # Model for given block sizes sz (bounds while building, exact sizes from
+  # the compact cache otherwise; see .lean_compact()).
+  make_model <- function(sz) {
   model <- list()
   model$obj <- c(
     w, # corresponds to t_{ij}^C
@@ -168,14 +182,14 @@ admg_lean_optim <- function(
     "dxij" = rep(0, n_d), # corresponds to x^{->}_{ij}
     rep(0, n_z), # corresponds to l_{ij}^C
     rep(0, n_d), # corresponds to l_{ij}^{->}
-    rep(0, sum(nN1 <- c(n_d, (d - 2) * n_d))), # For min-constraint N1
+    rep(0, sum(nN1)), # For min-constraint N1
     rep(0, n_d), # corresponds to d_ij^->
-    rep(0, sum(nkc)), # aux P1
+    rep(0, sz[["P1"]]), # aux P1
     "bxij" = rep(0, n_b), # bidirected edges
     "sxij" = rep(0, n_d), # *directed edges
     rep(0, n_lb), # corresponds to l_{ij}^{<->,C}
     rep(0, n_lb), # corresponds to z_{ij}^{<->,C}
-    rep(0, n_lb + n_lb * (d - 2)), # corresponds to rhs of F1 and F2
+    rep(0, sz[["F12"]]), # corresponds to rhs of F1 and F2
     "diC" = rep(0, d * n_C), # diC
     0,
     0
@@ -226,20 +240,20 @@ admg_lean_optim <- function(
   model$start[.multigrep(c("dxij", "bxij", "sxij"), names(model$obj))] <- c(ws_xij, ws_bxij, ws_sxij)
   model$modelsense <- "min"
   model$vtype <- rep(c("C", "B", "I", "B", "I", "B", "I", "B", "I", "B", "I", "B"),
-    c(n_z, n_z + n_d, n_z + n_d + sum(nN1), n_d, sum(nkc), n_b + n_d,
-      n_lb, n_lb, n_lb + n_lb * (d - 2), ndic, 1, 1))
+    c(n_z, n_z + n_d, n_z + n_d + sum(nN1), n_d, sz[["P1"]], n_b + n_d,
+      n_lb, n_lb, sz[["F12"]], ndic, 1, 1))
   model$lb <- rep(c(0, 1, 0, 1, 0, 1, 0, 1, 0, d, 1),
-    c(2 * n_z + n_d, n_z + n_d + sum(nN1), n_d, sum(nkc), n_b + n_d,
-      n_lb, n_lb, n_lb + n_lb * (d - 2), ndic, 1, 1))
+    c(2 * n_z + n_d, n_z + n_d + sum(nN1), n_d, sz[["P1"]], n_b + n_d,
+      n_lb, n_lb, sz[["F12"]], ndic, 1, 1))
   model$ub <- rep(c(Inf, 1, Inf, d, 2 * d, 1, 4 * d, 1, d,
     1, 2 * (d - 1) + 1, 1, d, 1),
-    c(n_z, n_z + n_d, n_z, n_d, sum(nN1), n_d, sum(nkc), n_b + n_d,
-      n_lb, n_lb, n_lb + n_lb * (d - 2), ndic, 1, 1))
+    c(n_z, n_z + n_d, n_z, n_d, sum(nN1), n_d, sz[["P1"]], n_b + n_d,
+      n_lb, n_lb, sz[["F12"]], ndic, 1, 1))
   ### Background knowledge as hard bounds on the directed and bidirected edge
   ### indicators and the path indicators d_ij^-> (= 1 iff there is no
   ### directed path from i to j), edge penalty, and rows for linear edge
   ### constraints
-  bx_off <- 3 * n_z + 3 * n_d + sum(nN1) + sum(nkc)
+  bx_off <- 3 * n_z + 3 * n_d + sum(nN1) + sz[["P1"]]
   model <- .bk_bounds(model, list(
     list(
       pairs = xij, offset = 2 * n_z, zero = bk$forbidden, one = bk$required,
@@ -258,73 +272,99 @@ admg_lean_optim <- function(
     coef = list(pairs = xij, offset = 2 * n_z),
     coef_bi = list(pairs = bxij, offset = bx_off, symmetric = TRUE)
   ), V, length(model$obj))
-  if (max_size > 0) {
-    nr1b <- d * sum(sapply(seq_len(max_size) - 1, \(x) {
-      choose(d, x)
-    }))
-  } else {
-    nr1b <- 1
-  }
   model$rhs <- c(
     "labs" = -p, # linearize objective
     "labs" = p, # linearize objective
     "d1d2min" = rep(0, sum(nN1)), # D1, D2 auxiliary N1
-    "acyc" = rep(0, n_d), # E1
+    "acyc" = rep(0, sz[["acyc"]]), # E1
     "indic" = rep(c(d - 1, -1), each = n_d), # dij->
-    "p1min" = rep(0, sum(nkc)), # aux P1
+    "p1min" = rep(0, sz[["p1min"]]), # aux P1
     "ZLcons" = rep(d, n_z), # (C4) in the writeup
     "ZLcons" = rep(- d, n_z), # (C5) in the writeup
     "C6to9" = rep(0, 3 * d * (d - 1)), # C6to9
     "C10to11" = rep(c(d, -d), each = n_lb), # C10 to 11
-    "f1f2min" = rep(0, n_lb + n_lb * (d - 2)), # Min O1 aux
-    "r1b" = rep(0, nr1b),
-    "redundant" = rep(0, d * (d - 1) / 2)
+    "f1f2min" = rep(0, sz[["f1f2min"]]), # Min O1 aux
+    "r1b" = rep(0, sz[["r1b"]]),
+    "redundant" = rep(0, sz[["redundant"]])
   )
   model$sense <- c(
     rep(">=", 2 * n_z), # linearize objective
     rep("=", sum(nN1)), # For min-constraint N1
-    rep(">=", n_d), # For acyclicity E1
+    rep(">=", sz[["acyc"]]), # For acyclicity E1
     rep("<=", 2 * n_d), # dij->
-    rep("=", sum(nkc)), # aux P1
+    rep("=", sz[["p1min"]]), # aux P1
     rep("<=", 2 * n_z), # Z, L consistency
     rep("<=", 3 * d * (d - 1)), # C6to9
     rep("<=", 2 * n_lb), # C10to11
-    rep("=", n_lb + n_lb * (d - 2)), # Min O1 aux
-    rep("=", nr1b),
-    rep("<=", d * (d - 1) / 2)
+    rep("=", sz[["f1f2min"]]), # Min O1 aux
+    rep("=", sz[["r1b"]]),
+    rep("<=", sz[["redundant"]])
   )
+  list(model = model, ec = ec)
+  }
 
-  if (cache && all(file.exists(fn))) {
+  if (.lean_cache_ok(cache, fn)) {
     cat("\nUsing cached constraint matrix and RHS...")
     A <- Matrix::readMM(fn[1])
     rhs <- readRDS(fn[2])
-    rhs[1:(2*n_z)] <- c(-p, p)
+    sz <- .lean_cached_sizes(rhs, fn[2])
     P1 <- readRDS(fn[3])
     N1 <- readRDS(fn[4])
     O1 <- readRDS(fn[5])
     R1 <- readRDS(fn[6])
-    model$rhs <- rhs
   } else {
-    built <- .admg_lean_build_structured_r(d, max_size, mode, CC, n_C, n_d, n_z, n_b, n_lb, n_tilde, nkc, nN1, nr1b, ndic, dic, zijc, xij, bxij, lbijc, model, verbose)
-    A <- built$A
-    model$rhs <- built$rhs
-    P1 <- built$P1
-    N1 <- built$N1
-    O1 <- built$O1
-    R1 <- built$R1
+    # Exact layout from the closed form sizes; the reference builders build
+    # the bounded layout (attr "bound_model") and are cut below.
+    sz0 <- .lean_exact_sizes("admg", mode, d, max_size)
+    mb <- make_model(sz0)$model
+    attr(mb, "sizes") <- sz0
+    attr(mb, "bound_model") <- function() make_model(bound)$model
+    built <- .admg_lean_build_structured_r(d, max_size, mode, CC, n_C, n_d, n_z, n_b, n_lb, n_tilde, nkc, nN1, nr1b, ndic, dic, zijc, xij, bxij, lbijc, mb, verbose)
+    exact <- ncol(built$A) == length(mb$obj) && nrow(built$A) == length(mb$rhs)
+    ls <- if (exact) sz0 else bound
+    cmp <- .lean_compact(built$A, built$rhs, if (exact) mb$sense else make_model(bound)$model$sense,
+      list(N1 = built$N1, P1 = built$P1, O1 = built$O1, R1 = built$R1),
+      cols = c(pre = 3 * n_z + 3 * n_d + sum(nN1), P1 = ls[["P1"]], mid = n_b + n_d + 2 * n_lb,
+               F12 = ls[["F12"]], post = ndic + 2),
+      cut_cols = c("P1", "F12"),
+      rows = c(pre = 2 * n_z + sum(nN1), acyc = ls[["acyc"]], indic = 2 * n_d, p1min = ls[["p1min"]], zl = 2 * n_z,
+               c6to9 = 3 * d * (d - 1), c10to11 = 2 * n_lb, f1f2min = ls[["f1f2min"]], r1b = ls[["r1b"]],
+               redundant = ls[["redundant"]]),
+      cut_rows = c("acyc", "p1min", "f1f2min", "r1b", "redundant"))
+    if (!identical(as.numeric(cmp$sizes[names(sz0)]), as.numeric(sz0))) {
+      stop("Encoding block sizes differ from .lean_exact_sizes().")
+    }
+    A <- cmp$A
+    rhs <- cmp$rhs
+    sz <- cmp$sizes
+    P1 <- cmp$gens$P1
+    N1 <- cmp$gens$N1
+    O1 <- cmp$gens$O1
+    R1 <- cmp$gens$R1
 
     if (cache) {
       if (!dir.exists(cache_dir)) {
         dir.create(cache_dir, recursive = TRUE)
       }
       Matrix::writeMM(A, fn[1])
-      saveRDS(model$rhs, fn[2])
+      saveRDS(rhs, fn[2])
       saveRDS(P1, fn[3])
       saveRDS(N1, fn[4])
       saveRDS(O1, fn[5])
       saveRDS(R1, fn[6])
     }
   }
+
+  ### Model with the exact block sizes
+  mm <- make_model(sz)
+  model <- mm$model
+  ec <- mm$ec
+  if (length(rhs) != length(model$sense) || ncol(A) != length(model$obj)) {
+    stop("Cached model does not match the encoding; delete ", cache_dir, ".")
+  }
+  rhs[1:(2 * n_z)] <- c(-p, p)
+  attr(rhs, "sizes") <- NULL
+  model$rhs <- rhs
 
   ### INCLUDE CONSTRAINTS
   model$A <- A
@@ -355,11 +395,11 @@ admg_lean_optim <- function(
     leij <- x[3 * n_z + n_d + 1:n_d]
     nijk <- x[3 * n_z + 2 * n_d + 1:sum(nN1)]
     deij <- x[3 * n_z + 2 * n_d + sum(nN1) + 1:n_d]
-    bedge <- x[3 * n_z + 3 * n_d + sum(nN1) + sum(nkc) + 1:n_b]
-    sedge <- x[3 * n_z + 3 * n_d + sum(nN1) + sum(nkc) + n_b + 1:n_d]
-    bminlen <- x[3 * n_z + 4 * n_d + sum(nN1) + sum(nkc) + n_b + 1:n_lb]
-    bminleni <- x[3 * n_z + 4 * n_d + sum(nN1) + sum(nkc) + n_b + n_lb + 1:n_lb]
-    dic$dic <- x[3 * n_z + 4 * n_d + sum(nN1) + sum(nkc) + n_b + 3 * n_lb + n_lb * (d - 2) + 1:nrow(dic)]
+    bedge <- x[3 * n_z + 3 * n_d + sum(nN1) + sz[["P1"]] + 1:n_b]
+    sedge <- x[3 * n_z + 3 * n_d + sum(nN1) + sz[["P1"]] + n_b + 1:n_d]
+    bminlen <- x[3 * n_z + 4 * n_d + sum(nN1) + sz[["P1"]] + n_b + 1:n_lb]
+    bminleni <- x[3 * n_z + 4 * n_d + sum(nN1) + sz[["P1"]] + n_b + n_lb + 1:n_lb]
+    dic$dic <- x[3 * n_z + 4 * n_d + sum(nN1) + sz[["P1"]] + n_b + 2 * n_lb + sz[["F12"]] + 1:nrow(dic)]
     M1 <- M2 <- matrix(0, nrow = d, ncol = d)
     dimnames(M1) <- dimnames(M2) <- list(V, V)
     for (i in seq_len(d)) {

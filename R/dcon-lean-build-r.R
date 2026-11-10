@@ -2,6 +2,8 @@
 # optimized encoder can be checked against the original constraint construction.
 .dcon_lean_build_r <- function(d, max_size, mode, CC, dic, zijc, xij,
                                n_z, n_d, nN1, nlc, nr1b, model, verbose) {
+  # Reference builder: works in the bounded layout (see R/lean-compact.R).
+  if (!is.null(attr(model, "bound_model"))) model <- attr(model, "bound_model")()
   n_C <- length(CC)
   ndic <- NROW(dic)
   A <- MatrixExtra::emptySparse(
