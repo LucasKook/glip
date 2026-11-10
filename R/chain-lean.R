@@ -147,7 +147,20 @@ chain_lean_optim <- function(
   # t >= -(z - b)
   # min wt
 
+  nN1 <- c(n_d, (d - 2) * n_d)
+  nW1 <- n_ul + n_ul * (d - 2)
+  nZ1 <- n_d + d * (d - 1) * (d - 2)
+  if (max_size > 0) {
+    nr1b <- d * sum(sapply(seq_len(max_size) - 1, \(x) { choose(d, x) }))
+  } else {
+    nr1b <- 1
+  }
+  bound <- c(M1 = sum(nlc), acyc = 2 * n_d, m1min = sum(nlc), r1b = nr1b)
+
   ### SETUP GUROBI MODEL
+  # Model for given block sizes sz (bounds while building, exact sizes from
+  # the compact cache otherwise; see .lean_compact()).
+  make_model <- function(sz) {
   model <- list()
   model$obj <- c(
     w, # corresponds to t_{ij}^C
@@ -155,14 +168,14 @@ chain_lean_optim <- function(
     "xij" = rep(0, n_d), # corresponds to x^{->}_{ij}
     rep(0, n_z), # corresponds to l_{ij}^C
     rep(0, n_d), # corresponds to l_{ij}^{->}
-    rep(0, sum(nN1 <- c(n_d, (d - 2) * n_d))), # For min-constraint N1
+    rep(0, sum(nN1)), # For min-constraint N1
     rep(0, n_d), # corresponds to d_ij^->
-    rep(0, sum(nlc)), # aux M1
+    rep(0, sz[["M1"]]), # aux M1
     rep(0, n_d), # *-> edges
     rep(0, n_ul), # undirected z variables
     rep(0, n_ul), # undirected l variables
-    rep(0, nW1 <- n_ul + n_ul * (d - 2)), # aux W1
-    rep(0, nZ1 <- n_d + d * (d - 1) * (d - 2)), # aux Z1
+    rep(0, nW1), # aux W1
+    rep(0, nZ1), # aux Z1
     rep(0, d * n_C), # diC
     0, # aux const for min Z1
     0, # aux const for min R1
@@ -201,24 +214,19 @@ chain_lean_optim <- function(
   model$modelsense <- "min"
   model$vtype <- rep(
     c("C", "B", "I", "B", "I", "B", "I", "B", "I"),
-    c(n_z, n_z + n_d, n_z + n_d + sum(nN1), n_d, sum(nlc),
+    c(n_z, n_z + n_d, n_z + n_d + sum(nN1), n_d, sz[["M1"]],
       n_d + n_ul, n_ul + nW1 + nZ1, d * n_C, 3)
   )
   model$lb <- rep(
     c(0, 1, 0, 1, 0, 1, -2, 0, 0, 1, d),
-    c(2 * n_z + n_d, n_z + n_d + sum(nN1), n_d, sum(nlc),
+    c(2 * n_z + n_d, n_z + n_d + sum(nN1), n_d, sz[["M1"]],
       n_d + n_ul, n_ul + nW1, nZ1, d * n_C, 1, 1, 1)
   )
   model$ub <- rep(
     c(Inf, 1, Inf, d, 2 * d, 1, 3 * d, 1, d, 3 * d - 1, 1, 1, 0, 1, d),
-    c(n_z, n_z + n_d, n_z, n_d, sum(nN1), n_d, sum(nlc),
+    c(n_z, n_z + n_d, n_z, n_d, sum(nN1), n_d, sz[["M1"]],
       n_d + n_ul, n_ul, nW1, nZ1, d * n_C, 1, 1, 1)
   )
-  if (max_size > 0) {
-    nr1b <- d * sum(sapply(seq_len(max_size) - 1, \(x) { choose(d, x) }))
-  } else {
-    nr1b <- 1
-  }
   ### Background knowledge as hard bounds on the edge indicators x_ij (one if
   ### i -> j or i - j) and the path indicators d_ij^-> (= 1 iff there is no
   ### anterior path from i to j), edge penalty, and rows for linear edge
@@ -239,57 +247,78 @@ chain_lean_optim <- function(
     "labs" = -p, # linearize objective
     "labs" = p, # linearize objective
     "d1d2min" = rep(0, sum(nN1)), # D1, D2 auxiliary N1
-    "acyc" = rep(0, 2 * n_d), # CH1ab
+    "acyc" = rep(0, sz[["acyc"]]), # CH1ab
     "indic" = rep(c(d - 1, -1), each = n_d), # dij->
-    "m1min" = rep(0, sum(nlc)), # aux M1
+    "m1min" = rep(0, sz[["m1min"]]), # aux M1
     "ZLcons" = rep(d, n_z), # (C4) in the writeup
     "ZLcons" = rep(- d, n_z), # (C5) in the writeup
     "w1min" = rep(0, nW1),
     "z1max" = rep(0, nZ1),
     "unZL" = rep(d, n_ul), # C12-13
     "unZL" = rep(-d, n_ul), # C12-13
-    "r1b" = rep(0, nr1b)
+    "r1b" = rep(0, sz[["r1b"]])
   )
   model$sense <- c(
     rep(">=", 2 * n_z), # linearize objective
     rep("=", sum(nN1)), # For min-constraint N1
-    rep(">=", 2 * n_d), # For acyclicity E1
+    rep(">=", sz[["acyc"]]), # For acyclicity E1
     rep("<=", 2 * n_d), # dij->
-    rep("=", sum(nlc)), # aux M1
+    rep("=", sz[["m1min"]]), # aux M1
     rep("<=", 2 * n_z), # Z, L consistency
     rep("=", nW1),
     rep("=", nZ1),
     rep("<=", 2 * n_ul),
-    rep("=", nr1b)
+    rep("=", sz[["r1b"]])
   )
+  list(model = model, ec = ec)
+  }
 
-  if (cache && all(file.exists(fn))) {
+  if (.lean_cache_ok(cache, fn)) {
     cat("\nUsing cached constraint matrix and RHS...")
     A <- Matrix::readMM(fn[1])
     rhs <- readRDS(fn[2])
-    rhs[1:(2*n_z)] <- c(-p, p)
+    sz <- .lean_cached_sizes(rhs, fn[2])
     M1 <- readRDS(fn[3])
     N1 <- readRDS(fn[4])
     W1 <- readRDS(fn[5])
     Z1 <- readRDS(fn[6])
     R1 <- readRDS(fn[7])
-    model$rhs <- rhs
   } else {
-    built <- .chain_lean_build_structured_r(d, max_size, CC, n_C, n_d, n_z, n_ul, n_tilde, nlc, nN1, nW1, nZ1, nr1b, ndic, dic, zijc, xij, luij, model, verbose)
-    A <- built$A
-    model$rhs <- built$rhs
-    M1 <- built$M1
-    N1 <- built$N1
-    W1 <- built$W1
-    Z1 <- built$Z1
-    R1 <- built$R1
+    # Exact layout from the closed form sizes; the reference builders build
+    # the bounded layout (attr "bound_model") and are cut below.
+    sz0 <- .lean_exact_sizes("chain", "chain", d, max_size)
+    mb <- make_model(sz0)$model
+    attr(mb, "sizes") <- sz0
+    attr(mb, "bound_model") <- function() make_model(bound)$model
+    built <- .chain_lean_build_structured_r(d, max_size, CC, n_C, n_d, n_z, n_ul, n_tilde, nlc, nN1, nW1, nZ1, nr1b, ndic, dic, zijc, xij, luij, mb, verbose)
+    exact <- ncol(built$A) == length(mb$obj) && nrow(built$A) == length(mb$rhs)
+    ls <- if (exact) sz0 else bound
+    cmp <- .lean_compact(built$A, built$rhs, if (exact) mb$sense else make_model(bound)$model$sense,
+      list(N1 = built$N1, M1 = built$M1, W1 = built$W1, Z1 = built$Z1, R1 = built$R1),
+      cols = c(pre = 3 * n_z + 3 * n_d + sum(nN1), M1 = ls[["M1"]],
+               post = n_d + 2 * n_ul + nW1 + nZ1 + d * n_C + 3),
+      cut_cols = "M1",
+      rows = c(pre = 2 * n_z + sum(nN1), acyc = ls[["acyc"]], indic = 2 * n_d, m1min = ls[["m1min"]], zl = 2 * n_z,
+               w1 = nW1, z1 = nZ1, unzl = 2 * n_ul, r1b = ls[["r1b"]]),
+      cut_rows = c("acyc", "m1min", "r1b"))
+    if (!identical(as.numeric(cmp$sizes[names(sz0)]), as.numeric(sz0))) {
+      stop("Encoding block sizes differ from .lean_exact_sizes().")
+    }
+    A <- cmp$A
+    rhs <- cmp$rhs
+    sz <- cmp$sizes
+    M1 <- cmp$gens$M1
+    N1 <- cmp$gens$N1
+    W1 <- cmp$gens$W1
+    Z1 <- cmp$gens$Z1
+    R1 <- cmp$gens$R1
 
     if (cache) {
       if (!dir.exists(cache_dir)) {
         dir.create(cache_dir, recursive = TRUE)
       }
       Matrix::writeMM(A, fn[1])
-      saveRDS(model$rhs, fn[2])
+      saveRDS(rhs, fn[2])
       saveRDS(M1, fn[3])
       saveRDS(N1, fn[4])
       saveRDS(W1, fn[5])
@@ -297,6 +326,17 @@ chain_lean_optim <- function(
       saveRDS(R1, fn[7])
     }
   }
+
+  ### Model with the exact block sizes
+  mm <- make_model(sz)
+  model <- mm$model
+  ec <- mm$ec
+  if (length(rhs) != length(model$sense) || ncol(A) != length(model$obj)) {
+    stop("Cached model does not match the encoding; delete ", cache_dir, ".")
+  }
+  rhs[1:(2 * n_z)] <- c(-p, p)
+  attr(rhs, "sizes") <- NULL
+  model$rhs <- rhs
 
   ### INCLUDE CONSTRAINTS
   model$A <- A
@@ -329,12 +369,12 @@ chain_lean_optim <- function(
     leij <- x[3 * n_z + n_d + 1:n_d]
     nijk <- x[3 * n_z + 2 * n_d + 1:sum(nN1)]
     deij <- x[3 * n_z + 2 * n_d + sum(nN1) + 1:n_d]
-    sedge <- x[3 * n_z + 3 * n_d + sum(nN1) + sum(nlc) + 1:n_d]
-    uz <- x[3 * n_z + 4 * n_d + sum(nN1) + sum(nlc) + 1:n_ul]
-    ul <- x[3 * n_z + 4 * n_d + sum(nN1) + sum(nlc) + n_ul + 1:n_ul]
-    diC <- x[3 * n_z + 4 * n_d + sum(nN1) + sum(nlc) +
+    sedge <- x[3 * n_z + 3 * n_d + sum(nN1) + sz[["M1"]] + 1:n_d]
+    uz <- x[3 * n_z + 4 * n_d + sum(nN1) + sz[["M1"]] + 1:n_ul]
+    ul <- x[3 * n_z + 4 * n_d + sum(nN1) + sz[["M1"]] + n_ul + 1:n_ul]
+    diC <- x[3 * n_z + 4 * n_d + sum(nN1) + sz[["M1"]] +
       nW1 + nZ1 + 2 * n_ul + 1:ndic]
-    # z1l$learned <- x[3 * n_z + 4 * n_d + sum(nN1) + sum(nlc) + nW1 + 2 * n_ul + 1:nz1]
+    # z1l$learned <- x[3 * n_z + 4 * n_d + sum(nN1) + sz[["M1"]] + nW1 + 2 * n_ul + 1:nz1]
     # print(z1l)
     dag <- matrix(0, nrow = d, ncol = d)
     dimnames(dag) <- list(V, V)

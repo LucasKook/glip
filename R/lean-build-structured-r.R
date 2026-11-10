@@ -6,6 +6,16 @@
                                      pair_edges = NULL, n_pair = 0L,
                                      nW1 = 0L, nZ1 = 0L, n_lb = 0L) {
   nc <- length(CC); nd <- n_d; nz <- n_z; nn <- sum(nN1); nl <- sum(nlc)
+  # Exact layout (attr(model, "sizes"), .lean_exact_sizes()) or bounded.
+  sz <- attr(model, "sizes")
+  n_acyc <- if (kind == "admg") nd else 2 * nd
+  n_red <- nd / 2
+  nf <- n_lb * (d - 1)
+  if (!is.null(sz)) {
+    nl <- sz[[if (kind == "admg") "P1" else "M1"]]; nr1b <- sz[["r1b"]]; n_acyc <- sz[["acyc"]]
+    if (kind != "chain") n_red <- sz[["redundant"]]
+    if (kind == "admg") nf <- sz[["F12"]]
+  }
   member <- matrix(FALSE, d, nc)
   for (cc in seq_len(nc)) member[CC[[cc]], cc] <- TRUE
   z <- array(0L, c(d, d, nc))
@@ -25,33 +35,33 @@
   rn <- 2*nz; ra <- rn+nn
   if (kind == "dag") {
     cs <- NA; cdi <- cu+nl
-    rind <- ra+2*nd; rm <- rind+2*nd; rzl <- rm+nl
+    rind <- ra+n_acyc; rm <- rind+2*nd; rzl <- rm+nl
     rr <- rzl+2*nz; rred <- rr+nr1b
     col_names <- make.unique(rep(c("tijC","zijC","dxij","lijc","leij","nijk","deij","uijklm","diC","const1"),
                                   c(nz,nz,nd,nz,nd,nn,nd,nl,d*nc,1)))
-    row_names <- make.unique(c(rep("labs",2*nz),rep("minN1",nn),rep("acyc",2*nd),
-      rep("indic",2*nd),rep("m1min",nl),rep("ZLcons",2*nz),rep("r1b",nr1b),rep("redundant",nd/2)))
+    row_names <- make.unique(c(rep("labs",2*nz),rep("minN1",nn),rep("acyc",n_acyc),
+      rep("indic",2*nd),rep("m1min",nl),rep("ZLcons",2*nz),rep("r1b",nr1b),rep("redundant",n_red)))
   } else if (kind == "chain") {
     cs <- cu+nl; czu <- cs+nd; clu <- czu+n_pair; cw <- clu+n_pair
     cy <- cw+nW1; cdi <- cy+nZ1
-    rind <- ra+2*nd; rm <- rind+2*nd; rzl <- rm+nl
+    rind <- ra+n_acyc; rm <- rind+2*nd; rzl <- rm+nl
     rw <- rzl+2*nz; ry <- rw+nW1; ruz <- ry+nZ1; rr <- ruz+2*n_pair
     col_names <- make.unique(rep(c("tijC","zijC","dxij","lijc","leij","nijk","deij","uijklm",
       "sxij","zuij","luij","wijk","zijk","diC","const0","const1","constd"),
       c(nz,nz,nd,nz,nd,nn,nd,nl,nd,n_pair,n_pair,nW1,nZ1,d*nc,1,1,1)))
-    row_names <- make.unique(c(rep("labs",2*nz),rep("minN1",nn),rep("acyc",2*nd),rep("indic",2*nd),
+    row_names <- make.unique(c(rep("labs",2*nz),rep("minN1",nn),rep("acyc",n_acyc),rep("indic",2*nd),
       rep("m1min",nl),rep("ZLcons",2*nz),rep("w1min",nW1),rep("z1max",nZ1),rep("unZL",2*n_pair),rep("r1b",nr1b)))
   } else {
     cb <- cu+nl; cs <- cb+n_pair; clb <- cs+nd; czb <- clb+n_lb
-    nf <- n_lb*(d-1); cf <- czb+n_lb; cdi <- cf+nf
-    rind <- ra+nd; rm <- rind+2*nd; rzl <- rm+nl
+    cf <- czb+n_lb; cdi <- cf+nf
+    rind <- ra+n_acyc; rm <- rind+2*nd; rzl <- rm+nl
     rc6 <- rzl+2*nz; rc10 <- rc6+3*nd; rf <- rc10+2*n_lb; rr <- rf+nf; rred <- rr+nr1b
     col_names <- make.unique(rep(c("tijC","zijC","dxij","lijc","leij","nijk","deij","uijklm",
       "bxij","sxij","lbijc","zbijc","fijc","diC","constd","const1"),
       c(nz,nz,nd,nz,nd,nn,nd,nl,n_pair,nd,n_lb,n_lb,nf,d*nc,1,1)))
-    row_names <- make.unique(c(rep("labs",2*nz),rep("minN1",nn),rep("acyc",nd),rep("indic",2*nd),
+    row_names <- make.unique(c(rep("labs",2*nz),rep("minN1",nn),rep("acyc",n_acyc),rep("indic",2*nd),
       rep("p1min",nl),rep("ZLcons",2*nz),rep("C6to9",3*nd),rep("C10to11",2*n_lb),
-      rep("f1f2min",nf),rep("r1b",nr1b),rep("redundant",nd/2)))
+      rep("f1f2min",nf),rep("r1b",nr1b),rep("redundant",n_red)))
   }
   for (q in seq_len(nz)) {
     cols[[q]] <- c(ct+q,cz+q); vals[[q]] <- c(1,-1)
@@ -110,6 +120,7 @@
       R1[[r1]] <- list(resvar=cdi+(i-1L)*nc+cc, vars=as.numeric(c(cde+x[i,keep],const)))
     }
   }
+  if (!is.null(sz) && row != nr1b) stop("Exact layout: R1b rows ", row, ", expected ", nr1b, ".")
   # L1--L4 / K1--K4: each row is emitted once, and its separation
   # variable is recorded for the later grouped minimum constraints.
   owner <- integer(nl); row <- 0L
@@ -139,6 +150,7 @@
       }
     }
   }
+  if (!is.null(sz) && row != nl) stop("Exact layout: M1/P1 rows ", row, ", expected ", nl, ".")
   groups <- split(seq_len(row), factor(owner[seq_len(row)],levels=seq_len(nz)))
   M1 <- lapply(seq_len(nz), function(q) list(resvar=cl+q,vars=as.numeric(cu+groups[[q]])))
   if (kind == "chain") {
@@ -181,6 +193,7 @@
         keep <- if(row>start) cf+seq.int(start+1L,row) else numeric()
         O1[[group]] <- list(resvar=clb+group,vars=as.numeric(c(keep,ncol-1)))
       }
+      if (!is.null(sz) && row != nf) stop("Exact layout: F1/F2 rows ", row, ", expected ", nf, ".")
     }
   }
   count <- lengths(cols)

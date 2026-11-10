@@ -1,5 +1,7 @@
 # Original admg cache builder, retained as the reference for optimized encoding.
 .admg_lean_build_r <- function(d, max_size, mode, CC, n_C, n_d, n_z, n_b, n_lb, n_tilde, nkc, nN1, nr1b, ndic, dic, zijc, xij, bxij, lbijc, model, verbose) {
+  # Reference builder: works in the bounded layout (see R/lean-compact.R).
+  if (!is.null(attr(model, "bound_model"))) model <- attr(model, "bound_model")()
   A <- MatrixExtra::emptySparse(
     nrow = length(model$rhs), ncol = length(model$obj), format = "C"
   )

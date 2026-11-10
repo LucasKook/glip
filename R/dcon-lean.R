@@ -136,7 +136,20 @@ dcon_lean_optim <- function(
   # t >= -(z - b)
   # min wt
 
+  nN1 <- c(n_d, (d - 2) * n_d)
+  if (max_size > 0) {
+    nr1b <- d * sum(sapply(seq_len(max_size) - 1, \(x) {
+      choose(d, x)
+    }))
+  } else {
+    nr1b <- 1
+  }
+  bound <- c(M1 = sum(nlc), acyc = 2 * n_d, m1min = sum(nlc), r1b = nr1b, redundant = d * (d - 1) / 2)
+
   ### SETUP GUROBI MODEL
+  # Model for given block sizes sz (bounds while building, exact sizes from
+  # the compact cache otherwise; see .lean_compact()).
+  make_model <- function(sz) {
   model <- list()
   model$obj <- c(
     w, # corresponds to t_{ij}^C
@@ -144,9 +157,9 @@ dcon_lean_optim <- function(
     "xij" = rep(0, n_d), # corresponds to x^{->}_{ij}
     rep(0, n_z), # corresponds to l_{ij}^C
     rep(0, n_d), # corresponds to l_{ij}^{->}
-    rep(0, sum(nN1 <- c(n_d, (d - 2) * n_d))), # For min-constraint N1
+    rep(0, sum(nN1)), # For min-constraint N1
     rep(0, n_d), # corresponds to d_ij^->
-    rep(0, sum(nlc)), # aux M1
+    rep(0, sz[["M1"]]), # aux M1
     rep(0, d * n_C), # diC
     0 # aux const for min R1
   )
@@ -182,15 +195,15 @@ dcon_lean_optim <- function(
   model$modelsense <- "min"
   model$vtype <- rep(
     c("C", "B", "I", "B", "I", "B", "B"),
-    c(n_z, n_z + n_d, n_z + n_d + sum(nN1), n_d, sum(nlc), d * n_C, 1)
+    c(n_z, n_z + n_d, n_z + n_d + sum(nN1), n_d, sz[["M1"]], d * n_C, 1)
   )
   model$lb <- rep(
     c(0, 1, 0, 1, 0, 1),
-    c(2 * n_z + n_d, n_z + n_d + sum(nN1), n_d, sum(nlc), d * n_C, 1)
+    c(2 * n_z + n_d, n_z + n_d + sum(nN1), n_d, sz[["M1"]], d * n_C, 1)
   )
   model$ub <- rep(
     c(Inf, 1, Inf, d, 2 * d, 1, 3 * d, 1, 1),
-    c(n_z, n_z + n_d, n_z, n_d, sum(nN1), n_d, sum(nlc), d * n_C, 1)
+    c(n_z, n_z + n_d, n_z, n_d, sum(nN1), n_d, sz[["M1"]], d * n_C, 1)
   )
   ### Background knowledge as hard bounds on the edge indicators x_ij and
   ### the path indicators d_ij^-> (= 1 iff there is no directed path from i
@@ -207,65 +220,87 @@ dcon_lean_optim <- function(
   ))
   ec <- .edge_constraints(edge_constraints,
     list(coef = list(pairs = xij, offset = 2 * n_z)), V, length(model$obj))
-  if (max_size > 0) {
-    nr1b <- d * sum(sapply(seq_len(max_size) - 1, \(x) {
-      choose(d, x)
-    }))
-  } else {
-    nr1b <- 1
-  }
   model$rhs <- c(
     "labs" = -p, # linearize objective
     "labs" = p, # linearize objective
     "d1d2min" = rep(0, sum(nN1)), # D1, D2 auxiliary N1
-    "acyc" = rep(0, 2 * n_d), # CH1ab
+    "acyc" = rep(0, sz[["acyc"]]), # CH1ab
     "indic" = rep(c(d - 1, -1), each = n_d), # dij->
-    "m1min" = rep(0, sum(nlc)), # aux M1
+    "m1min" = rep(0, sz[["m1min"]]), # aux M1
     "ZLcons" = rep(d, n_z), # (C4*) in the writeup
     "ZLcons" = rep(-d, n_z), # (C5*) in the writeup
-    "r1b" = rep(0, nr1b),
-    "redundant" = rep(0, d * (d - 1) / 2)
+    "r1b" = rep(0, sz[["r1b"]]),
+    "redundant" = rep(0, sz[["redundant"]])
   )
   model$sense <- c(
     rep(">=", 2 * n_z), # linearize objective
     rep("=", sum(nN1)), # For min-constraint N1
-    rep(">=", 2 * n_d), # For acyclicity E1
+    rep(">=", sz[["acyc"]]), # For acyclicity E1
     rep("<=", 2 * n_d), # dij->
-    rep("=", sum(nlc)), # aux M1
+    rep("=", sz[["m1min"]]), # aux M1
     rep("<=", 2 * n_z), # Z, L consistency
-    rep("=", nr1b),
-    rep("<=", d * (d - 1) / 2)
+    rep("=", sz[["r1b"]]),
+    rep("<=", sz[["redundant"]])
   )
+  list(model = model, ec = ec)
+  }
 
-  if (cache && all(file.exists(fn))) {
+  if (.lean_cache_ok(cache, fn)) {
     cat("\nUsing cached constraint matrix and RHS...")
     A <- Matrix::readMM(fn[1])
     rhs <- readRDS(fn[2])
-    rhs[1:(2 * n_z)] <- c(-p, p)
+    sz <- .lean_cached_sizes(rhs, fn[2])
     M1 <- readRDS(fn[3])
     N1 <- readRDS(fn[4])
     R1 <- readRDS(fn[5])
-    model$rhs <- rhs
   } else {
+    # Exact layout from the closed form sizes; the reference builders build
+    # the bounded layout (attr "bound_model") and are cut below.
+    sz0 <- .lean_exact_sizes("dcon", mode, d, max_size)
+    mb <- make_model(sz0)$model
+    attr(mb, "sizes") <- sz0
+    attr(mb, "bound_model") <- function() make_model(bound)$model
     built <- .dcon_lean_build_structured_r(d, max_size, mode, CC, dic, zijc, xij,
-                                n_z, n_d, nN1, nlc, nr1b, model, verbose)
-    A <- built$A
-    model$rhs <- built$rhs
-    M1 <- built$M1
-    N1 <- built$N1
-    R1 <- built$R1
+                                n_z, n_d, nN1, nlc, nr1b, mb, verbose)
+    exact <- ncol(built$A) == length(mb$obj) && nrow(built$A) == length(mb$rhs)
+    ls <- if (exact) sz0 else bound
+    cmp <- .lean_compact(built$A, built$rhs, if (exact) mb$sense else make_model(bound)$model$sense, list(N1 = built$N1, M1 = built$M1, R1 = built$R1),
+      cols = c(pre = 3 * n_z + 3 * n_d + sum(nN1), M1 = ls[["M1"]], post = d * n_C + 1), cut_cols = "M1",
+      rows = c(pre = 2 * n_z + sum(nN1), acyc = ls[["acyc"]], indic = 2 * n_d, m1min = ls[["m1min"]], zl = 2 * n_z,
+               r1b = ls[["r1b"]], redundant = ls[["redundant"]]),
+      cut_rows = c("acyc", "m1min", "r1b", "redundant"))
+    if (!identical(as.numeric(cmp$sizes[names(sz0)]), as.numeric(sz0))) {
+      stop("Encoding block sizes differ from .lean_exact_sizes().")
+    }
+    A <- cmp$A
+    rhs <- cmp$rhs
+    sz <- cmp$sizes
+    M1 <- cmp$gens$M1
+    N1 <- cmp$gens$N1
+    R1 <- cmp$gens$R1
 
     if (cache) {
       if (!dir.exists(cache_dir)) {
         dir.create(cache_dir, recursive = TRUE)
       }
       Matrix::writeMM(A, fn[1])
-      saveRDS(model$rhs, fn[2])
+      saveRDS(rhs, fn[2])
       saveRDS(M1, fn[3])
       saveRDS(N1, fn[4])
       saveRDS(R1, fn[5])
     }
   }
+
+  ### Model with the exact block sizes
+  mm <- make_model(sz)
+  model <- mm$model
+  ec <- mm$ec
+  if (length(rhs) != length(model$sense) || ncol(A) != length(model$obj)) {
+    stop("Cached model does not match the encoding; delete ", cache_dir, ".")
+  }
+  rhs[1:(2 * n_z)] <- c(-p, p)
+  attr(rhs, "sizes") <- NULL
+  model$rhs <- rhs
 
   ### INCLUDE CONSTRAINTS
   model$A <- A
@@ -297,7 +332,7 @@ dcon_lean_optim <- function(
     leij <- x[3 * n_z + n_d + 1:n_d]
     nijk <- x[3 * n_z + 2 * n_d + 1:sum(nN1)]
     deij <- x[3 * n_z + 2 * n_d + sum(nN1) + 1:n_d]
-    diC <- x[3 * n_z + 3 * n_d + sum(nN1) + sum(nlc) + 1:ndic]
+    diC <- x[3 * n_z + 3 * n_d + sum(nN1) + sz[["M1"]] + 1:ndic]
     dag <- matrix(0, nrow = d, ncol = d)
     dimnames(dag) <- list(V, V)
     for (i in seq_len(d)) {
