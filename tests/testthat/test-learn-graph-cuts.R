@@ -15,7 +15,7 @@ test_that("learn_graph() with encoding = 'cuts' matches the min-length encodings
   skip_if_no_gurobi()
   skip_if_no_glipcut()
   dd <- .lg_data()
-  for (mode in c("dag", "admg-dc", "chain")) {
+  for (mode in c("dag", "dg", "admg-dc", "dmg-lean", "chain")) {
     for (max_size in c(1, 2)) {
       args <- list(dd, mode = mode, max_size = max_size, comets = FALSE,
         test = "gaussCItest", cache = FALSE, gurobi_args = ga)
@@ -33,7 +33,7 @@ test_that("learn_graph() with encoding = 'cuts' matches the min-length encodings
       expect_equal(f$graph$optim$objval, s$graph$optim$objval, tolerance = 1e-6,
         label = lab)
       ### the graphical representation is computed for full banks
-      if (max_size == 2 && mode != "admg-dc") {
+      if (max_size == 2 && mode %in% c("dag", "chain")) {
         expect_false(is.null(f$computed), label = lab)
       }
     }
@@ -60,10 +60,8 @@ test_that("learn_graph() passes background knowledge to the cut encoding", {
   }
 })
 
-test_that("learn_graph() rejects unsupported modes and missing Python for the cuts", {
+test_that("learn_graph() rejects unknown encodings and missing Python for the cuts", {
   dd <- .lg_data(50)
-  expect_error(learn_graph(dd, mode = "dg", encoding = "cuts", comets = FALSE,
-    test = "gaussCItest"), "cyclic")
   expect_error(learn_graph(dd, mode = "dag", encoding = "cutz", comets = FALSE,
     test = "gaussCItest"), "should be one of")
   expect_error(learn_graph(dd, mode = "dag", encoding = "cuts", comets = FALSE,

@@ -81,12 +81,10 @@
 #' @param encoding Mixed integer formulation: \code{"minlength"} (default,
 #'   the min-length encoding selected by \code{mode}) or \code{"cuts"} (the cut and
 #'   reachability encoding of \code{\link{cuts_optim}}, solved in Python
-#'   with \code{gurobipy}). Both solve the same optimization problem. The
-#'   cut encoding supports the acyclic classes: DAG modes (\code{"dag"},
-#'   \code{"dag-dcon"}, \code{"dag-dc"}), ADMG modes (\code{"admg"},
-#'   \code{"admg-lean"}, \code{"admg-dc"}) and chain graph modes
-#'   (\code{"chain"}, \code{"chain-dcon"}); \code{mode} then only selects the
-#'   class of graphs (and the warm start and graphical representation).
+#'   with \code{gurobipy}). Both solve the same optimization problem, for
+#'   all modes; with \code{"cuts"}, \code{mode} only selects the class of
+#'   graphs (DAG, DG, ADMG, DMG or chain graph) and with it the warm start
+#'   and the graphical representation.
 #' @param cut_options Options of the cut encoding, see
 #'   \code{\link{cuts_optim}}.
 #' @param python Python executable for the cut encoding, see

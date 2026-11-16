@@ -4,10 +4,10 @@ ga <- list(Threads = 1, Seed = 1, MIPGap = 0, MIPGapAbs = 0, OutputFlag = 0)
 
 .std_fit <- function(class, tests, d, m, V, weight, ...) {
   switch(class,
-    dag = dcon_lean_optim(tests, d = d, max_size = m, V = V, weight_type = weight,
-      cache = FALSE, gurobi_args = ga, mode = "dag", ...),
-    admg = admg_lean_optim(tests, d = d, max_size = m, V = V, weight_type = weight,
-      cache = FALSE, gurobi_args = ga, mode = "admg-lean", ...),
+    dag = , dg = dcon_lean_optim(tests, d = d, max_size = m, V = V, weight_type = weight,
+      cache = FALSE, gurobi_args = ga, mode = class, ...),
+    admg = , dmg = admg_lean_optim(tests, d = d, max_size = m, V = V, weight_type = weight,
+      cache = FALSE, gurobi_args = ga, mode = paste0(class, "-lean"), ...),
     chain = chain_lean_optim(tests, d = d, max_size = m, V = V, weight_type = weight,
       cache = FALSE, gurobi_args = ga, ...)
   )
@@ -15,22 +15,23 @@ ga <- list(Threads = 1, Seed = 1, MIPGap = 0, MIPGapAbs = 0, OutputFlag = 0)
 
 ### Loss of a graph by the R oracle (plus edge penalty)
 .oracle_objective <- function(class, G, tests, weight, pen = 0) {
-  mode <- c(dag = "dag", admg = "admg-dc", chain = "chain")[[class]]
+  mode <- c(dag = "dag", dg = "dg", admg = "admg-dc", dmg = "dmg-dc", chain = "chain")[[class]]
   z <- vapply(seq_len(nrow(tests)), \(k) {
     C <- strsplit(as.character(tests$Z[k]), ",", fixed = TRUE)[[1]]
     .check_separation(tests$X[k], tests$Y[k], C[nzchar(C)], G, mode) == 0
   }, logical(1))
   w <- if (weight == "const") 1 else -log2(pmax(tests$p.value, 2 * .Machine$double.eps)) + .1
-  X <- if (class == "admg") G$M1 else G
+  mixed <- class %in% c("admg", "dmg")
+  X <- if (mixed) G$M1 else G
   sum(w * (z != (tests$p.value <= 0.05))) +
-    pen * (sum(X) + if (class == "admg") sum(G$M2[upper.tri(G$M2)]) else 0)
+    pen * (sum(X) + if (mixed) sum(G$M2[upper.tri(G$M2)]) else 0)
 }
 
 test_that("cut encoding finds the optimum of the min-length encodings", {
   skip_if_no_gurobi()
   skip_if_no_glipcut()
   set.seed(1)
-  for (mode in c("dag", "admg-dc", "chain")) {
+  for (mode in c("dag", "dg", "admg-dc", "dmg-dc", "chain")) {
     class <- .cuts_class(mode)
     for (r in 1:4) {
       d <- 4
@@ -46,11 +47,11 @@ test_that("cut encoding finds the optimum of the min-length encodings", {
       expect_s3_class(f, "graphopt")
       expect_equal(f$optim$status, "OPTIMAL", label = lab)
       expect_equal(f$optim$objval, s$optim$objval, tolerance = 1e-6, label = lab)
-      Gf <- if (class == "admg") list(M1 = f$graph$M1, M2 = f$graph$M2) else f$graph
+      Gf <- if (class %in% c("admg", "dmg")) list(M1 = f$graph$M1, M2 = f$graph$M2) else f$graph
       expect_equal(.oracle_objective(class, Gf, tests, weight), f$optim$objval,
         tolerance = 1e-6, label = lab)
       ### connection indicators of the returned graph
-      mode_o <- if (class == "admg") "admg-dc" else mode
+      mode_o <- mode
       sep <- .compute_oracle_tests(Gf, max_size = m, mode = mode_o)
       key <- function(x) paste(pmin(x$X, x$Y), pmax(x$X, x$Y), x$Z)
       expect_equal(f$tests$dcon, 1 - sep$p.value[match(key(f$tests), key(sep))],
@@ -100,12 +101,18 @@ test_that("cut encoding respects background knowledge like the min-length encodi
       edge_penalty = 0.3)),
     list("chain", list(forbidden_undirected = M(c("b", "c"), c("c", "b")),
       required = M(c("b", "c")), forbidden_anc = M(c("d", "a")))),
-    list("chain", list(required_anc = M(c("a", "d")), edge_constraints = ec))
+    list("chain", list(required_anc = M(c("a", "d")), edge_constraints = ec)),
+    list("dg", list(forbidden = M(c("a", "b")), required = M(c("c", "d"), c("d", "c")),
+      edge_penalty = 0.3)),
+    list("dg", list(forbidden_anc = M(c("d", "a")), required_anc = M(c("a", "d")),
+      edge_constraints = ec)),
+    list("dmg", list(forbidden_bi = M(c("a", "b")), required_bi = M(c("c", "d")),
+      required = M(c("a", "c"), c("c", "a")), edge_penalty = 0.5))
   )
   for (k in seq_along(cases)) {
     class <- cases[[k]][[1]]
     K <- cases[[k]][[2]]
-    mode <- c(dag = "dag", admg = "admg-dc", chain = "chain")[[class]]
+    mode <- c(dag = "dag", dg = "dg", admg = "admg-dc", dmg = "dmg-dc", chain = "chain")[[class]]
     G <- .generate_random_graph(d, V = V, mode = mode, prob = 0.4)
     tests <- .cuts_bank(G, V, d - 2, mode)
     s <- do.call(.std_fit, c(list(class, tests, d, d - 2, V, "const"), K))
@@ -115,11 +122,12 @@ test_that("cut encoding respects background knowledge like the min-length encodi
     expect_equal(f$optim$status, "OPTIMAL", label = lab)
     expect_equal(f$optim$objval, s$optim$objval, tolerance = 1e-6, label = lab)
     pen <- if (is.null(K$edge_penalty)) 0 else K$edge_penalty
-    Gf <- if (class == "admg") list(M1 = f$graph$M1, M2 = f$graph$M2) else f$graph
+    mixed <- class %in% c("admg", "dmg")
+    Gf <- if (mixed) list(M1 = f$graph$M1, M2 = f$graph$M2) else f$graph
     expect_equal(.oracle_objective(class, Gf, tests, "const", pen), f$optim$objval,
       tolerance = 1e-6, label = lab)
     ### knowledge holds in the learned graph
-    X <- if (class == "admg") Gf$M1 else Gf
+    X <- if (mixed) Gf$M1 else Gf
     dir <- if (class == "chain") X * (1 - t(X)) else X
     und <- if (class == "chain") X * t(X) else 0 * X
     An <- ancestor_matrix(X)
@@ -128,7 +136,7 @@ test_that("cut encoding respects background knowledge like the min-length encodi
     chk(K[["required"]], dir, 1)
     chk(K[["forbidden_undirected"]], und, 0)
     chk(K[["required_undirected"]], und, 1)
-    if (class == "admg") {
+    if (mixed) {
       chk(K[["forbidden_bi"]], Gf$M2, 0)
       chk(K[["required_bi"]], Gf$M2, 1)
     }
@@ -176,7 +184,9 @@ test_that("cuts_optim() validates its input", {
     required_undirected = B), "contradictory")
   expect_error(cuts_optim(tests, d = 3, V = V, class = "dag",
     python = file.path(tempdir(), "no-such-python")), "Python")
-  expect_error(.cuts_class("dg"), "cyclic")
+  expect_error(.cuts_class("mag"), "does not support")
+  expect_error(cuts_optim(tests, d = 3, V = V, class = "dg", forbidden_undirected = B),
+    "not supported")
 })
 
 test_that("decisions are taken per unordered pair as in the min-length encodings", {

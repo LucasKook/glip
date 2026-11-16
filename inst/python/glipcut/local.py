@@ -22,7 +22,10 @@ LOCAL_QUERIES = [(0, 1, ()), (0, 1, (2,)), (0, 2, ()), (0, 2, (1,)), (1, 2, ()),
 # variables. Those are exactly 11 models (all marginal correlations nonzero:
 # at most one vanishing partial correlation, 4; exactly one zero marginal: 3;
 # two: 3; none: 1), and the 3-node ADMG models are the same 11.
-MARGINAL = {'admg': 'admg', 'dag': 'admg', 'chain': 'admg'}
+# Cyclic DGs and DMGs (linear cyclic models with d-separation, Spirtes 1995;
+# bidirected edges as latent common causes) give the same 11 models; checked
+# on all DGs and DMGs on 3 and 4 nodes and random larger ones.
+MARGINAL = {'admg': 'admg', 'dag': 'admg', 'chain': 'admg', 'dg': 'admg', 'dmg': 'admg'}
 
 
 @lru_cache(maxsize=None)

@@ -34,9 +34,9 @@ skip_if_no_glipcut <- function() {
   C <- lapply(strsplit(as.character(tests$Z), ",", fixed = TRUE),
     \(z) match(z[nzchar(z)], V))
   graph <- switch(class,
-    dag = list(M1 = unname(G[, ])),
+    dag = , dg = list(M1 = unname(G[, ])),
     chain = list(G = unname(G[, ])),
-    admg = list(M1 = unname(G$M1[, ]), M2 = unname(G$M2[, ]))
+    admg = , dmg = list(M1 = unname(G$M1[, ]), M2 = unname(G$M2[, ]))
   )
   case <- list(task = "connected", class = class, d = length(V), graph = graph,
     queries = lapply(seq_len(nrow(tests)), \(k) list(

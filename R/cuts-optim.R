@@ -1,4 +1,5 @@
-#' Optimal Learning of DAGs, ADMGs and Chain Graphs with the Cut Encoding
+#' Optimal Learning of DAGs, DGs, ADMGs, DMGs and Chain Graphs with the Cut
+#' Encoding
 #'
 #' Solves the same optimization problem as the min-length encodings
 #' (\code{\link{dcon_lean_optim}}, \code{\link{admg_lean_optim}},
@@ -16,9 +17,10 @@
 #'
 #' @inheritParams learn_graph
 #' @inheritParams dcon_lean_optim
-#' @param class Graph class: \code{"dag"}, \code{"admg"} (acyclic directed
-#'   mixed graphs, m-separation) or \code{"chain"} (LWF chain graphs,
-#'   c-separation).
+#' @param class Graph class: \code{"dag"}, \code{"dg"} (directed graphs,
+#'   cycles allowed, d-separation), \code{"admg"}, \code{"dmg"} (acyclic or
+#'   general directed mixed graphs, m-separation) or \code{"chain"} (LWF
+#'   chain graphs, c-separation).
 #' @param cut_options Named list of solver options of the cut encoding:
 #'   \code{subset} (\code{"lp"}, default, \code{"static"} or \code{"none"}),
 #'   \code{joint} (default \code{TRUE}), \code{prune} (default \code{FALSE}),
@@ -55,7 +57,7 @@
 #' @export
 cuts_optim <- function(
     tests, d = 3, max_size = d - 2, V = letters[1:d],
-    class = c("dag", "admg", "chain"),
+    class = c("dag", "dg", "admg", "dmg", "chain"),
     trafo = \(x) as.numeric(x <= 0.05),
     weight_type = c("const", "inv", "log", "size"),
     warmstart = NULL, edgehints = NULL, gurobi_args = list(),
@@ -75,14 +77,15 @@ cuts_optim <- function(
     edge_penalty = edge_penalty
   )
   unsupported <- switch(class,
-    dag = .bk_args_dag, admg = .bk_args_admg, chain = .bk_args_chain
+    dag = , dg = .bk_args_dag, admg = , dmg = .bk_args_admg,
+    chain = .bk_args_chain
   )
   given <- unsupported[!vapply(bk[unsupported], is.null, logical(1))]
   .bk_unsupported(stats::setNames(vector("list", length(given)), given),
     unsupported, paste0("the cut encoding for class \"", class, "\""),
     switch(class,
-      dag = "DAGs have only directed edges",
-      admg = "ADMGs have no undirected edges",
+      dag = , dg = "DAGs and DGs have only directed edges",
+      admg = , dmg = "ADMGs and DMGs have no undirected edges",
       chain = "chain graphs have no bidirected edges"
     )
   )
@@ -91,8 +94,9 @@ cuts_optim <- function(
     .bk_chain(bk$forbidden, bk$required, bk$forbidden_undirected,
       bk$required_undirected, d)
   }
+  mixed <- class %in% c("admg", "dmg")
   ec <- .cuts_edge_constraints(edge_constraints, V,
-    if (class == "admg") c("coef", "coef_bi") else "coef")
+    if (mixed) c("coef", "coef_bi") else "coef")
 
   ### Decisions and weights exactly as in the min-length encodings (shared
   ### code): one separation variable per unordered pair and conditioning set
@@ -110,7 +114,7 @@ cuts_optim <- function(
   ### Warm start in glip's format, made consistent with the knowledge
   start <- NULL
   if (!is.null(warmstart)) {
-    if (class == "admg") {
+    if (mixed) {
       ws <- if (is.list(warmstart)) warmstart else .to_admg(warmstart)
       M1 <- .bk_warmstart(1 * unname(as.matrix(ws$M1[, ])), bk$forbidden, bk$required)
       M2 <- .bk_warmstart(1 * unname(as.matrix(ws$M2[, ])), bk$forbidden_bi, bk$required_bi)
@@ -118,9 +122,9 @@ cuts_optim <- function(
       start <- list(M1 = M1, M2 = 1 * ((M2 + t(M2)) > 0))
     } else {
       G0 <- 1 * unname(as.matrix(warmstart[, ]))
-      if (class == "dag") G0 <- .bk_warmstart(G0, bk$forbidden, bk$required)
+      if (class != "chain") G0 <- .bk_warmstart(G0, bk$forbidden, bk$required)
       diag(G0) <- 0
-      start <- if (class == "dag") list(M1 = G0) else list(G = G0)
+      start <- if (class == "chain") list(G = G0) else list(M1 = G0)
     }
   }
 
@@ -174,11 +178,13 @@ cuts_optim <- function(
   }
   dn <- list(V, V)
   M1 <- matrix(unlist(res[["M1"]]), d, d, byrow = TRUE, dimnames = dn)
-  graph <- switch(class,
-    dag = M1,
-    chain = matrix(unlist(res[["G"]]), d, d, byrow = TRUE, dimnames = dn),
-    admg = list(M1 = M1, M2 = matrix(unlist(res[["M2"]]), d, d, byrow = TRUE, dimnames = dn))
-  )
+  graph <- if (class == "chain") {
+    matrix(unlist(res[["G"]]), d, d, byrow = TRUE, dimnames = dn)
+  } else if (mixed) {
+    list(M1 = M1, M2 = matrix(unlist(res[["M2"]]), d, d, byrow = TRUE, dimnames = dn))
+  } else {
+    M1
+  }
   merged <- dec$merged
   merged$dcon <- unlist(res[["connected"]])[merged$idx]
   structure(list(graph = graph, tests = merged, optim = optim),
@@ -189,13 +195,14 @@ cuts_optim <- function(
 .cuts_class <- function(mode) {
   cl <- switch(mode,
     "dag" = , "dag-dcon" = , "dag-dc" = "dag",
+    "dg" = , "dg-dcon" = , "dg-dc" = "dg",
     "admg" = , "admg-lean" = , "admg-dc" = "admg",
+    "dmg" = , "dmg-lean" = , "dmg-dc" = "dmg",
     "chain" = , "chain-dcon" = "chain",
     NULL
   )
   if (is.null(cl)) {
-    stop("`encoding = \"cuts\"` supports DAG, ADMG and chain graph modes, ",
-      "not mode \"", mode, "\" (cyclic graphs are not supported).")
+    stop("`encoding = \"cuts\"` does not support mode \"", mode, "\".")
   }
   cl
 }

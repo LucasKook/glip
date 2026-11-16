@@ -304,7 +304,36 @@ class Chain(ADMG):
         return dict(G=G, M1=G, M2=[[0] * d for _ in range(d)])
 
 
-CLASSES = {'admg': ADMG, 'dag': DAG, 'chain': Chain}
+class DG(DAG):
+    """Directed graphs (cycles, including 2-cycles, allowed) under
+    d-separation, as in glip's DG modes: the DAG automaton without any
+    acyclicity constraint (the walk criterion is the same in cyclic graphs)."""
+    name = 'dg'
+
+    @staticmethod
+    def static_rows(d):
+        return []
+
+    @staticmethod
+    def violated_cycle(d, val):
+        return []
+
+
+class DMG(ADMG):
+    """Directed mixed graphs (cycles allowed) under m-separation, as in
+    glip's DMG modes: the ADMG automaton without acyclicity."""
+    name = 'dmg'
+
+    @staticmethod
+    def static_rows(d):
+        return []
+
+    @staticmethod
+    def violated_cycle(d, val):
+        return []
+
+
+CLASSES = {'admg': ADMG, 'dag': DAG, 'chain': Chain, 'dg': DG, 'dmg': DMG}
 
 
 def get(name):

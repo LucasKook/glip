@@ -1,16 +1,20 @@
 ### The separation automata of the cut encoding (Python module glipcut)
-### against the R oracles: is_m_separated() for DAGs and ADMGs, csep() for
-### LWF chain graphs; full banks on random graphs
+### against the R oracles: is_m_separated() for DAGs, DGs, ADMGs and DMGs
+### (cycles allowed), csep() for LWF chain graphs; full banks on random graphs
 
 test_that("cut encoding automata agree with the R separation oracles", {
   skip_if_no_glipcut_python()
   set.seed(20261116)
-  for (mode in c("dag", "admg-dc", "chain")) {
+  for (mode in c("dag", "dg", "admg-dc", "dmg-dc", "chain")) {
     class <- .cuts_class(mode)
     for (d in 3:5) {
       for (r in 1:4) {
         V <- letters[seq_len(d)]
         G <- .generate_random_graph(d, V = V, mode = mode, prob = c(.2, .4, .6, .8)[r])
+        if (is.list(G)) G <- lapply(G, \(M) {
+          diag(M) <- 0
+          M
+        })
         tests <- .compute_oracle_tests(G, max_size = d - 2, mode = mode)
         res <- .glipcut_connected(class, G, tests, V)
         expect_true(res$valid, label = paste(mode, d, r))

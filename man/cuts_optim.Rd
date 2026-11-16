@@ -2,14 +2,15 @@
 % Please edit documentation in R/cuts-optim.R
 \name{cuts_optim}
 \alias{cuts_optim}
-\title{Optimal Learning of DAGs, ADMGs and Chain Graphs with the Cut Encoding}
+\title{Optimal Learning of DAGs, DGs, ADMGs, DMGs and Chain Graphs with the Cut
+Encoding}
 \usage{
 cuts_optim(
   tests,
   d = 3,
   max_size = d - 2,
   V = letters[1:d],
-  class = c("dag", "admg", "chain"),
+  class = c("dag", "dg", "admg", "dmg", "chain"),
   trafo = function(x) as.numeric(x <= 0.05),
   weight_type = c("const", "inv", "log", "size"),
   warmstart = NULL,
@@ -41,9 +42,10 @@ cuts_optim(
 
 \item{V}{Character vector of variable names, of length \code{d}.}
 
-\item{class}{Graph class: \code{"dag"}, \code{"admg"} (acyclic directed
-mixed graphs, m-separation) or \code{"chain"} (LWF chain graphs,
-c-separation).}
+\item{class}{Graph class: \code{"dag"}, \code{"dg"} (directed graphs,
+cycles allowed, d-separation), \code{"admg"}, \code{"dmg"} (acyclic or
+general directed mixed graphs, m-separation) or \code{"chain"} (LWF
+chain graphs, c-separation).}
 
 \item{trafo}{Transformation function for p-values. Default is hard
 thresholding at \code{alpha}}
