@@ -31,17 +31,19 @@ skip_if_no_glipcut <- function() {
 ### Connection indicators of queries in a graph computed by the Python module
 ### (no solver), for comparison with the R oracles
 .glipcut_connected <- function(class, G, tests, V) {
-  q <- .cuts_queries(tests, V, length(V))
+  C <- lapply(strsplit(as.character(tests$Z), ",", fixed = TRUE),
+    \(z) match(z[nzchar(z)], V))
   graph <- switch(class,
     dag = list(M1 = unname(G[, ])),
     chain = list(G = unname(G[, ])),
     admg = list(M1 = unname(G$M1[, ]), M2 = unname(G$M2[, ]))
   )
   case <- list(task = "connected", class = class, d = length(V), graph = graph,
-    queries = lapply(seq_len(nrow(q)), \(k) list(
-      i = q$i[k] - 1L, j = q$j[k] - 1L, C = as.list(q$C[[k]] - 1L))))
+    queries = lapply(seq_len(nrow(tests)), \(k) list(
+      i = match(tests$X[k], V) - 1L, j = match(tests$Y[k], V) - 1L,
+      C = as.list(C[[k]] - 1L))))
   res <- .glipcut_run(case)
-  list(valid = isTRUE(res$valid), connected = unlist(res$connected), q = q)
+  list(valid = isTRUE(res$valid), connected = unlist(res$connected))
 }
 
 ### Full test bank (unordered pairs, all conditioning sets up to max_size)

@@ -94,21 +94,18 @@ cuts_optim <- function(
   ec <- .cuts_edge_constraints(edge_constraints, V,
     if (class == "admg") c("coef", "coef_bi") else "coef")
 
-  ### Decisions and weights exactly as in the min-length encodings: one
-  ### decision per unordered pair and conditioning set (the last of
-  ### duplicated tests counts), tests outside the bank are ignored
-  q <- .cuts_queries(tests, V, max_size)
-  praw <- q$p.value
-  w <- switch(weight_type,
-    "const" = rep(1, nrow(q)),
-    "inv" = 1 / pmax(praw, 0.001),
-    "log" = -log2(pmax(praw, 2 * .Machine$double.eps)) + 0.1,
-    "size" = 1 / (1 + q$size)
-  )
-  p <- trafo(praw)
-  if (length(p) != length(praw) || anyNA(p) || !all(p %in% c(0, 1))) {
+  ### Decisions and weights exactly as in the min-length encodings (shared
+  ### code): one separation variable per unordered pair and conditioning set
+  CC <- .cond_sets(d, max_size)
+  zijc <- .dcon_lean_indices_structured_r(d, CC)$zijc
+  n_z <- NROW(zijc)
+  dec <- .test_decisions(tests, zijc, CC, V, n_z, weight_type, trafo)
+  w <- dec$w
+  p <- dec$p
+  if (length(p) != n_z || anyNA(p[w > 0]) || !all(p[w > 0] %in% c(0, 1))) {
     stop("The cut encoding requires `trafo` to map p-values to 0 or 1.")
   }
+  p[w == 0] <- 0 # untested variables do not enter the objective
 
   ### Warm start in glip's format, made consistent with the knowledge
   start <- NULL
@@ -152,8 +149,8 @@ cuts_optim <- function(
   K <- K[!vapply(K, is.null, logical(1))]
   case <- list(
     class = class, d = d, max_size = max_size,
-    queries = lapply(seq_len(nrow(q)), \(k) list(
-      i = q$i[k] - 1L, j = q$j[k] - 1L, C = as.list(q$C[[k]] - 1L),
+    queries = lapply(seq_len(n_z), \(k) list(
+      i = zijc$i[k] - 1L, j = zijc$j[k] - 1L, C = as.list(CC[[zijc$C[k]]] - 1L),
       p = p[k], w = w[k]
     )),
     start = start, knowledge = K, options = opts
@@ -182,9 +179,8 @@ cuts_optim <- function(
     chain = matrix(unlist(res[["G"]]), d, d, byrow = TRUE, dimnames = dn),
     admg = list(M1 = M1, M2 = matrix(unlist(res[["M2"]]), d, d, byrow = TRUE, dimnames = dn))
   )
-  merged <- q[, c("X", "Y", "Z", "p.value", "size")]
-  merged$weight <- w
-  merged$dcon <- unlist(res[["connected"]])
+  merged <- dec$merged
+  merged$dcon <- unlist(res[["connected"]])[merged$idx]
   structure(list(graph = graph, tests = merged, optim = optim),
     class = "graphopt")
 }
@@ -202,31 +198,6 @@ cuts_optim <- function(
       "not mode \"", mode, "\" (cyclic graphs are not supported).")
   }
   cl
-}
-
-### One decision per unordered pair and conditioning set, as in the min-length
-### encodings (tests with an endpoint in Z or |Z| > max_size are ignored)
-.cuts_queries <- function(tests, V, max_size) {
-  Z <- strsplit(as.character(tests$Z), ",", fixed = TRUE)
-  Z <- lapply(Z, \(z) z[nzchar(z)])
-  i <- match(tests$X, V)
-  j <- match(tests$Y, V)
-  ok <- !is.na(i) & !is.na(j) & i != j &
-    vapply(seq_along(Z), \(k) {
-      zz <- match(Z[[k]], V)
-      !anyNA(zz) && length(zz) <= max_size && !any(zz %in% c(i[k], j[k])) &&
-        !anyDuplicated(zz)
-    }, logical(1))
-  C <- lapply(Z, \(z) sort(match(z, V)))
-  key <- vapply(seq_along(Z), \(k) paste(min(i[k], j[k]), max(i[k], j[k]),
-    paste(C[[k]], collapse = ","), sep = "|"), "")
-  keep <- which(ok)
-  keep <- keep[!duplicated(key[keep], fromLast = TRUE)]
-  size <- if (!is.null(tests$size)) tests$size[keep] else lengths(C[keep])
-  q <- data.frame(X = tests$X[keep], Y = tests$Y[keep], Z = tests$Z[keep],
-    p.value = tests$p.value[keep], size = size, i = i[keep], j = j[keep])
-  q$C <- C[keep]
-  q
 }
 
 ### Validate edge constraints (fields, sense, rhs, dimensions) and return

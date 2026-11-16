@@ -181,12 +181,22 @@ test_that("cuts_optim() validates its input", {
 
 test_that("decisions are taken per unordered pair as in the min-length encodings", {
   V <- letters[1:3]
-  tests <- data.frame(X = c("a", "b", "a", "a"), Y = c("b", "a", "c", "c"),
-    Z = c("", "", "b", "b,a"), p.value = c(0.5, 0.01, 0.2, 0.3), size = c(0, 0, 1, 2))
-  q <- .cuts_queries(tests, V, 1)
-  ### the last of duplicated tests counts; endpoint in Z and |Z| > 1 ignored
-  expect_equal(q$p.value, c(0.01, 0.2))
-  expect_equal(q$C, list(integer(0), 2L))
+  CC <- .cond_sets(3, 1)
+  zijc <- .dcon_lean_indices_structured_r(3, CC)$zijc
+  tests <- data.frame(X = c("a", "b", "a"), Y = c("b", "a", "c"),
+    Z = c("", "", "b"), p.value = c(0.5, 0.01, 0.2), size = c(0, 0, 1))
+  dec <- .test_decisions(tests, zijc, CC, V, nrow(zijc), "log", \(x) as.numeric(x <= 0.05))
+  key <- \(i, j, C) which(zijc$i == max(i, j) & zijc$j == min(i, j) &
+    vapply(CC[zijc$C], \(z) identical(z, as.integer(C)), TRUE))
+  ab <- key(1, 2, integer(0))
+  ac <- key(1, 3, 2)
+  ### the last of duplicated tests counts
+  expect_equal(dec$p[ab], 1)
+  expect_equal(dec$w[ab], -log2(0.01) + 0.1)
+  expect_equal(dec$p[ac], 0)
+  ### untested variables have weight zero
+  expect_equal(sum(dec$w > 0), 2)
+  expect_equal(dec$merged$weight, dec$w[dec$merged$idx])
 })
 
 test_that("invalid warm starts are ignored with a warning", {

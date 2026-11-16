@@ -42,18 +42,16 @@ chain_lean_optim <- function(
   .require_gurobi()
 
   weight_type <- match.arg(weight_type)
-  bk <- .bk_validate(V,
+  pre <- .bk_prepare("chain", "chain_lean_optim()", V, d, warmstart, list(...),
     forbidden = forbidden, required = required,
     forbidden_undirected = forbidden_undirected,
     required_undirected = required_undirected,
     forbidden_anc = forbidden_anc, required_anc = required_anc,
     edge_penalty = edge_penalty
   )
-  .bk_unsupported(list(...), .bk_args_chain, "chain_lean_optim()",
-    "chain graphs have no bidirected edges")
-  bkc <- .bk_chain(bk$forbidden, bk$required, bk$forbidden_undirected,
-    bk$required_undirected, d)
-  warmstart <- .bk_warmstart(warmstart, bkc$zero, bkc$one)
+  bk <- pre$bk
+  bkc <- pre$bkc
+  warmstart <- pre$warmstart
 
   fn <- file.path(
     cache_dir,
@@ -64,13 +62,7 @@ chain_lean_optim <- function(
   ### COMPUTE DIMENSIONS
 
   # List of all conditioning sets of size at most max_size
-  CC <- unlist(sapply(0:max_size, \(x)
-    utils::combn(d, x, simplify = FALSE)),
-    recursive = FALSE
-  )
-  if (max_size == 0) {
-    CC <- list(integer(0))
-  }
+  CC <- .cond_sets(d, max_size)
   n_C <- length(CC)
 
   ### Number of directed edges, excluding diagonal
@@ -106,40 +98,11 @@ chain_lean_optim <- function(
   colnames(tmp) <- c("j", "i", "idx")
   luij <- rbind(luij, tmp)
 
-  # Lookup table to place p-values in the correct positions
-  # b/c self-edges and x -> y s.t. y in C are not tested
-  l1 <- zijc
-  l1$i <- V[zijc$i]
-  l1$j <- V[zijc$j]
-  l1$C <- sapply(CC[zijc$C], \(x) paste0(V[x], collapse = ","))
-  l2 <- l1
-  colnames(l1) <- c("X", "Y", "Z", "idx")
-  colnames(l2) <- c("Y", "X", "Z", "idx")
-  lookup <- rbind(l1, l2)
-
-  # Merge p-values with lookup table for optimization
-  # Positions that are not tested contain an edge by default
-  # i -> j | C s.t. j not in C ignored => Set w to zero for those
-  # i -> j | C s.t. i in C ignored => Set w to zero for those
-  # i -> i | C ignored => Set w to zero for those
-  w <- rep(0, n_z)
-  s <- rep(0, n_z)
-  praw <- rep(0, n_z)
-  merged <- dplyr::left_join(tests, lookup, by = c("X", "Y", "Z"))
-  praw[merged$idx] <- merged$p.value
-  w[merged$idx] <- 1
-  s[merged$idx] <- merged$size
-
-  ### Weights
-  w[w == 1] <- switch(weight_type,
-    "const" = 1,
-    "inv" = 1 / pmax(praw[w == 1], 0.001),
-    "log" = -log2(pmax(praw[w == 1], 2 * .Machine$double.eps)) + 0.1,
-    "size" = 1 / (1 + s[w == 1])
-  )
-  merged$weight <- w[merged$idx]
-
-  p <- trafo(praw)
+  ### Decisions and weights of the separation variables
+  dec <- .test_decisions(tests, zijc, CC, V, n_z, weight_type, trafo)
+  merged <- dec$merged
+  w <- dec$w
+  p <- dec$p
 
   # Linearize absolute value:
   # min w |z - b|
@@ -350,10 +313,7 @@ chain_lean_optim <- function(
   }
 
   ### SOLVE
-  if (requireNamespace("gurobi")) {
-    # return(gurobi::gurobi_iis(model))
-    sol <- gurobi::gurobi(model, gurobi_args)
-  }
+  sol <- .gurobi_solve(model, gurobi_args)
 
   ### No incumbent (infeasible constraints or solver stopped before finding a
   ### feasible solution): return the solver output only
