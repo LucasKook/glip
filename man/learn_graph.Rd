@@ -33,6 +33,9 @@ learn_graph(
   required_anc = NULL,
   edge_constraints = NULL,
   edge_penalty = 0,
+  encoding = c("minlength", "cuts"),
+  cut_options = list(),
+  python = NULL,
   ...
 )
 }
@@ -136,6 +139,22 @@ choose it such that \code{edge_penalty} times the number of edge
 indicators (\code{d * (d - 1)}, plus \code{d * (d - 1) / 2} for ADMGs
 and DMGs) is smaller than the smallest test weight. Default: \code{0}.}
 
+\item{encoding}{Mixed integer formulation: \code{"minlength"} (default,
+the min-length encoding selected by \code{mode}) or \code{"cuts"} (the cut and
+reachability encoding of \code{\link{cuts_optim}}, solved in Python
+with \code{gurobipy}). Both solve the same optimization problem. The
+cut encoding supports the acyclic classes: DAG modes (\code{"dag"},
+\code{"dag-dcon"}, \code{"dag-dc"}), ADMG modes (\code{"admg"},
+\code{"admg-lean"}, \code{"admg-dc"}) and chain graph modes
+(\code{"chain"}, \code{"chain-dcon"}); \code{mode} then only selects the
+class of graphs (and the warm start and graphical representation).}
+
+\item{cut_options}{Options of the cut encoding, see
+\code{\link{cuts_optim}}.}
+
+\item{python}{Python executable for the cut encoding, see
+\code{\link{cuts_optim}}.}
+
 \item{...}{Further arguments passed to internals.}
 }
 \value{
@@ -187,6 +206,12 @@ additionally set forbidden edges to zero and required edges to one in the
 warm start. Since the warm start is only a starting point, it may still
 violate some constraints, in which case the solver repairs or discards
 it; the learned graph satisfies all constraints in either case.
+
+With \code{encoding = "cuts"}, the same tests, decisions, weights, warm
+start, background knowledge, edge penalty and Gurobi parameters are used
+(\code{edgehints} and \code{cache} are not used). The encoding is
+recorded in the attribute \code{"encoding"} of the result and in
+\code{graph$optim$encoding}.
 
 If the constraints are infeasible or the solver stops before finding a
 feasible graph (e.g., because of \code{gurobi_args}), the learned graph

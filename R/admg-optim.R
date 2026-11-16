@@ -59,10 +59,12 @@ trafo = \(x) as.numeric(x <= 0.05),
     warmstart$M2 <- .bk_warmstart(warmstart$M2, bk$forbidden_bi, bk$required_bi)
   }
 
+  # v2: K4cd must index lijc after the directed-edge block. Old cached
+  # matrices contain the wrong column, so never reuse the unversioned key.
   fn <- file.path(
     cache_dir,
     paste0(c("lhs", "rhs", "P1", "N1", "O1"), "dim", d, "max",
-      max_size, mode, c(".mtx", ".rds", ".rds", ".rds", ".rds"))
+      max_size, paste0(mode, "-v2"), c(".mtx", ".rds", ".rds", ".rds", ".rds"))
   )
 
   ### COMPUTE DIMENSIONS
@@ -560,7 +562,7 @@ trafo = \(x) as.numeric(x <= 0.05),
                     lk <- xij$idx[xij$i == l & xij$j == k]
                     clist[[cntr]] <- data.frame(
                       i = c(cntr, cntr, cntr, cntr, cntr, cntr),
-                      j = c(skip + cntr, jlC, kk2c, ik, lk, n_lb + kk2c),
+                      j = c(skip + cntr, n_d + jlC, kk2c, ik, lk, n_lb + kk2c),
                       v = c(1, -1, -1, n_tilde - 3, n_tilde - 3, n_tilde - 3)
                     )
                     rhs_m1[cntr] <- 3 * n_tilde - 7

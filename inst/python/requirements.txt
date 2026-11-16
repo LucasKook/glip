@@ -1,0 +1,4 @@
+# Python dependencies of the cut encoding (glip::cuts_optim(),
+# learn_graph(encoding = "cuts")); tested with these versions.
+gurobipy==13.0.3
+networkx==3.5
