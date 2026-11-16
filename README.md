@@ -84,6 +84,28 @@ result$computed
 - `"chain"`: LWF-chain graphs
 - Additional experimental modes
 
+## Cut Encoding (optional, requires Python)
+
+For DAGs, ADMGs and chain graphs, `learn_graph(..., encoding = "cuts")`
+solves the same optimization problem with a different formulation
+(reachability and cutting planes), which is often much faster for larger
+graphs and weak conditioning (`max_size`). It is solved by the Python
+module shipped in `inst/python` with `gurobipy`:
+
+```sh
+python3 -m venv ~/glip-venv
+~/glip-venv/bin/pip install -r "$(Rscript -e 'cat(system.file("python", "requirements.txt", package = "glip"))')"
+```
+
+```r
+options(glip.python = "~/glip-venv/bin/python")  # or set GLIP_PYTHON
+result <- learn_graph(data, mode = "dag", test = "gaussCItest", comets = FALSE,
+  encoding = "cuts")
+```
+
+`gurobipy` needs a Gurobi license as well (the same license file works). The
+default `encoding = "minlength"` does not need Python.
+
 ## Reproducibility
 
 To reproduce the results from the paper, please follow the following instructions:

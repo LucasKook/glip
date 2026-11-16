@@ -10,5 +10,5 @@
 #' @importFrom pcalg gaussCItest
 NULL
 
-### Column names used in dplyr verbs in lookup_ci()
-utils::globalVariables(c("X", "Y", "Z", "p.value"))
+### Column names used in dplyr verbs (lookup_ci() and the lean encodings)
+utils::globalVariables(c("X", "Y", "Z", "p.value", "i", "j"))

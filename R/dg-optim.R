@@ -40,14 +40,13 @@ dag_optim <- function(
 
   mode <- match.arg(mode)
   weight_type <- match.arg(weight_type)
-  bk <- .bk_validate(V,
+  pre <- .bk_prepare("dag", "dag_optim()", V, d, warmstart, list(...),
     forbidden = forbidden, required = required,
     forbidden_anc = forbidden_anc, required_anc = required_anc,
     edge_penalty = edge_penalty
   )
-  .bk_unsupported(list(...), .bk_args_dag, "dag_optim()",
-    "DAGs and DGs have only directed edges")
-  warmstart <- .bk_warmstart(warmstart, bk$forbidden, bk$required)
+  bk <- pre$bk
+  warmstart <- pre$warmstart
 
   fn <- file.path(
     cache_dir,
@@ -58,13 +57,7 @@ dag_optim <- function(
   ### COMPUTE DIMENSIONS
 
   # List of all conditioning sets of size at most max_size
-  CC <- unlist(sapply(0:max_size, \(x)
-    utils::combn(d, x, simplify = FALSE)),
-    recursive = FALSE
-  )
-  if (max_size == 0) {
-    CC <- list(integer(0))
-  }
+  CC <- .cond_sets(d, max_size)
   n_C <- length(CC)
 
   ### Number of directed edges, excluding diagonal
@@ -81,22 +74,8 @@ dag_optim <- function(
   )
 
   # Array indices for mu-separation statements
-  zijc <- data.frame()
-  counter <- 1
-  for (i in seq_len(d)) {
-    for (j in seq_len(i - 1)) {
-      for (C in seq_along(CC)) {
-        if (all(!(c(i, j) %in% CC[[C]]))) {
-          zijc <- rbind(
-            zijc,
-            data.frame(i = i, j = j, C = C, idx = counter)
-          )
-          counter <- counter + 1
-        }
-      }
-    }
-  }
-  zijc
+  # Array indices for d-separation statements
+  zijc <- .dcon_lean_indices_structured_r(d, CC)$zijc
 
   xij <- data.frame(expand.grid(i = seq_len(d), j = seq_len(d))) |>
     dplyr::filter(i != j)
@@ -105,40 +84,11 @@ dag_optim <- function(
   ### Number of separation variables, excluding i,j in conditioning set
   n_z <- NROW(zijc)
 
-  # Lookup table to place p-values in the correct positions
-  # b/c self-edges and x -> y s.t. y in C are not tested
-  l1 <- zijc
-  l1$i <- V[zijc$i]
-  l1$j <- V[zijc$j]
-  l1$C <- sapply(CC[zijc$C], \(x) paste0(V[x], collapse = ","))
-  l2 <- l1
-  colnames(l1) <- c("X", "Y", "Z", "idx")
-  colnames(l2) <- c("Y", "X", "Z", "idx")
-  lookup <- rbind(l1, l2)
-
-  # Merge p-values with lookup table for optimization
-  # Positions that are not tested contain an edge by default
-  # i -> j | C s.t. j not in C ignored => Set w to zero for those
-  # i -> j | C s.t. i in C ignored => Set w to zero for those
-  # i -> i | C ignored => Set w to zero for those
-  w <- rep(0, n_z)
-  s <- rep(0, n_z)
-  praw <- rep(0, n_z)
-  merged <- dplyr::left_join(tests, lookup, by = c("X", "Y", "Z"))
-  praw[merged$idx] <- merged$p.value
-  w[merged$idx] <- 1
-  s[merged$idx] <- merged$size
-
-  ### Weights
-  w[w == 1] <- switch(weight_type,
-    "const" = 1,
-    "inv" = 1 / pmax(praw[w == 1], 0.001),
-    "log" = -log2(pmax(praw[w == 1], 2 * .Machine$double.eps)) + 0.1,
-    "size" = 1 / (1 + s[w == 1])
-  )
-  merged$weight <- w[merged$idx]
-
-  p <- trafo(praw)
+  ### Decisions and weights of the separation variables
+  dec <- .test_decisions(tests, zijc, CC, V, n_z, weight_type, trafo)
+  merged <- dec$merged
+  w <- dec$w
+  p <- dec$p
 
   # Linearize absolute value:
   # min w |z - b|
@@ -549,9 +499,7 @@ dag_optim <- function(
   }
 
   ### SOLVE
-  if (requireNamespace("gurobi")) {
-    sol <- gurobi::gurobi(model, gurobi_args)
-  }
+  sol <- .gurobi_solve(model, gurobi_args)
 
   ### No incumbent (infeasible constraints or solver stopped before finding a
   ### feasible solution): return the solver output only

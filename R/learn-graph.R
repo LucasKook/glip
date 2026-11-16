@@ -78,6 +78,17 @@
 #'   choose it such that \code{edge_penalty} times the number of edge
 #'   indicators (\code{d * (d - 1)}, plus \code{d * (d - 1) / 2} for ADMGs
 #'   and DMGs) is smaller than the smallest test weight. Default: \code{0}.
+#' @param encoding Mixed integer formulation: \code{"minlength"} (default,
+#'   the min-length encoding selected by \code{mode}) or \code{"cuts"} (the cut and
+#'   reachability encoding of \code{\link{cuts_optim}}, solved in Python
+#'   with \code{gurobipy}). Both solve the same optimization problem, for
+#'   all modes; with \code{"cuts"}, \code{mode} only selects the class of
+#'   graphs (DAG, DG, ADMG, DMG or chain graph) and with it the warm start
+#'   and the graphical representation.
+#' @param cut_options Options of the cut encoding, see
+#'   \code{\link{cuts_optim}}.
+#' @param python Python executable for the cut encoding, see
+#'   \code{\link{cuts_optim}}.
 #' @param ... Further arguments passed to internals.
 #'
 #' @details
@@ -121,6 +132,12 @@
 #' violate some constraints, in which case the solver repairs or discards
 #' it; the learned graph satisfies all constraints in either case.
 #'
+#' With \code{encoding = "cuts"}, the same tests, decisions, weights, warm
+#' start, background knowledge, edge penalty and Gurobi parameters are used
+#' (\code{edgehints} and \code{cache} are not used). The encoding is
+#' recorded in the attribute \code{"encoding"} of the result and in
+#' \code{graph$optim$encoding}.
+#'
 #' If the constraints are infeasible or the solver stops before finding a
 #' feasible graph (e.g., because of \code{gurobi_args}), the learned graph
 #' is \code{NULL} and the solver output is returned in \code{graph$optim}.
@@ -137,13 +154,23 @@ learn_graph <- function(
   required = NULL, forbidden_bi = NULL, required_bi = NULL,
   forbidden_undirected = NULL, required_undirected = NULL,
   forbidden_anc = NULL, required_anc = NULL, edge_constraints = NULL,
-  edge_penalty = 0, ...
+  edge_penalty = 0, encoding = c("minlength", "cuts"), cut_options = list(),
+  python = NULL, ...
 ) {
   if (length(mode) != 1 || !mode %in% .modes) {
     stop(
       "`mode` must be one of ",
       paste0("\"", .modes, "\"", collapse = ", "), "."
     )
+  }
+  encoding <- match.arg(encoding)
+  if (encoding == "cuts") {
+    cut_class <- .cuts_class(mode)
+    if (!return_tests_only && !.has_glipcut(python)) {
+      stop("`encoding = \"cuts\"` requires Python with `gurobipy` and ",
+        "`networkx` (Python used: ", .glipcut_python(python),
+        "; set option `glip.python` or GLIP_PYTHON).")
+    }
   }
   if (mode %in% c("dg", "dmg", "dg-dcon", "dg-dc", "dmg-lean", "dmg-dc")) {
     warning("Learning DGs or DMGs relies on d-separation
@@ -237,21 +264,32 @@ learn_graph <- function(
   )
   bk <- bk[!vapply(bk, is.null, logical(1))]
 
-  opt <- .get_opt(mode)
-  graph <- do.call(opt, c(list(res,
-    d = length(vars), max_size = max_size,
-    V = vars, trafo = trafo, weight_type = weight_type,
-    warmstart = warmstart, edgehints = edgehints,
-    gurobi_args = gurobi_args, verbose = verbose,
-    cache = cache, mode = mode, edge_penalty = edge_penalty
-  ), bk, list(...)))
+  if (encoding == "cuts") {
+    graph <- do.call(cuts_optim, c(list(res,
+      d = length(vars), max_size = max_size,
+      V = vars, class = cut_class, trafo = trafo, weight_type = weight_type,
+      warmstart = warmstart, edgehints = edgehints,
+      gurobi_args = gurobi_args, verbose = verbose,
+      edge_penalty = edge_penalty, cut_options = cut_options, python = python
+    ), bk, list(...)))
+  } else {
+    opt <- .get_opt(mode)
+    graph <- do.call(opt, c(list(res,
+      d = length(vars), max_size = max_size,
+      V = vars, trafo = trafo, weight_type = weight_type,
+      warmstart = warmstart, edgehints = edgehints,
+      gurobi_args = gurobi_args, verbose = verbose,
+      cache = cache, mode = mode, edge_penalty = edge_penalty
+    ), bk, list(...)))
+  }
 
   out <- if (!is.null(graph$graph)) {
     .compute_graphical_representation(graph$graph, max_size, mode)
   }
 
   structure(list(tests = res, graph = graph, computed = out),
-    class = "learned_graph", vars = vars, max_size = max_size, test = test
+    class = "learned_graph", vars = vars, max_size = max_size, test = test,
+    encoding = encoding
   )
 }
 
