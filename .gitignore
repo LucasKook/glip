@@ -107,3 +107,6 @@ __pycache__/
 !inst/python/requirements.txt
 
 NEWS.md
+
+# Python environment for the cut encoding tests (Makefile)
+/.venv/

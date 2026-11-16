@@ -20,3 +20,4 @@
 ^results$
 ^inst/python/.*__pycache__
 ^inst/python/.*\.pyc$
+^\.venv$
