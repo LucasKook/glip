@@ -103,7 +103,10 @@ lbs <- c(
   "tail_f1" = "1 - F1 (tail)", "head_f1" = "1 - F1 (head)"
 )
 
-### A: ASP timing
+### A: ASP timing as in the paper: GLIP time = Gurobi runtime vs clingo's time
+### (wall time of the clingo call). The wall time of the whole GLIP fit (model
+### build incl. reading the cached matrix, complete warm start, solve; for
+### cuts also the Python process) is reported alongside in asp-ratio.csv
 asp <- rd("asp")
 if (!is.null(asp)) {
   wt <- max(asp$walltime)
@@ -135,6 +138,8 @@ if (!is.null(asp)) {
   encoding_table(asp_res, c("setting", "mode", "d"), "asp-encodings")
   write_csv(asp |> group_by(setting, mode, d, encoding) |>
     summarize(median_ratio = median(runtime / asp), glip_faster = mean(runtime < asp),
+      median_ratio_wall = median(wall / asp), glip_faster_wall = mean(wall < asp),
+      median_runtime = median(runtime), median_wall = median(wall), median_asp = median(asp),
       asp_at_limit = mean(asp >= wt), .groups = "drop"),
   file.path(tabd, "asp-ratio.csv"))
 }
