@@ -18,7 +18,9 @@ name="glip-$head-$hash"
 mkdir -p "$tmpdir/stage/glip"
 rsync -a --files-from="$tmpdir/files.txt" ./ "$tmpdir/stage/glip/"
 echo "$head (tracked files modified: $dirty, content hash $hash)" > "$tmpdir/stage/glip/REVISION"
-COPYFILE_DISABLE=1 tar -czf "$tmpdir/$name.tar.gz" -C "$tmpdir/stage" glip
+# macOS (bsdtar): no extended attributes, which GNU tar on the server warns about
+macopt=(); tar --version | grep -q bsdtar && macopt=(--no-mac-metadata)
+COPYFILE_DISABLE=1 tar "${macopt[@]}" -czf "$tmpdir/$name.tar.gz" -C "$tmpdir/stage" glip
 md5=$(md5 -q "$tmpdir/$name.tar.gz" 2>/dev/null || md5sum "$tmpdir/$name.tar.gz" | cut -d' ' -f1)
 echo "$name md5 $md5 ($(wc -l < "$tmpdir/files.txt" | tr -d ' ') files)"
 if [ "${DRY:-0}" = 1 ]; then echo "dry run: $tmpdir/$name.tar.gz"; exit 0; fi

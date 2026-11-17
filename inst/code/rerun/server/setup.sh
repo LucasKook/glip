@@ -44,9 +44,6 @@ if ! Rscript -e 'stopifnot(packageVersion("gurobi") == "13.0.3")' > /dev/null 2>
   R CMD INSTALL -l "$R_LIBS" "$GUROBI_HOME"/R/gurobi_*.tar.gz > /tmp/gurobi-r.log 2>&1 || { tail /tmp/gurobi-r.log; fail "gurobi R"; }
 fi
 
-step "licence check (one tiny solve, stop if it fails)"
-Rscript -e 'cat("R gurobi", as.character(packageVersion("gurobi")), "\n"); m <- list(A = matrix(1, 1, 1), obj = 1, rhs = 1, sense = ">=", vtype = "B"); r <- gurobi::gurobi(m, list(OutputFlag = 0, Threads = 1)); stopifnot(r$status == "OPTIMAL"); cat("licence OK\n")' || fail "Gurobi 13 licence"
-
 step "R packages"
 Rscript -e '
 options(repos = c(CRAN = "https://packagemanager.posit.co/cran/__linux__/noble/latest"),
@@ -59,8 +56,8 @@ need <- setdiff(need, c("R", "gurobi", "graph", "RBGL", "Rgraphviz"))
 miss <- need[!vapply(need, requireNamespace, TRUE, quietly = TRUE)]
 cat("missing:", miss, "\n")
 bioc <- c("graph", "RBGL")[!vapply(c("graph", "RBGL"), requireNamespace, TRUE, quietly = TRUE)]
-if (length(bioc)) { if (!requireNamespace("BiocManager", quietly = TRUE)) install.packages("BiocManager", lib = Sys.getenv("R_LIBS")); BiocManager::install(bioc, lib = Sys.getenv("R_LIBS"), update = FALSE, ask = FALSE) }
-if (length(miss)) install.packages(miss, lib = Sys.getenv("R_LIBS"))
+if (length(bioc)) { if (!requireNamespace("BiocManager", quietly = TRUE)) install.packages("BiocManager", lib = Sys.getenv("R_LIBS")); BiocManager::install(bioc, lib = Sys.getenv("R_LIBS"), update = FALSE, ask = FALSE, Ncpus = parallel::detectCores()) }
+if (length(miss)) install.packages(miss, lib = Sys.getenv("R_LIBS"), Ncpus = parallel::detectCores())
 still <- need[!vapply(need, requireNamespace, TRUE, quietly = TRUE)]
 if (length(still)) stop("still missing: ", paste(still, collapse = " "))
 ' "$code" > /tmp/r-pkgs.log 2>&1 || { tail -20 /tmp/r-pkgs.log; fail "R packages"; }
@@ -68,6 +65,9 @@ grep "missing:" /tmp/r-pkgs.log
 if ! Rscript -e 'library(lcd)' > /dev/null 2>&1; then
   bash "$code/inst/code/rerun/install-lcd.sh" "$R_LIBS" /tmp/lcd > /tmp/lcd.log 2>&1 || { tail /tmp/lcd.log; fail "lcd"; }
 fi
+
+step "licence check (one tiny solve, stop if it fails)"
+Rscript -e 'cat("R gurobi", as.character(packageVersion("gurobi")), "\n"); m <- list(A = matrix(1, 1, 1), obj = 1, rhs = 1, sense = ">=", vtype = "B"); r <- gurobi::gurobi(m, list(OutputFlag = 0, Threads = 1)); stopifnot(r$status == "OPTIMAL"); cat("licence OK\n")' || fail "Gurobi 13 licence"
 
 step "Python environments"
 if [ ! -x "$GLIP_PYTHON" ]; then
@@ -91,7 +91,8 @@ chmod +x "$GLIP_ASP_HOME/hyttinen2014uai_ver6/pkg/ASP/clingo430"
 
 cd "$code"
 step "package tests (one Gurobi thread)"
-Rscript inst/code/test-one-thread.R > /tmp/tests.log 2>&1
+# as inst/code/test-one-thread.R, without devtools: one Gurobi thread
+Rscript -e 'ns <- asNamespace("gurobi"); f <- get("gurobi", ns); unlockBinding("gurobi", ns); assign("gurobi", function(model, params = NULL) { if (is.null(params)) params <- list(); params$Threads <- 1L; f(model, params) }, envir = ns); testthat::test_local(".", stop_on_failure = TRUE)' > /tmp/tests.log 2>&1
 tr '\r' '\n' < /tmp/tests.log | grep -E "^\[ FAIL" | tail -1
 grep -q "FAIL 0 " <(tr '\r' '\n' < /tmp/tests.log) || { tr '\r' '\n' < /tmp/tests.log | tail -30; fail "package tests"; }
 
