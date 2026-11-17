@@ -27,13 +27,16 @@ Rscript inst/code/rerun/tasks.R plan <out>             # <out>/tasks.csv
 seq 1 32 | xargs -P 32 -I{} Rscript inst/code/rerun/tasks.R run <out> {} 32
 Rscript inst/code/rerun/tasks.R collect <out>          # <out>/collected/*.csv
 Rscript inst/code/rerun/tasks.R smoke <out> 10         # one task per experiment
-Rscript inst/code/rerun/vis.R <out>/collected <figures> <tables>
+Rscript inst/code/rerun/vis.R <out>/collected <figures> <tables>            # both encodings
+Rscript inst/code/rerun/vis.R <out>/collected <figures> <tables> minlength  # paper layout
 Rscript inst/code/rerun/intro-example.R <outdir>       # Example 1 (local)
 ```
 
 `vis.R` writes the figures and tables of the paper from the collected CSVs
 (both encodings as methods; certified = status OPTIMAL) and a comparison of
 the two encodings (`*-encodings.csv`, paired `*-encodings-paired.csv`).
+With a single encoding (e.g. `minlength`), that encoding is labelled "GLIP"
+and the other one is left out, as in the figures and tables of the paper.
 
 Server (UCloud, drive `/work/glip`): `server/deploy-setup.sh <port>` packs
 the working tree and runs `server/setup.sh` on a job (R, Gurobi 13.0.3,

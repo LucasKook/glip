@@ -3,7 +3,10 @@
 ### (GLIP-minlength, GLIP-cuts); certified = solver status OPTIMAL (the paper
 ### used runtime < time limit); plus a comparison of the two encodings.
 ### Usage (repository root):
-###   Rscript inst/code/rerun/vis.R <out>/collected <figures_dir> <tables_dir>
+###   Rscript inst/code/rerun/vis.R <out>/collected <figures_dir> <tables_dir> [encodings]
+### encodings: "minlength,cuts" (default, both as methods) or one encoding,
+### e.g. "minlength" to reproduce the figures and tables of the paper (that
+### encoding labelled "GLIP", the other one left out, no encoding comparison)
 suppressPackageStartupMessages({
   library("tidyverse")
   library("scales")
@@ -14,15 +17,27 @@ args <- commandArgs(trailingOnly = TRUE)
 inp <- if (length(args) > 0) args[1] else "inst/results/rerun-2026-11/raw/rerun-2026-11/collected"
 fig <- if (length(args) > 1) args[2] else "inst/results/rerun-2026-11/figures"
 tabd <- if (length(args) > 2) args[3] else "inst/results/rerun-2026-11/tables"
+encs <- if (length(args) > 3) strsplit(args[4], ",")[[1]] else c("minlength", "cuts")
+stopifnot(all(encs %in% c("minlength", "cuts")))
+single <- length(encs) == 1
+glip_lab <- function(m) ifelse(single & m == paste0("GLIP-", encs[1]), "GLIP", m)
 dir.create(fig, recursive = TRUE, showWarnings = FALSE)
 dir.create(tabd, recursive = TRUE, showWarnings = FALSE)
 rd <- function(e) {
   f <- file.path(inp, paste0(e, ".csv"))
-  if (file.exists(f)) read_csv(f, show_col_types = FALSE, guess_max = 1e5) else NULL
+  if (!file.exists(f)) {
+    return(NULL)
+  }
+  x <- read_csv(f, show_col_types = FALSE, guess_max = 1e5)
+  if ("encoding" %in% names(x)) x <- filter(x, encoding %in% encs)
+  if ("method" %in% names(x)) {
+    x <- filter(x, !grepl("^GLIP-", method) | method %in% paste0("GLIP-", encs))
+  }
+  x
 }
 theme_glip <- theme_bw() + theme(text = element_text(size = 13.5), legend.position = "top")
 log_x <- scale_x_continuous(trans = "log10", labels = trans_format("log10", math_format(10^.x)))
-cols <- c("GLIP-minlength" = "#1b9e77", "GLIP-cuts" = "#d95f02", "ASP" = "#7570b3",
+cols <- c("GLIP" = "#1b9e77", "GLIP-minlength" = "#1b9e77", "GLIP-cuts" = "#d95f02", "ASP" = "#7570b3",
   "PC" = "#e7298a", "HPC" = "#66a61e", "FCI" = "#e6ab02", "NOTEARS" = "#a6761d",
   "R2SORT" = "#666666")
 save_tex <- function(x, file) writeLines(as.character(x), file.path(tabd, file))
@@ -30,6 +45,9 @@ certified <- function(status) status %in% c("OPTIMAL", "USER_OBJ_LIMIT")
 
 ### Encoding comparison (min-length vs cuts) for any experiment
 encoding_table <- function(res, by, file) {
+  if (single) {
+    return(invisible(NULL))
+  }
   g <- res |>
     filter(method %in% c("GLIP-minlength", "GLIP-cuts")) |>
     group_by(across(all_of(by)), method) |>
@@ -71,6 +89,7 @@ completion_table <- function(res, rows, file) {
     mutate(mode = toupper(mode)) |>
     group_by(across(all_of(rows)), method, d) |>
     summarize(frac = sprintf("%.3f", mean(certified(status))), .groups = "drop") |>
+    mutate(method = glip_lab(method)) |>
     pivot_wider(names_from = "d", values_from = "frac")
   tex <- kable(tt, format = "latex", booktabs = TRUE,
     align = paste0(strrep("l", length(rows) + 1), strrep("r", ncol(tt) - length(rows) - 1))
@@ -91,7 +110,7 @@ if (!is.null(asp)) {
   asp <- asp |> mutate(setting = str_extract(task, "full|weak"), mode = toupper(mode),
     asp = ifelse(is.infinite(asp) | is.na(asp), wt, asp))
   tim <- bind_rows(
-    asp |> transmute(setting, mode, d, iter, method = paste0("GLIP-", encoding), time = runtime),
+    asp |> transmute(setting, mode, d, iter, method = glip_lab(paste0("GLIP-", encoding)), time = runtime),
     asp |> distinct(setting, mode, d, iter, asp) |> transmute(setting, mode, d, iter, method = "ASP", time = asp)
   )
   for (s in unique(tim$setting)) {
@@ -104,7 +123,8 @@ if (!is.null(asp)) {
     rel <- asp |> filter(setting == s) |> mutate(rel = runtime / asp)
     p2 <- ggplot(rel, aes(x = rel, color = ordered(d))) +
       geom_vline(xintercept = 1, linetype = 3, color = "darkred") +
-      stat_ecdf(pad = FALSE) + facet_grid(encoding ~ mode) + theme_glip + log_x +
+      stat_ecdf(pad = FALSE) + (if (single) facet_wrap(~mode) else facet_grid(encoding ~ mode)) +
+      theme_glip + log_x +
       labs(x = "relative runtime GLIP/ASP", y = "relative rank", color = "d") +
       coord_flip() + scale_color_viridis_d()
     ggsave(file.path(fig, paste0("asp-timings-", s, ".pdf")), p1, height = 4.5, width = 8)
@@ -128,6 +148,7 @@ for (e in c("simulation", "chain")) {
     rs <- filter(res, setting == s)
     completion_table(rs, c("n", "mode", "ms")[c(TRUE, e == "simulation", s == "weak")],
       paste0(e, "-", s, "-completion.tex"))
+    rs <- mutate(rs, method = glip_lab(method))
     p1 <- ggplot(rs, aes(x = time, color = method)) + stat_ecdf(pad = FALSE) +
       facet_wrap(mode ~ d, labeller = label_both) + theme_glip + log_x +
       labs(x = "runtime in seconds", y = "relative rank") + coord_flip() +
@@ -146,7 +167,7 @@ for (e in c("simulation", "chain")) {
       sfx <- paste0("n-", tn, if (!is.na(tms)) paste0("_ms-", tms))
       ggsave(file.path(fig, paste0(e, "-", s, "-", sfx, "-performance.pdf")), p2, height = 4.5, width = 10)
       p3 <- rs |> filter(n == tn, is.na(tms) | ms == tms,
-        method %in% c("GLIP-minlength", "GLIP-cuts", "PC", "FCI")) |>
+        method %in% c("GLIP", "GLIP-minlength", "GLIP-cuts", "PC", "FCI")) |>
         pivot_longer(c("sep", "input_sep")) |>
         ggplot(aes(x = d, y = value, color = name, linetype = method)) +
         stat_summary(geom = "line", fun = mean) + facet_wrap(~mode) + theme_glip +
@@ -164,7 +185,7 @@ if (!is.null(bench)) {
   pm <- function(x, y) sprintf("%.2f (%.2f)", x, y)
   for (dm in unique(bench$d_max)) {
     b <- filter(bench, d_max == dm) |> mutate(k = ifelse(ms == d - 2, "d-2", as.character(ms)))
-    glip <- b |> filter(grepl("^GLIP", method)) |> mutate(method = paste0(method, " (k=", k, ")"))
+    glip <- b |> filter(grepl("^GLIP", method)) |> mutate(method = paste0(glip_lab(method), " (k=", k, ")"))
     comp <- b |> filter(!grepl("^GLIP", method), ms == d - 2)
     tab <- bind_rows(glip, comp) |>
       group_by(dataset, method) |>
