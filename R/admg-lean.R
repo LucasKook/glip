@@ -332,6 +332,8 @@ admg_lean_optim <- function(
   model$genconmin <- c(N1, P1, O1, R1)
   ### Linear edge constraints, appended after the (cached) constraint matrix
   model <- .bk_rows(model, ec)
+  ### Complete warm start (all variables from the start graph)
+  model <- .lean_complete_start(model, verbose)
 
   if (verbose) {
     cat("\nModel setup done. Solving now...\n")
