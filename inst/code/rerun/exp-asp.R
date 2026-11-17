@@ -88,14 +88,36 @@ rr_task_asp <- function(task, out) {
     dag = c("acyclic", "sufficient"),
     admg = c("acyclic")
   )
-  set.seed(rr_seed("asp", task$mode, task$d, task$ms, task$rep))
-  res <- evalq(pipeline, env)(
-    n = task$d, N = task$n, schedule = task$ms, test = "classic", verbose = 1,
-    clingoconf = paste0(
-      "--configuration=crafty --time-limit=", task$walltime, " --quiet=1,0"
-    ),
-    restrict = restrict, weight = "constant", p = task$alpha
-  )
+  run <- function() {
+    evalq(pipeline, env)(
+      n = task$d, N = task$n, schedule = task$ms, test = "classic", verbose = 1,
+      clingoconf = paste0(
+        "--configuration=crafty --time-limit=", task$walltime, " --quiet=1,0"
+      ),
+      restrict = restrict, weight = "constant", p = task$alpha
+    )
+  }
+  ### Seeds as in the paper (inst/code/run-asp-comparison.R): set.seed(42) once
+  ### per (mode, d, ms) process, then reps 1, 2, ... in order. Rep k replays
+  ### reps 1..k-1 with the solvers stubbed (clingo via system(), GLIP_FIT);
+  ### neither draws from R's random numbers, so the data of rep k are the
+  ### paper's (checked against the paper's stored optima at small d)
+  set.seed(42)
+  if (task$rep > 1) {
+    fit <- get("GLIP_FIT", envir = env)
+    assign("aspobj", NA, envir = env)
+    assign("GLIP_FIT", function(...) data.frame(encoding = NA), envir = env)
+    parse <- get("parse_solution", envir = env)
+    assign("system", function(command, ...) 0L, envir = env)
+    assign("parse_solution", function(...) NA, envir = env) # as a clingo timeout
+    for (i in seq_len(task$rep - 1)) {
+      invisible(utils::capture.output(suppressWarnings(run())))
+    }
+    rm("system", envir = env)
+    assign("parse_solution", parse, envir = env)
+    assign("GLIP_FIT", fit, envir = env)
+  }
+  res <- run()
   res <- data.frame(
     exp = "asp", mode = task$mode, d = task$d, ms = task$ms, n = task$n,
     iter = task$rep, walltime = task$walltime, alpha = task$alpha, res,

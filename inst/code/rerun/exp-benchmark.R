@@ -18,21 +18,16 @@ rr_bench_read <- function(dataset) {
   list(data = data, V = V, gt = gt)
 }
 
-### Node subsets of a data set (indices into its variables)
-rr_bench_subsets <- function(dataset, d, d_max, nmax = 50) {
-  if (d <= d_max) {
-    return(list(seq_len(d)))
-  }
-  if (choose(d, d_max) <= nmax) {
-    return(utils::combn(d, d_max, simplify = FALSE))
-  }
-  set.seed(rr_seed("benchmark", dataset, d_max))
-  out <- list()
-  while (length(out) < nmax) {
-    s <- sort(sample.int(d, d_max))
-    if (!any(vapply(out, identical, TRUE, s))) out[[length(out) + 1]] <- s
-  }
-  out
+### Node subsets of a data set (indices into its variables), with the code
+### and seed of inst/code/run-benchmark-datasets.R (set.seed(42) at the start
+### of each process) and nsim = 50 (paper text) instead of 30: unique() keeps
+### the order of first occurrence, so the paper's subsets come first
+rr_bench_subsets <- function(dataset, d, d_max, nsim = 50) {
+  set.seed(42)
+  d_max <- min(d_max, d)
+  nsim <- ifelse(d < d_max, 1, nsim)
+  perms <- unique(lapply(seq_len(2 * nsim), \(x) sort(sample.int(d, d_max))))[1:nsim]
+  perms[!vapply(perms, is.null, TRUE)]
 }
 
 rr_task_benchmark <- function(task, out) {

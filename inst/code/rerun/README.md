@@ -8,17 +8,23 @@ machine with many cores (one Gurobi thread per solve).
 | --- | --- | --- | --- |
 | asp | Sec. 5.1, Fig. 7; App. D.1 | `exp-asp.R` | DAG, ADMG; full d 3 to 9, weak k = 1 d 3 to 14; n 10,000; 20 reps; 600 s |
 | simulation | Sec. 5.2, Figs. 8, 9, Table 3; App. D.2 | `exp-simulation.R` | DAG, ADMG; full d 3 to 9, weak k = 1, 2 d 3 to 12; n 400, 10,000; 30 reps; 300 s |
-| benchmark | Sec. 5.2.2, Table 4; App. D.3, Table 6 | `exp-benchmark.R` | ADMG; alarm, asia, child, hepar2, sachs; d_max 6, 8; k = 1, 2, d - 2; min(choose(d, d_max), 50) subsets; 300 s |
+| benchmark | Sec. 5.2.2, Table 4; App. D.3, Table 6 | `exp-benchmark.R` | ADMG; alarm, asia, child, hepar2, sachs; d_max 6, 8; k = 1, 2, d - 2; paper subset code with nsim 50; 300 s |
 | chain | App. D.4, Figs. 15, 16 | `exp-chain.R` | LWF chain graphs, d 3 to 10, full; n 1,000, 100,000; 30 reps; 300 s |
 
 Every GLIP fit is run with both encodings (`minlength`: `dcon_lean_optim()`,
 `admg_lean_optim(mode = "admg-lean")`, `chain_lean_optim()`; `cuts`:
 `cuts_optim()`) on the same tests, decisions, weights and warm start, with
-`Threads = 1`. Data generation and seeds follow the original drivers in
-`inst/code/run-*.R`. Differences from the paper drivers: PC/FCI warm starts
-on weak banks use `gaussCItest` on the data instead of the full d - 2 test
-bank; the benchmark uses all or 50 subsets; the competitors are run once per
-data set.
+`Threads = 1`. Data generation and seeds are those of the original drivers
+in `inst/code/run-*.R`, so every task sees the paper's data set: the
+simulation and chain seeds per replication; for the ASP experiment
+`set.seed(42)` per (mode, d, k) and the reps in order (rep k replays the data
+generation of reps 1..k-1 with the solvers stubbed; checked against the
+paper's stored optima for d 4 and 5, 80 of 80 equal); the benchmark subsets
+with the paper's code and `set.seed(42)`, with nsim 50 (paper text) instead
+of 30, so the paper's 30 subsets come first. Differences from the paper
+drivers: PC/FCI warm starts on weak banks use `gaussCItest` on the data
+instead of the full d - 2 test bank; the competitors are run once per data
+set.
 
 ## Usage (from the repository root)
 
