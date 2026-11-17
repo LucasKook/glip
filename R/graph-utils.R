@@ -68,7 +68,9 @@ invert_latent_projection <- function(G) {
   if (nb == 0) {
     return(G)
   }
-  VU <- c(V, paste0("n", letters[seq_len(nb)]))
+  ### One latent node per bidirected edge; names distinct from V for any nb
+  ### (letters[] gave NA names beyond 26 bidirected edges)
+  VU <- make.unique(c(V, paste0("n", seq_len(nb))))
 
   D0 <- create_dmg(length(VU),
     prob = 0, M2prob = 0,
