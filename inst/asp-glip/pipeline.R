@@ -134,11 +134,11 @@ pipeline <- function(n = 4, topology = "random", # model properties
     eh <- if (md %in% c("dag", "dg")) 1 * (pcout != 0) else 1 * (fciout != 0)
   }
 
-  ### GLIP fits (rerun 2026-11): GLIP_FIT() is defined by the driver
-  ### (inst/code/rerun/exp-asp.R) and fits every requested encoding on the
+  ### GLIP fits: GLIP_FIT() is defined by the driver
+  ### (inst/code/exp-asp.R) and fits every requested encoding on the
   ### same data, tests, warm start and edge hints; one row per encoding
   if (test == "oracle") {
-    stop("the rerun driver only supports test = \"classic\"")
+    stop("the GLIP driver only supports test = \"classic\"")
   }
   res <- GLIP_FIT(
     data = data.frame(D[[1]]$data), ws = ws, eh = eh, schedule = schedule,

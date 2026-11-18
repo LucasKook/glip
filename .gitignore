@@ -96,9 +96,8 @@ inst/code/sim-long-chains.R
 # The reference builders and automated tests remain part of the package.
 /AGENTS.md
 /inst/code/*benchmark*
+!/inst/code/exp-benchmark.R
 /inst/code/*timing*
-/inst/slurm/*benchmark*
-/inst/slurm/*timing*
 /inst/code/test-one-thread.R
 
 # glipcut Python module

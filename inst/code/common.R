@@ -1,9 +1,13 @@
-### Shared helpers of the rerun of the paper experiments (inst/code/rerun)
+### Shared helpers of the experiment scripts in inst/code
 ###
 ### Environment (all optional, defaults for a local run from the repository
 ### root):
 ###   GLIP_ROOT        repository root (default: working directory)
-###   GLIP_PYTHON      Python with gurobipy for the cut encoding
+###   GLIP_ENCODINGS   GLIP encodings to fit: "minlength" (default, the
+###                    encodings of the paper) or "minlength,cuts" (adds the
+###                    cut encoding of the package, which is not part of the
+###                    paper)
+###   GLIP_PYTHON      Python with gurobipy, only needed for the cut encoding
 ###   GLIP_COMP_VENV   virtualenv with dagma and CausalDisco (NOTEARS, R2SORT)
 ###   GLIP_CACHE       cache directory of the min-length encodings
 ###   GLIP_ASP_HOME    unzipped inst/asp/hyttinen2014uai_ver6.zip
@@ -12,6 +16,16 @@
 ### comes from running several tasks at once (tasks.R run).
 
 rr_root <- function() normalizePath(Sys.getenv("GLIP_ROOT", getwd()))
+
+### GLIP encodings to fit (default: min-length only, as in the paper)
+rr_encodings <- function() {
+  enc <- strsplit(Sys.getenv("GLIP_ENCODINGS", "minlength"), ",")[[1]]
+  enc <- trimws(enc)
+  if (!length(enc) || !all(enc %in% c("minlength", "cuts"))) {
+    stop("GLIP_ENCODINGS must be \"minlength\", \"cuts\" or \"minlength,cuts\"")
+  }
+  unique(enc)
+}
 
 rr_setup <- function() {
   Sys.setenv(
@@ -56,7 +70,7 @@ rr_glip <- function(encoding, mode, tests, d, ms, V, alpha, walltime,
   if (encoding == "minlength") {
     args$cache <- TRUE
     args$cache_dir <- file.path(
-      Sys.getenv("GLIP_CACHE", file.path(rr_root(), ".cache-rerun")),
+      Sys.getenv("GLIP_CACHE", file.path(rr_root(), ".cache-glip")),
       cl$fun
     )
     if (!is.null(cl$mode)) args$mode <- cl$mode
@@ -128,7 +142,7 @@ rr_r2sort <- function(data, V) {
   list(graph = G, time = as.numeric(Sys.time() - t0, units = "secs"))
 }
 
-### Metrics of the paper (as in inst/code/run-simulation.R) of a learned
+### Metrics of the paper (as in the paper driver run-simulation.R) of a learned
 ### graph against the oracle; NA if the method returned no graph
 rr_metrics <- function(learned, ORACLE, sepmode, ms, otests_ms,
                        precomputed_predicted = NULL) {

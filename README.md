@@ -108,35 +108,26 @@ default `encoding = "minlength"` does not need Python.
 
 ## Reproducibility
 
-To reproduce the results from the paper, please follow the following instructions:
+The code for the experiments of the paper [1] is in `./inst/code`, with
+shell scripts to run it in `./inst/scripts`. To reproduce the results:
 
-1. Clone this GitHub repository
+1. Clone this repository and install the dependencies of **glip** and
+   Gurobi as described above.
 
-2. Download Download and install [clingo](https://github.com/potassco/clingo)
-   to `./inst/asp/`, unzip the code from [4] to run the ASP solver there.
+2. Install the additional R and Python packages listed in
+   `./inst/code/README.md` (they are needed for the competitors and the
+   comparison with ASP [4]).
 
-2. Install the [**dagma**](https://github.com/kevinsbello/dagma) and
-   [**CausalDisco**](https://github.com/CausalDisco/CausalDisco) Python
-   libraries in a conda environment called `"glip"``.
+3. From the repository root, check the installation with
+   `SMOKE=10 bash inst/scripts/reproduce.sh results/smoke`, then run all
+   experiments with `bash inst/scripts/reproduce.sh results/paper`, or a
+   single one with `inst/scripts/{asp,simulation,benchmark,chain}.sh`.
+   Example 1 is reproduced by `bash inst/scripts/intro-example.sh`.
 
-3. Install the **glip** package and GUROBI following the instructions above.
-
-To reproduce the timing comparison against ASP, run `./inst/code/run-asp-comparison.R`.
-
-To reproduce the simulation study, run `./inst/code/run-simulation.R`.
-
-To reproduce the comparison on benchmark datasets, run
-`./inst/code/run-benchmark-datasets.R`.
-
-To reproduce the chain graph simulation, run
-`./inst/code/run-chain-graph-simulation.R`.
-
-The above experiments are time consuming (about 7 days CPU time on a high
-performance cluster), which is why the scripts above contain default values
-that make computation faster, but correspond only to a small fraction of
-experiments that were actually run. The shell scripts in `./inst/slurm/`
-reproduce all results. Code to produce the figures and tables follows the same
-naming conventions as above, replacing `run` with `vis`.
+The figures and tables are written to `results/paper/figures` and
+`results/paper/tables`. The experiments are time consuming (up to about 550
+CPU hours); the scripts run the tasks in parallel on all cores and can be
+restarted after an interruption. See `./inst/code/README.md` for details.
 
 ## References
 

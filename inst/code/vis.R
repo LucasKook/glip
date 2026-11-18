@@ -1,12 +1,10 @@
-### Figures and tables of the rerun (inst/code/rerun) from the collected CSVs,
-### adapted from inst/code/vis-*.R: both GLIP encodings are shown as methods
-### (GLIP-minlength, GLIP-cuts); certified = solver status OPTIMAL (the paper
-### used runtime < time limit); plus a comparison of the two encodings.
+### Figures and tables of the paper from the collected results of tasks.R.
 ### Usage (repository root):
-###   Rscript inst/code/rerun/vis.R <out>/collected <figures_dir> <tables_dir> [encodings]
-### encodings: "minlength,cuts" (default, both as methods) or one encoding,
-### e.g. "minlength" to reproduce the figures and tables of the paper (that
-### encoding labelled "GLIP", the other one left out, no encoding comparison)
+###   Rscript inst/code/vis.R <out>/collected <figures_dir> <tables_dir> [encodings]
+### encodings: default the GLIP encodings found in the results. With one
+### encoding (min-length by default) it is labelled "GLIP" as in the paper;
+### with "minlength,cuts" both are shown as methods and compared
+### (*-encodings.csv). Certified = solver status OPTIMAL or USER_OBJ_LIMIT.
 suppressPackageStartupMessages({
   library("tidyverse")
   library("scales")
@@ -14,11 +12,24 @@ suppressPackageStartupMessages({
   library("kableExtra")
 })
 args <- commandArgs(trailingOnly = TRUE)
-inp <- if (length(args) > 0) args[1] else "inst/results/rerun-2026-11/raw/rerun-2026-11/collected"
-fig <- if (length(args) > 1) args[2] else "inst/results/rerun-2026-11/figures"
-tabd <- if (length(args) > 2) args[3] else "inst/results/rerun-2026-11/tables"
-encs <- if (length(args) > 3) strsplit(args[4], ",")[[1]] else c("minlength", "cuts")
-stopifnot(all(encs %in% c("minlength", "cuts")))
+inp <- if (length(args) > 0) args[1] else "results/paper/collected"
+fig <- if (length(args) > 1) args[2] else "results/paper/figures"
+tabd <- if (length(args) > 2) args[3] else "results/paper/tables"
+encs <- if (length(args) > 3) {
+  strsplit(args[4], ",")[[1]]
+} else {
+  found <- unlist(lapply(c("asp", "simulation", "benchmark", "chain"), \(e) {
+    f <- file.path(inp, paste0(e, ".csv"))
+    if (!file.exists(f)) {
+      return(NULL)
+    }
+    x <- read_csv(f, show_col_types = FALSE, guess_max = 1e5,
+      col_select = any_of(c("encoding", "method")))
+    c(x$encoding, sub("^GLIP-", "", grep("^GLIP-", x$method, value = TRUE)))
+  }))
+  intersect(c("minlength", "cuts"), found)
+}
+stopifnot(length(encs) > 0, all(encs %in% c("minlength", "cuts")))
 single <- length(encs) == 1
 glip_lab <- function(m) ifelse(single & m == paste0("GLIP-", encs[1]), "GLIP", m)
 dir.create(fig, recursive = TRUE, showWarnings = FALSE)

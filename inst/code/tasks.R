@@ -1,28 +1,31 @@
-### Rerun of the paper experiments (arXiv:2601.20589 v2) as resumable tasks.
+### Experiments of the paper (arXiv:2601.20589 v2) as resumable tasks.
 ### From the repository root:
-###   Rscript inst/code/rerun/tasks.R plan <out>
+###   Rscript inst/code/tasks.R plan <out>
 ###       writes <out>/tasks.csv (all experiments of the paper)
-###   Rscript inst/code/rerun/tasks.R run <out> <chunk> <n_chunks> [exp]
+###   Rscript inst/code/tasks.R run <out> <chunk> <n_chunks> [exp]
 ###       runs every n_chunks-th task (longest first), skipping finished ones
 ###       (<out>/<id>/result.rds); several chunks run in parallel, e.g.
 ###       seq 1 32 | xargs -P 32 -I{} Rscript .../tasks.R run <out> {} 32
-###   Rscript inst/code/rerun/tasks.R prebuild <out>
+###   Rscript inst/code/tasks.R retry <out> <id> [<id> ...]
+###       runs the given tasks again (result.rds and error.txt removed, saved
+###       fits reused; delete <out>/<id> for a completely fresh run)
+###   Rscript inst/code/tasks.R prebuild <out>
 ###       builds the caches of the min-length encodings for all tasks, one
 ###       after another with the solver stubbed (before parallel runs)
-###   Rscript inst/code/rerun/tasks.R collect <out>
+###   Rscript inst/code/tasks.R collect <out>
 ###       one csv per experiment in <out>/collected/
-###   Rscript inst/code/rerun/tasks.R smoke <out> [walltime]
+###   Rscript inst/code/tasks.R smoke <out> [walltime]
 ###       one small task per experiment with a short time limit
-### See common.R for the environment variables.
+### See common.R for the environment variables (e.g. GLIP_ENCODINGS).
 args <- commandArgs(trailingOnly = TRUE)
 cmd <- args[1]
 out <- args[2]
-here <- file.path(Sys.getenv("GLIP_ROOT", getwd()), "inst", "code", "rerun")
+here <- file.path(Sys.getenv("GLIP_ROOT", getwd()), "inst", "code")
 for (f in c("common.R", "exp-simulation.R", "exp-chain.R", "exp-benchmark.R", "exp-asp.R")) {
   source(file.path(here, f))
 }
 
-ENCODINGS <- c("minlength", "cuts")
+ENCODINGS <- rr_encodings()
 
 rr_plan <- function() {
   g <- function(...) expand.grid(..., stringsAsFactors = FALSE)
@@ -41,8 +44,12 @@ rr_plan <- function() {
     transform(g(mode = c("dag", "admg"), d = 3:9, n = c(400, 1e4), rep = 1:30),
       setting = "full", ms = d - 2
     ),
-    transform(g(mode = c("dag", "admg"), d = 3:12, ms = 1:2, n = c(400, 1e4), rep = 1:30),
-      setting = "weak"
+    ### k = 2 only for d >= 4 (at d = 3, k is capped at d - 2 = 1)
+    subset(
+      transform(g(mode = c("dag", "admg"), d = 3:12, ms = 1:2, n = c(400, 1e4), rep = 1:30),
+        setting = "weak"
+      ),
+      ms <= d - 2
     )
   )
   sim <- transform(sim,
@@ -104,24 +111,41 @@ rr_run <- function(out, chunk, n_chunks, exp = NULL) {
   rr_setup()
   for (k in seq_len(nrow(mine))) {
     task <- as.list(mine[k, ])
-    done <- file.path(out, task$id, "result.rds")
-    if (file.exists(done)) next
-    cat(format(Sys.time()), "start", task$id, "\n")
-    t0 <- Sys.time()
-    ok <- tryCatch(
-      {
-        rr_run_task(task, out)
-        unlink(file.path(out, task$id, "error.txt"))
-        TRUE
-      },
-      error = function(e) {
-        dir.create(file.path(out, task$id), recursive = TRUE, showWarnings = FALSE)
-        writeLines(conditionMessage(e), file.path(out, task$id, "error.txt"))
-        FALSE
-      }
-    )
-    cat(format(Sys.time()), if (ok) "done" else "ERROR", task$id,
-      round(as.numeric(Sys.time() - t0, units = "secs")), "s\n")
+    if (file.exists(file.path(out, task$id, "result.rds"))) next
+    rr_try_task(task, out)
+  }
+}
+
+### One task with logging; a failure writes <out>/<id>/error.txt
+rr_try_task <- function(task, out) {
+  cat(format(Sys.time()), "start", task$id, "\n")
+  t0 <- Sys.time()
+  ok <- tryCatch(
+    {
+      rr_run_task(task, out)
+      unlink(file.path(out, task$id, "error.txt"))
+      TRUE
+    },
+    error = function(e) {
+      dir.create(file.path(out, task$id), recursive = TRUE, showWarnings = FALSE)
+      writeLines(conditionMessage(e), file.path(out, task$id, "error.txt"))
+      FALSE
+    }
+  )
+  cat(format(Sys.time()), if (ok) "done" else "ERROR", task$id,
+    round(as.numeric(Sys.time() - t0, units = "secs")), "s\n")
+  invisible(ok)
+}
+
+### Run given tasks again, e.g. after a fix (saved fits are reused)
+rr_retry <- function(out, ids) {
+  tasks <- utils::read.csv(file.path(out, "tasks.csv"), stringsAsFactors = FALSE)
+  unknown <- setdiff(ids, tasks$id)
+  if (length(unknown)) stop("unknown task ids: ", paste(unknown, collapse = ", "))
+  rr_setup()
+  for (id in ids) {
+    unlink(file.path(out, id, c("result.rds", "error.txt")))
+    rr_try_task(as.list(tasks[tasks$id == id, ]), out)
   }
 }
 
@@ -183,7 +207,7 @@ rr_prebuild <- function(out) {
     cl <- rr_class(x$mode)
     args <- list(tests,
       d = x$d, max_size = x$ms, V = V, cache = TRUE,
-      cache_dir = file.path(Sys.getenv("GLIP_CACHE", file.path(rr_root(), ".cache-rerun")), cl$fun)
+      cache_dir = file.path(Sys.getenv("GLIP_CACHE", file.path(rr_root(), ".cache-glip")), cl$fun)
     )
     if (!is.null(cl$mode)) args$mode <- cl$mode
     invisible(utils::capture.output(do.call(cl$fun, args)))
@@ -202,6 +226,8 @@ if (identical(cmd, "plan")) {
   rr_run(out, as.integer(args[3]), as.integer(args[4]),
     if (length(args) > 4) strsplit(args[5], ",")[[1]] else NULL
   )
+} else if (identical(cmd, "retry")) {
+  rr_retry(out, args[-(1:2)])
 } else if (identical(cmd, "prebuild")) {
   rr_prebuild(out)
 } else if (identical(cmd, "collect")) {

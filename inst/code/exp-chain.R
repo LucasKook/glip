@@ -1,8 +1,8 @@
 ### Experiment D (paper App. D.4): LWF chain graphs (Ma et al., 2008).
-### One task = one data set (d, n, rep), adapted from
-### inst/code/run-chain-graph-simulation.R with the same graph/data generation
-### and seed (full conditioning, so PC uses the GLIP tests via lookup_ci as
-### in the paper); both GLIP encodings, one Gurobi thread. Needs lcd.
+### One task = one data set (d, n, rep) with the graph and data generation
+### and the seeds of the paper (full conditioning, so PC uses the GLIP tests
+### via lookup_ci as in the paper); one Gurobi thread per fit, the GLIP
+### encodings in GLIP_ENCODINGS. Needs lcd.
 rr_task_chain <- function(task, out) {
   mode <- "chain"
   d <- task$d

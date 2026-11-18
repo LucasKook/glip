@@ -2,9 +2,9 @@
 ### data sets (discrete, n 10,000), ADMG on random node subsets of size d_max.
 ### One task = one (data set, d_max, subset); GLIP for ms = 1, 2, d_max - 2
 ### on the same tests (chi-square/mi tests up to d - 2, as in the paper),
-### competitors once. Adapted from inst/code/run-benchmark-datasets.R;
-### subsets: all if choose(d, d_max) <= 50, else 50 distinct random ones
-### (rr_bench_subsets(), paper text), instead of nsim = 30.
+### competitors once. Subsets: all if choose(d, d_max) <= 50, else 50
+### distinct random ones as stated in the paper (rr_bench_subsets(); the
+### first 30 are those of the paper's computations).
 
 rr_bench_read <- function(dataset) {
   inp <- file.path(rr_root(), "inst", "data", "datasets")
@@ -19,7 +19,7 @@ rr_bench_read <- function(dataset) {
 }
 
 ### Node subsets of a data set (indices into its variables), with the code
-### and seed of inst/code/run-benchmark-datasets.R (set.seed(42) at the start
+### and seed of the paper driver run-benchmark-datasets.R (set.seed(42) at the start
 ### of each process) and nsim = 50 (paper text) instead of 30: unique() keeps
 ### the order of first occurrence, so the paper's subsets come first
 rr_bench_subsets <- function(dataset, d, d_max, nsim = 50) {

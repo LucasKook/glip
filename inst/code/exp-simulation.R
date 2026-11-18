@@ -1,8 +1,8 @@
 ### Experiment B (paper Sec. 5.2, App. D.2): simulated DAGs and ADMGs.
-### One task = one data set (mode, d, ms, n, rep), adapted from
-### inst/code/run-simulation.R with the same graph/data generation and seed;
-### changes: PC/FCI on gaussCItest from cor(data) (decision 2026-11-17),
-### GLIP tests up to ms only, both GLIP encodings, one Gurobi thread.
+### One task = one data set (mode, d, ms, n, rep) with the graph and data
+### generation and the seeds of the paper; PC/FCI (competitors and warm
+### starts) on gaussCItest from cor(data), GLIP on the tests up to ms, one
+### Gurobi thread per fit, the GLIP encodings in GLIP_ENCODINGS.
 ### Files: <out>/<id>/input.rds, <out>/<id>/<method>.rds, <out>/<id>/result.rds
 rr_task_simulation <- function(task, out) {
   mode <- task$mode

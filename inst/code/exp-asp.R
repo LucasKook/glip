@@ -2,8 +2,9 @@
 ### ASP method of Hyttinen et al. (2014). One task = one data set (mode, d,
 ### ms, rep). Uses the tracked inst/asp/hyttinen2014uai_ver6.zip (R code,
 ### ASP encodings, Linux clingo 4.3.0 as in the paper) with the pipeline of
-### inst/asp-glip/pipeline.R, which calls GLIP_FIT() (below) for both
-### encodings on the same data, tests, warm start and edge hints. Each task
+### inst/asp-glip/pipeline.R, which calls GLIP_FIT() (below) for each GLIP
+### encoding in GLIP_ENCODINGS on the same data, tests, warm start and edge
+### hints. Each task
 ### runs in its own copy of the package (the code writes to ../tmp).
 ### GLIP: Threads 1, TimeLimit walltime, BestObjStop 1e-4 (as in the paper);
 ### clingo: --configuration=crafty --time-limit=walltime (single thread).
@@ -97,7 +98,7 @@ rr_task_asp <- function(task, out) {
       restrict = restrict, weight = "constant", p = task$alpha
     )
   }
-  ### Seeds as in the paper (inst/code/run-asp-comparison.R): set.seed(42) once
+  ### Seeds as in the paper (paper driver run-asp-comparison.R): set.seed(42) once
   ### per (mode, d, ms) process, then reps 1, 2, ... in order. Rep k replays
   ### reps 1..k-1 with the solvers stubbed (clingo via system(), GLIP_FIT);
   ### neither draws from R's random numbers, so the data of rep k are the
