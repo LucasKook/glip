@@ -1,7 +1,9 @@
 ### Experiments of the paper (arXiv:2601.20589 v2) as resumable tasks.
 ### From the repository root:
-###   Rscript inst/code/tasks.R plan <out>
-###       writes <out>/tasks.csv (all experiments of the paper)
+###   Rscript inst/code/tasks.R plan <out> [scaling]
+###       writes <out>/tasks.csv (all experiments of the paper; with
+###       "scaling" or "ca" instead the scaling experiment of exp-scaling.R
+###       or the causalAssembly benchmark of exp-ca.R)
 ###   Rscript inst/code/tasks.R run <out> <chunk> <n_chunks> [exp]
 ###       runs every n_chunks-th task (longest first), skipping finished ones
 ###       (<out>/<id>/result.rds); several chunks run in parallel, e.g.
@@ -21,7 +23,8 @@ args <- commandArgs(trailingOnly = TRUE)
 cmd <- args[1]
 out <- args[2]
 here <- file.path(Sys.getenv("GLIP_ROOT", getwd()), "inst", "code")
-for (f in c("common.R", "exp-simulation.R", "exp-chain.R", "exp-benchmark.R", "exp-asp.R")) {
+for (f in c("common.R", "exp-simulation.R", "exp-chain.R", "exp-benchmark.R", "exp-asp.R",
+             "exp-scaling.R", "exp-ca.R")) {
   source(file.path(here, f))
 }
 
@@ -92,13 +95,60 @@ rr_plan <- function() {
   tasks
 }
 
+### Scaling under weak conditioning (exp-scaling.R): DAG and ADMG with k = 1
+### beyond the simulation grid, chain graphs with k = 1, 2; n = 400. Ordered
+### by the position of d within its setting, so that the smaller d of every
+### setting finish first (stopping rule in exp-scaling.R)
+rr_plan_scaling <- function() {
+  g <- function(...) expand.grid(..., stringsAsFactors = FALSE)
+  grid <- rbind(
+    g(mode = c("dag", "admg"), ms = 1, d = c(13, 14, 16, 18, 20, 22, 24)),
+    g(mode = "chain", ms = 1, d = c(6, 8, 10, 12, 14, 16, 18, 20)),
+    g(mode = "chain", ms = 2, d = c(6, 7, 8, 9, 10, 12, 14, 16))
+  )
+  grid$step <- stats::ave(grid$d, grid$mode, grid$ms, FUN = rank)
+  tasks <- merge(grid, data.frame(rep = 1:10))
+  tasks <- transform(tasks,
+    exp = "scaling", setting = paste0("k", ms), n = 400, alpha = .001,
+    walltime = 300, memlimit = 16, nfits = 2,
+    degree = ifelse(mode == "chain", 4, 2), admg_add = 3,
+    id = sprintf("scaling/k%d/%s-d%02d-%s", ms, mode, d, sprintf("r%02d", rep))
+  )
+  tasks$cost <- tasks$walltime * tasks$nfits
+  tasks <- tasks[order(tasks$step, tasks$rep, tasks$mode, tasks$ms), ]
+  tasks$order <- seq_len(nrow(tasks))
+  tasks
+}
+
+### causalAssembly benchmark (exp-ca.R): stations 3 and 5, regimes dag and
+### admg, k = 1, 2, 30 samples of n = 1,000 each
+rr_plan_ca <- function() {
+  tasks <- expand.grid(rep = 1:30, ms = 1:2, regime = c("dag", "admg"),
+                       station = c("Station3", "Station5"), stringsAsFactors = FALSE)
+  tasks <- transform(tasks,
+    exp = "ca", setting = paste0(regime, "-k", ms), n = 1000, alpha = .01, d = 16,
+    mode = ifelse(regime == "dag", "dag", "admg"),
+    walltime = 300, nfits = 2,
+    id = sprintf("ca/%s/%s-k%d-r%02d", station, regime, ms, rep)
+  )
+  tasks$cost <- tasks$walltime * tasks$nfits
+  tasks <- tasks[order(tasks$rep, tasks$station, tasks$regime, tasks$ms), ]
+  tasks$order <- seq_len(nrow(tasks))
+  tasks
+}
+
 rr_run_task <- function(task, out) {
   task$encodings <- ENCODINGS
-  f <- switch(task$exp,
-    asp = rr_task_asp, simulation = rr_task_simulation,
-    benchmark = rr_task_benchmark, chain = rr_task_chain
-  )
-  res <- f(task, out)
+  res <- if (task$exp == "scaling") {
+    plan <- utils::read.csv(file.path(out, "tasks.csv"), stringsAsFactors = FALSE)
+    rr_task_scaling(task, out, plan)
+  } else {
+    f <- switch(task$exp,
+      asp = rr_task_asp, simulation = rr_task_simulation,
+      benchmark = rr_task_benchmark, chain = rr_task_chain, ca = rr_task_ca
+    )
+    f(task, out)
+  }
   attr(res, "versions") <- rr_versions()
   rr_save(res, file.path(out, task$id, "result.rds"))
   res
@@ -218,7 +268,13 @@ rr_prebuild <- function(out) {
 if (identical(cmd, "plan")) {
   dir.create(out, recursive = TRUE, showWarnings = FALSE)
   rr_setup()
-  tasks <- rr_plan()
+  tasks <- if (identical(args[3], "scaling")) {
+    rr_plan_scaling()
+  } else if (identical(args[3], "ca")) {
+    rr_plan_ca()
+  } else {
+    rr_plan()
+  }
   utils::write.csv(tasks, file.path(out, "tasks.csv"), row.names = FALSE)
   print(table(tasks$exp, tasks$setting))
   cat("upper bound of the solver time:", round(sum(tasks$cost) / 3600), "h\n")

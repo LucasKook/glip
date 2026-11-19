@@ -82,6 +82,14 @@ def _orient(queries, how):
     return qs
 
 
+def _max_mem_used(m):
+    """Gurobi's peak memory of the solve in GB (None if not available)."""
+    try:
+        return m.MaxMemUsed
+    except (AttributeError, gp.GurobiError):
+        return None
+
+
 def solve(case, **overrides):
     wall0 = time.perf_counter()
     opts = dict(DEFAULTS)
@@ -331,6 +339,7 @@ def solve(case, **overrides):
                objbound=bound, runtime=m.Runtime, build=build, nodes=m.NodeCount,
                nvars=m.NumVars, nconstrs=m.NumConstrs, cuts=stats, options=opts,
                version=gp.gurobi.version(), seed=opts['seed'], threads=opts['threads'],
+               maxmemused=_max_mem_used(m),
                **{'class': gclass})
     if has:
         val = {e: x.X for e, x in X.items()}

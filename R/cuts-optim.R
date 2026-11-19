@@ -168,7 +168,7 @@ cuts_optim <- function(
   optim <- list(
     status = res[["status"]], objval = res[["objval"]], objbound = res[["objbound"]],
     mipgap = res[["gap"]], runtime = res[["runtime"]], nodecount = res[["nodes"]],
-    objval_model = res[["objval_model"]], encoding = "cuts",
+    maxmemused = res[["maxmemused"]], objval_model = res[["objval_model"]], encoding = "cuts",
     solver = paste0("gurobipy ", paste(unlist(res[["version"]]), collapse = ".")),
     build = res[["build"]], wall = res[["wall"]], cuts = res[["cuts"]],
     nvars = res[["nvars"]], nconstrs = res[["nconstrs"]]
