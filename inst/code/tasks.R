@@ -24,7 +24,7 @@ cmd <- args[1]
 out <- args[2]
 here <- file.path(Sys.getenv("GLIP_ROOT", getwd()), "inst", "code")
 for (f in c("common.R", "exp-simulation.R", "exp-chain.R", "exp-benchmark.R", "exp-asp.R",
-             "exp-scaling.R", "exp-ca.R")) {
+             "exp-scaling.R", "exp-ca.R", "exp-ablation.R")) {
   source(file.path(here, f))
 }
 
@@ -145,7 +145,8 @@ rr_run_task <- function(task, out) {
   } else {
     f <- switch(task$exp,
       asp = rr_task_asp, simulation = rr_task_simulation,
-      benchmark = rr_task_benchmark, chain = rr_task_chain, ca = rr_task_ca
+      benchmark = rr_task_benchmark, chain = rr_task_chain, ca = rr_task_ca,
+      ablation = rr_task_ablation
     )
     f(task, out)
   }
@@ -272,6 +273,8 @@ if (identical(cmd, "plan")) {
     rr_plan_scaling()
   } else if (identical(args[3], "ca")) {
     rr_plan_ca()
+  } else if (identical(args[3], "ablation")) {
+    rr_plan_ablation()
   } else {
     rr_plan()
   }
